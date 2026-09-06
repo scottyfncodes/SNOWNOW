@@ -1,0 +1,316 @@
+import {
+  DEFAULT_PREFERENCES,
+  DEFAULT_WEIGHTS,
+  OPTIMIZER_CONFIG,
+  type RiderPreferences,
+  type ScoringWeights,
+} from '@/config/weights';
+import type { DateKey } from '@/domain/dates';
+import type { Mountain, Origin } from '@/domain/mountain';
+import type {
+  Recommendation,
+  ReturnOption,
+  SkiDayPlan,
+  StayOrGoAdvice,
+  TimelineEvent,
+} from '@/domain/plan';
+import { confidenceForHorizon, observationForHorizon, type Provenance } from '@/domain/provenance';
+import { formatClock, formatDuration, type MinuteOfDay } from '@/domain/time';
+import type { ProviderContext, ProviderRegistry } from '@/providers/types';
+import { comparisonFor, headlineFor, reasonsFor, tradeoffsAgainst, verdictFor } from './explain';
+import { type DayInputs, loadDayInputs, makeContext } from './inputs';
+import { optimizeDay } from './optimize';
+import { scoreDay } from './scoring';
+import { buildSnowClock, resolveOperations, resolveWeather } from './snowClock';
+
+export interface PlanOptions {
+  preferences?: RiderPreferences;
+  weights?: ScoringWeights;
+}
+
+/**
+ * Turn one mountain's data into a complete, timed, explained ski day.
+ * Everything above this function consumes plans; everything below produces
+ * numbers.
+ */
+export function buildPlan(inputs: DayInputs, options: PlanOptions = {}): SkiDayPlan {
+  const preferences = options.preferences ?? DEFAULT_PREFERENCES;
+  const weights = options.weights ?? DEFAULT_WEIGHTS;
+
+  const snowClock = buildSnowClock(inputs, {
+    preferences: {
+      powderPreference: preferences.powderPreference,
+      crowdTolerance: preferences.crowdTolerance,
+    },
+  });
+
+  const optimized = optimizeDay(inputs, snowClock, { preferences, weights });
+  const score = scoreDay({
+    inputs,
+    clock: snowClock,
+    departure: optimized.departure,
+    ret: optimized.ret,
+    preferences,
+    weights,
+  });
+
+  const weather = resolveWeather(inputs);
+  const hasSnow = weather.overnightSnowIn >= 1.5;
+  const caveats = collectCaveats(inputs, optimized.unavailableReason);
+
+  return {
+    mountain: inputs.mountain,
+    origin: inputs.origin,
+    date: inputs.date,
+    isToday: inputs.isToday,
+    score,
+    snowClock,
+    departure: optimized.departure,
+    departureOptions: optimized.departureOptions,
+    return: optimized.ret,
+    returnOptions: optimized.returnOptions,
+    timeline: buildTimeline(inputs, snowClock, optimized.departure, optimized.ret),
+    headline: headlineFor(inputs, snowClock, score),
+    verdict: verdictFor(score.score, hasSnow),
+    reasons: reasonsFor(inputs, snowClock, score),
+    tradeoffs: [],
+    provenance: planProvenance(inputs),
+    caveats,
+  };
+}
+
+function planProvenance(inputs: DayInputs): Provenance {
+  const first = [inputs.weather, inputs.operations, inputs.outbound].find(
+    (availability) => availability.status === 'ok',
+  );
+  if (first && first.status === 'ok') return first.provenance;
+  return {
+    source: inputs.usingDemoData ? 'demo' : 'live',
+    observation: observationForHorizon(inputs.horizonDays),
+    confidence: confidenceForHorizon(inputs.horizonDays),
+    provider: 'none',
+    horizonDays: inputs.horizonDays,
+  };
+}
+
+function collectCaveats(inputs: DayInputs, timingReason: string | null): string[] {
+  const caveats: string[] = [];
+  if (inputs.weather.status === 'unavailable') {
+    caveats.push("Weather's being weird — we can't confidently call the snow.");
+  }
+  if (inputs.operations.status === 'unavailable') {
+    caveats.push("Lift report isn't talking. Terrain and opening times are assumptions.");
+  }
+  if (inputs.crowds.status === 'unavailable') {
+    caveats.push('No crowd signal for this mountain.');
+  }
+  if (inputs.outbound.status === 'unavailable' || inputs.inbound.status === 'unavailable') {
+    caveats.push("Road intel is offline. We'll show the mountain, but we're not going to fake the drive.");
+  } else if (timingReason) {
+    caveats.push(timingReason);
+  }
+  return caveats;
+}
+
+function buildTimeline(
+  inputs: DayInputs,
+  snowClock: SkiDayPlan['snowClock'],
+  departure: SkiDayPlan['departure'],
+  ret: SkiDayPlan['return'],
+): TimelineEvent[] {
+  const events: TimelineEvent[] = [];
+  const ops = resolveOperations(inputs);
+
+  if (departure) {
+    events.push({
+      minute: departure.departure,
+      icon: '🚗',
+      label: `Leave ${inputs.origin.shortName}`,
+      detail: formatDuration(departure.driveMinutes),
+      emphasis: true,
+    });
+    events.push({
+      minute: departure.arrival,
+      icon: '🏔️',
+      label: 'Arrive',
+      detail: `First turn ${formatClock(departure.firstTurn)}`,
+    });
+  }
+
+  if (ops.expectedOpen > ops.scheduledOpen) {
+    events.push({
+      minute: ops.expectedOpen,
+      icon: '🚡',
+      label: 'Lifts turn (running late)',
+      detail: `Scheduled ${formatClock(ops.scheduledOpen)}`,
+    });
+  }
+
+  if (snowClock.prime) {
+    events.push({
+      minute: snowClock.prime.start,
+      icon: '❄️',
+      label: 'PRIME SNOW',
+      detail: `through ${formatClock(snowClock.prime.end)}`,
+      emphasis: true,
+    });
+    const fade = snowClock.points.find(
+      (point) =>
+        point.minute > snowClock.prime!.end && point.quality < snowClock.prime!.averageQuality - 12,
+    );
+    if (fade) {
+      events.push({ minute: fade.minute, icon: '☀️', label: 'Snow quality starts fading' });
+    }
+  }
+
+  if (ret) {
+    if (ret.departure > snowClock.close) {
+      events.push({
+        minute: snowClock.close,
+        icon: '🎿',
+        label: 'Last chair',
+        detail: `Wait out traffic — ${formatDuration(ret.departure - snowClock.close)}`,
+      });
+    }
+    events.push({
+      minute: ret.departure,
+      icon: '🚗',
+      label: 'BEST TIME TO HEAD HOME',
+      detail: formatDuration(ret.driveMinutes),
+      emphasis: true,
+    });
+    events.push({ minute: ret.homeArrival, icon: '🏠', label: 'Home' });
+  }
+
+  return events.sort((a, b) => a.minute - b.minute);
+}
+
+/** ---- Multi-mountain recommendation -------------------------------------- */
+
+export interface RecommendOptions extends PlanOptions {
+  mountains: Mountain[];
+  origin: Origin;
+  date: DateKey;
+  today: DateKey;
+  now: MinuteOfDay;
+}
+
+export async function recommend(
+  registry: ProviderRegistry,
+  options: RecommendOptions,
+): Promise<Recommendation> {
+  const context: ProviderContext = makeContext(options.date, options.today, options.now);
+  const candidates = options.mountains.filter((mountain) =>
+    mountain.accessRoutes.some((route) => route.originId === options.origin.id),
+  );
+
+  const inputs = await Promise.all(
+    candidates.map((mountain) => loadDayInputs(registry, mountain, options.origin, context)),
+  );
+
+  const plans = inputs
+    .map((dayInputs) => buildPlan(dayInputs, options))
+    .sort((a, b) => b.score.raw - a.score.raw);
+
+  const best = plans[0];
+  if (!best) {
+    throw new Error('No mountains are reachable from this starting point.');
+  }
+
+  const alternatives = plans.slice(1);
+  for (const plan of alternatives) {
+    plan.tradeoffs = tradeoffsAgainst(plan.score, best.score);
+  }
+
+  const caveats = [...new Set(plans.flatMap((plan) => plan.caveats))];
+
+  return {
+    date: options.date,
+    origin: options.origin,
+    best,
+    alternatives,
+    all: plans,
+    comparison: comparisonFor(best, alternatives[0]),
+    generatedAt: new Date().toISOString(),
+    usingDemoData: registry.usingDemoData,
+    caveats,
+  };
+}
+
+/** ---- Stay or go --------------------------------------------------------- */
+
+/**
+ * Mid-afternoon, standing at the base, phone out: should I get in the car or
+ * take another lap? A navigation app can tell you how long the drive is right
+ * now. Only a model of the *whole curve* can tell you to wait.
+ */
+export function stayOrGo(
+  plan: SkiDayPlan,
+  now: MinuteOfDay,
+  config = OPTIMIZER_CONFIG,
+): StayOrGoAdvice {
+  const remaining = plan.returnOptions.filter((option) => option.departure >= now);
+  const leaveNow = remaining[0] ?? null;
+
+  if (!leaveNow) {
+    return {
+      now,
+      verdict: 'go-now',
+      headline: 'HEAD OUT.',
+      detail: 'Nothing left to wait for today.',
+      leaveNow: null,
+      leaveLater: null,
+      minutesToWait: 0,
+    };
+  }
+
+  const best = remaining.reduce((top, option) => (option.score > top.score ? option : top), leaveNow);
+  const wait = best.departure - leaveNow.departure;
+
+  if (wait <= config.returnStepMinutes) {
+    return {
+      now,
+      verdict: 'window-open',
+      headline: 'THIS IS THE WINDOW.',
+      detail: `Leave now and you're home ${formatClock(leaveNow.homeArrival)}. Waiting doesn't help.`,
+      leaveNow,
+      leaveLater: null,
+      minutesToWait: 0,
+    };
+  }
+
+  const homeDelay = Math.max(0, best.homeArrival - leaveNow.homeArrival);
+  const extraMountain = best.departure - leaveNow.departure;
+  // The honest trade is not "you get home later" — it's how much of that delay
+  // is extra *driving* rather than extra time you actually wanted to be here.
+  const extraDriving = Math.max(0, homeDelay - extraMountain);
+  const jammedNow = leaveNow.trafficLight === 'red';
+
+  const cost =
+    extraDriving <= 2
+      ? 'and you get home no later than if you left right now'
+      : `for ${formatDuration(extraDriving)} of extra driving`;
+
+  return {
+    now,
+    verdict: 'stay',
+    headline: jammedNow ? "DON'T LEAVE YET." : wait <= 60 ? 'ONE MORE LAP.' : 'STAY A WHILE.',
+    detail: jammedNow
+      ? `Traffic is stacking hard. Stay another ${formatDuration(wait)} — grab après, let the road clear. That's ${formatDuration(extraMountain)} more up here ${cost}.`
+      : `Hang on ${formatDuration(wait)}. That's ${formatDuration(extraMountain)} more on the hill ${cost}.`,
+    leaveNow,
+    leaveLater: best,
+    minutesToWait: wait,
+  };
+}
+
+/** Compare "leave now" against a handful of later departures. */
+export function stayOrGoLadder(plan: SkiDayPlan, count = 4): ReturnOption[] {
+  const recommended = plan.return;
+  if (!recommended) return [];
+  const later = plan.returnOptions.filter((option) => option.departure > recommended.departure);
+  if (later.length === 0) return [recommended];
+  const stride = Math.max(1, Math.floor(later.length / count));
+  const picks = later.filter((_, index) => index % stride === 0).slice(0, count);
+  return [recommended, ...picks];
+}

@@ -1,0 +1,13 @@
+{
+  "name": "SNOWNOW",
+  "short_name": "SNOWNOW",
+  "description": "Find your best mountain day.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#04060a",
+  "theme_color": "#04060a",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
