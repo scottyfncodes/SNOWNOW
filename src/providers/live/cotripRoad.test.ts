@@ -34,6 +34,9 @@ describe('CotripRoadProvider — best-effort, fails safe', () => {
     expect(result.data.condition).toBe('closed');
     expect(result.data.closures).toHaveLength(1);
     expect(result.data.closures[0]?.location).toContain('Eisenhower');
+    // CDOT is an official government source, not third-party — never
+    // carries the caveat that only a source like Liftie should set.
+    expect(result.provenance.attribution).toBeUndefined();
   });
 
   it('reports clear when nothing matches the corridor route name', async () => {

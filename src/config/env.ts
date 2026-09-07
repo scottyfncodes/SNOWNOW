@@ -16,7 +16,13 @@ export interface SnownowEnvironment {
   dataMode: DataMode;
   /** Base URL of the traffic proxy server. Empty = traffic stays demo. */
   trafficApiBaseUrl: string;
-  /** Road-condition integration is unverified (see cotripRoad.ts) — opt-in. */
+  /**
+   * CDOT/COtrip road conditions. On by default in live mode — the provider
+   * fails safe (`unavailable`) on any response it doesn't recognize, so
+   * there's no honesty cost to attempting it; set to "false" to disable
+   * outright rather than to opt in. See `cotripRoad.ts` for the still-open
+   * verification caveat (this sandbox cannot reach the real endpoint).
+   */
   enableRoadConditions: boolean;
 }
 
@@ -36,6 +42,6 @@ export function resolveEnvironment(): SnownowEnvironment {
   return {
     dataMode,
     trafficApiBaseUrl: typeof env.VITE_API_BASE_URL === 'string' ? env.VITE_API_BASE_URL : '',
-    enableRoadConditions: env.VITE_ENABLE_ROAD_CONDITIONS === 'true',
+    enableRoadConditions: env.VITE_ENABLE_ROAD_CONDITIONS !== 'false',
   };
 }

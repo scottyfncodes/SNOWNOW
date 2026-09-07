@@ -48,6 +48,8 @@ export function RecommendationCard({ plan, why, projected = false, onCompare }: 
   const { departure, snowClock } = plan;
   const ret = plan.return;
   const ticket = plan.ticket;
+  const allSourcesUnavailable =
+    plan.dataSources.length > 0 && plan.dataSources.every((source) => source.status === 'unavailable');
 
   return (
     <section className="reccard" aria-labelledby="reccard-name">
@@ -75,7 +77,7 @@ export function RecommendationCard({ plan, why, projected = false, onCompare }: 
       <p className="reccard-headline">{plan.headline}</p>
 
       <div className="reccard-badges">
-        <DataBadge provenance={plan.provenance} />
+        <DataBadge provenance={plan.provenance} allSourcesUnavailable={allSourcesUnavailable} />
         <ConfidencePill level={plan.score.confidence} />
       </div>
 

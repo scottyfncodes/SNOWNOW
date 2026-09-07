@@ -39,7 +39,7 @@ much certainty it is willing to claim.
 ```bash
 npm install
 npm run dev        # http://localhost:5173 — demo mode, zero setup
-npm test           # 284 tests
+npm test           # 289 tests
 npm run build      # type-check + production bundle
 npm run preview    # serve the built app
 npm run server     # the traffic proxy (server/index.mjs) — only needed for live traffic
@@ -67,9 +67,11 @@ convention:
 - when a feed is unavailable the app says so and declines to fill the gap
   ("Road intel is offline. We can show the mountain, but we're not going to
   fake the drive.")
-- a request that fails is never silently answered with demo data — that only
-  happens once, at startup, as an explicit *configuration* choice (no traffic
-  server configured ⇒ traffic provider is demo), never per-request
+- a live registry never falls back to demo data, at any point — not per
+  request, and not even as a configuration default when something's unset.
+  A slot with nothing genuinely live to serve reports `unavailable`,
+  mechanically enforced (`providers/index.test.ts`) — see "The production
+  data gate" below
 - tap "Where this data came from" on any recommendation to see every feed's
   status, provider and fetch time individually — the one aggregate badge on
   the card is a summary, not the only source of truth
@@ -85,12 +87,12 @@ Day 0 is deliberately shaped into a storm day — the product story starts at
 |---|---|---|
 | **Weather** | Live | Nothing — Open-Meteo is free, keyless, CORS-enabled |
 | **Alerts** (NWS) | Live | Nothing — same deal, US mountains only |
-| **Traffic** | Live, opt-in | `server/` deployed + `GOOGLE_ROUTES_API_KEY` + `VITE_API_BASE_URL` |
-| **Road closures** (CDOT/COtrip) | Live, unverified | `VITE_ENABLE_ROAD_CONDITIONS=true` — see the warning in `cotripRoad.ts` |
-| **Crowds** | Live (calendar heuristic) | Nothing — weekend/holiday/popularity, no feed to configure |
-| **Lift ops, terrain** | Live where covered, else unavailable | Nothing — tries Liftie (third-party) automatically; no fabricated fallback where it isn't covered |
-| **Pricing** | Unavailable (investigated, unverifiable) | Official purchase link shown instead — see below |
-| **Places** | Demo/static | Never in scope for live data — see below |
+| **Traffic** | Live | `server/` deployed + `GOOGLE_ROUTES_API_KEY` + `VITE_API_BASE_URL`, else **unavailable** |
+| **Road closures** (CDOT/COtrip) | Live, unverified, on by default | `VITE_ENABLE_ROAD_CONDITIONS=false` to disable → **unavailable** |
+| **Lift ops, terrain** | Live where covered, else unavailable | Nothing — tries Liftie (third-party) automatically |
+| **Crowds** | Unavailable, always | No trustworthy live source exists — retired, see below |
+| **Pricing** | Unavailable, always | Investigated, unverifiable — official purchase link shown instead |
+| **Places** | Unavailable, always | No live implementation exists for this pass |
 
 ```bash
 cp .env.example .env
@@ -103,11 +105,37 @@ read at runtime — switching modes means rebuilding, which is also what keeps
 demo mode the safe, can't-happen-by-accident default: there is no runtime
 toggle to flip on live data without a deliberate build.
 
-Full traffic and road-closure integration needs `server/index.mjs` running
-somewhere with `GOOGLE_ROUTES_API_KEY` set (Render, Fly, a small VPS,
-anywhere Node runs — GitHub Pages cannot host it, since Pages serves static
-files only and has no way to hold a server-side secret). Every variable is
-documented in `.env.example`.
+Full traffic integration needs `server/index.mjs` running somewhere with
+`GOOGLE_ROUTES_API_KEY` set (Render, Fly, a small VPS, anywhere Node runs —
+GitHub Pages cannot host it, since Pages serves static files only and has no
+way to hold a server-side secret). Every variable is documented in
+`.env.example`.
+
+### The production data gate
+
+`createLiveRegistry()` (`providers/live/index.ts`) never returns a
+`Demo*Provider` in any slot, under any configuration. This isn't a claim —
+it's mechanically enforced: `providers/index.test.ts` constructs a live
+registry with every optional knob left unset and asserts none of its seven
+provider slots is `instanceof` any of the seven demo classes, then repeats
+the check with each knob individually disabled. A slot this registry can't
+genuinely serve reports `unavailable` (see `providers/live/unavailable.ts`)
+— never the plausible-looking demo number that same slot would show in an
+actual demo build.
+
+One caveat, stated precisely rather than glossed over: this is a **runtime**
+guarantee, not a **bundle-size** one. `providers/index.ts` still statically
+imports both `createDemoRegistry` and `createLiveRegistry` so the same
+function can dispatch between them from one build — Rollup/esbuild cannot
+prove `env.dataMode` is always `'live'` across that function-call boundary,
+so the demo providers' code (including the demo scenario generator) remains
+present as inert bytes in the production JS bundle, just never constructed.
+Actually removing those bytes would mean loading the demo registry via a
+dynamic `import()` behind a loading state — a real change to how the app
+boots, which risks exactly the "don't redesign the UX" line this project
+holds elsewhere, for a benefit that's cosmetic (bundle KB) rather than
+about correctness (what data reaches the user). Not done, on purpose,
+documented rather than left implicit.
 
 ### Mountain operations: a three-tier strategy
 
@@ -170,18 +198,29 @@ partner API) if one becomes available later.
 ### Places: never in scope
 
 `PlacesProvider` (après suggestions) has no live implementation and wasn't
-investigated in this pass — it stays demo/static and says so.
+investigated in this pass. In live mode it reports `unavailable` — never
+demo data (see "The production data gate" above).
 
-### Crowds: a genuine, coarse, live answer
+### Crowds: retired from live mode
 
-The one signal with no live *feed* but a defensible live *answer*: weekday
-vs. weekend, proximity to a real US holiday, and how popular a mountain
-already is with Front Range day-trippers are real, checkable facts about
-today, not a simulation. `LiveMountainProvider.getCrowdForecast` computes
-this deterministically (no randomness) and says exactly what it is in its
-own `drivers` list — a calendar proxy, not measured attendance or lift-line
-telemetry, and weighted lightly in scoring (`crowds: 0.6` in
-`config/weights.ts`) so it can inform a plan without dominating one.
+`LiveMountainProvider.getCrowdForecast` used to run a calendar heuristic
+here (weekday/weekend, holiday, mountain popularity), honestly labeled
+`low` confidence and `projected` — real arithmetic on real calendar facts,
+not a simulation. It has been removed. The reasoning: it was still a
+projection standing in for an observed signal, and a production decision
+engine is more trustworthy with fewer real signals than with one that can
+be mistaken for measured attendance. It now reports `unavailable`
+unconditionally.
+
+This is not a gap that silently weakens the recommendation: `crowds` is a
+lightly-weighted (`0.6` in `config/weights.ts`), optional scoring factor,
+and `scoring.ts` already imputes a neutral contribution and flags it as
+imputed whenever it's unavailable — the exact, already-tested mechanism
+every other unresolved live signal uses (see `engine/scenarios.test.ts`).
+Nothing about a plan's timing, snow read, or operations read depends on
+crowd data. If a trustworthy live occupancy/crowd source is identified
+later, `MountainProvider.getCrowdForecast` is still a real interface a live
+implementation can drop into.
 
 ---
 
@@ -363,7 +402,7 @@ end of the state while the other gets scraps.
 ## Tests
 
 ```
-npm test      # 284 tests, 26 files
+npm test      # 289 tests, 24 files
 ```
 
 The core optimisation logic is tested without rendering any UI, against
@@ -568,11 +607,14 @@ unavailable" above.
 
 ## What's intentionally still demo, and what's not built at all
 
-Places (après suggestions) stays demo/static — never investigated for a live
-source in this pass, said so plainly. Everything else that touches real
-external data now either serves a real answer, a real third-party answer
-honestly attributed, or `unavailable` — never a demo value presented as
-live. See the three sections above for exactly which is which per feed.
+**Nothing is demo in live mode, of anything.** Places (après suggestions)
+has no live implementation; crowds has been retired; pricing was
+investigated and found unverifiable — all three report `unavailable`, not
+demo data, in a live registry (see "The production data gate" above).
+`Demo*Provider` classes exist only for `createDemoRegistry()`, used by
+`npm run dev` with no env vars set and by every deterministic engine test —
+never reachable from a live-mode registry, which `providers/index.test.ts`
+enforces directly.
 
 Not yet built, by design and unrelated to this pass: accounts, saved
 mountains, notifications, a service worker (the manifest is in place but

@@ -1,9 +1,6 @@
 import type { CrowdCurve, OperationsReport } from '@/domain/conditions';
-import { holidayName, isWeekend } from '@/domain/dates';
 import type { Mountain } from '@/domain/mountain';
-import { type Availability, ok } from '@/domain/provenance';
-import { at, clamp, clamp01, minuteRange, type MinuteOfDay } from '@/domain/time';
-import { bell } from '@/lib/curve';
+import { type Availability, unavailable } from '@/domain/provenance';
 import type { MountainProvider, ProviderContext } from '@/providers/types';
 import { getLiftieOperations } from './liftieOperations';
 
@@ -31,14 +28,17 @@ import { getLiftieOperations } from './liftieOperations';
  * instead of silently scoring a made-up number as if it were real (see
  * `resolveOperations`/`FALLBACK_OPS` in `engine/snowClock.ts`).
  *
- * `getCrowdForecast` is different: there genuinely is a defensible signal
- * with no live feed behind it — the calendar. Weekday vs. weekend, the
- * proximity of a real US holiday, and how popular a mountain already is with
- * the Front Range day-trip crowd are all real, verifiable facts about today,
- * not invented ones. This is a coarse proxy, not measured attendance or lift
- * queue data, and it says so in its own `drivers` list — but a proxy signal
- * that is honestly labeled is exactly what was asked for here, not a reason
- * to leave the interface unimplemented.
+ * `getCrowdForecast` used to run a calendar-based heuristic (weekday/
+ * weekend, holiday, mountain popularity) here, honestly labeled `low`
+ * confidence and `projected`. It has been retired: real arithmetic on real
+ * calendar facts is still a projection standing in for an observed signal,
+ * and production is not the place for a proxy that can be mistaken for
+ * measured attendance. No trustworthy live crowd/occupancy source exists
+ * for these resorts, so this reports `unavailable` — `scoring.ts` already
+ * imputes a neutral, low-weight contribution for exactly this case (see
+ * `crowds: 0.6` in `config/weights.ts`), which is the correct behavior for
+ * "we don't have this," not a reason to keep serving a proxy that looks
+ * like data.
  */
 export class LiveMountainProvider implements MountainProvider {
   readonly id = 'live-mountain-status';
@@ -53,50 +53,9 @@ export class LiveMountainProvider implements MountainProvider {
   }
 
   async getCrowdForecast(
-    mountain: Mountain,
-    context: ProviderContext,
+    _mountain: Mountain,
+    _context: ProviderContext,
   ): Promise<Availability<CrowdCurve>> {
-    const weekend = isWeekend(context.date);
-    const holiday = holidayName(context.date);
-
-    // Weekday baseline vs. a real weekend bump, then a real-holiday bump on
-    // top of that. mountain.popularity is editorial (how much Front Range
-    // day-trip demand this resort draws), not measured, and is folded in
-    // exactly the way it already is for the demo model's own crowd curve.
-    const dayFactor = clamp(
-      (weekend ? 1 : 0.5) * (holiday ? 1.3 : 1) * (0.6 + mountain.popularity * 0.8),
-      0.15,
-      1.6,
-    );
-
-    const drivers: string[] = [];
-    drivers.push(weekend ? 'Weekend' : 'Weekday');
-    if (holiday) drivers.push(holiday);
-    if (mountain.popularity > 0.8) drivers.push('Front Range favorite');
-    else if (mountain.popularity < 0.5) drivers.push('Below-average draw');
-
-    const open = mountain.operations.weekendOpen ?? mountain.operations.weekdayOpen;
-    const samples = minuteRange(at(7), at(17), 15).map((minute: MinuteOfDay) => {
-      const build = clamp01((minute - open) / 150);
-      const fade = 1 - clamp01((minute - at(13, 30)) / 190) * 0.75;
-      const lunchDip = 1 - bell(minute, at(12, 15), 45) * 0.18;
-      return {
-        minute,
-        crowding: Math.round(clamp01(build * fade * lunchDip * dayFactor) * 100) / 100,
-      };
-    });
-
-    return ok(
-      { samples, dayFactor: Math.round(dayFactor * 100) / 100, drivers },
-      {
-        source: 'live',
-        observation: 'projected',
-        // A calendar-and-popularity proxy is never more than a rough guide —
-        // it does not get more confident just because the date is closer.
-        confidence: 'low',
-        provider: this.id,
-        horizonDays: context.horizonDays,
-      },
-    );
+    return unavailable(this.id, 'No trustworthy live crowd/occupancy source exists for this resort.');
   }
 }

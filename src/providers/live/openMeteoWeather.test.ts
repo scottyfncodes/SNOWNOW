@@ -104,6 +104,9 @@ describe('OpenMeteoWeatherProvider — normalization', () => {
     expect(new Date(result.provenance.validUntil!).getTime()).toBeGreaterThan(
       new Date(result.provenance.fetchedAt!).getTime(),
     );
+    // Open-Meteo is called directly, first-party — never carries the
+    // third-party caveat that only a source like Liftie should set.
+    expect(result.provenance.attribution).toBeUndefined();
   });
 
   it('converts units correctly: cm→in snow, km/h→mph wind, °C→°F temp', async () => {

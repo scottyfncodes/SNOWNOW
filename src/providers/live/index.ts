@@ -1,4 +1,3 @@
-import { DemoPlacesProvider, DemoRoadConditionProvider, DemoTrafficProvider } from '@/providers/demo';
 import type { ProviderRegistry } from '@/providers/types';
 import { CotripRoadProvider } from './cotripRoad';
 import { LiveTrafficProvider } from './googleRoutesTraffic';
@@ -6,6 +5,11 @@ import { LiveMountainProvider } from './mountainStatus';
 import { NwsAlertsProvider } from './nwsAlerts';
 import { OpenMeteoWeatherProvider } from './openMeteoWeather';
 import { LivePricingProvider } from './pricing';
+import {
+  UnavailablePlacesProvider,
+  UnavailableRoadConditionProvider,
+  UnavailableTrafficProvider,
+} from './unavailable';
 
 export {
   CotripRoadProvider,
@@ -17,47 +21,53 @@ export {
 };
 
 export interface LiveRegistryOptions {
-  /**
-   * Base URL of the traffic proxy server (see `server/index.mjs`). If unset,
-   * traffic falls back to the demo provider — never to a fabricated live
-   * number, and never to a browser call carrying a secret. This is a
-   * config-time choice, made once when the registry is assembled; it is
-   * distinct from a live request *failing*, which always surfaces as
-   * `unavailable`, never as a silent demo substitution.
-   */
+  /** Base URL of the traffic proxy server (see `server/index.mjs`). */
   trafficApiBaseUrl?: string;
-  /** Road conditions are best-effort/unverified (see cotripRoad.ts). Off by default. */
+  /** CDOT/COtrip road conditions — on by default, see `config/env.ts`. */
   enableRoadConditions?: boolean;
 }
 
 /**
- * The live bundle. `places` (après suggestions) is the one slot with no live
- * path at all and stays demo/static, said so in the README. Everything else
- * is live or live-with-honest-fallback: weather and alerts unconditionally;
- * traffic when a server base URL is configured, demo otherwise; road
- * conditions live-but-unverified and opt-in; mountain operations tries
- * Liftie and reports `unavailable` rather than demo data when it can't (see
- * `mountainStatus.ts`); pricing reports `unavailable` for every resort after
- * a real investigation found no verifiable live source (see `pricing.ts`) —
- * never the demo model's plausible number presented as live. Its crowd
- * forecast is a real (if coarse) calendar-based heuristic, not a simulation.
+ * The live bundle — the production data gate.
+ *
+ * Nothing this module reaches ever imports `providers/demo`. Every slot is
+ * either a genuine live call or an `Unavailable*Provider` from
+ * `./unavailable.ts` that reports `unavailable` honestly — there is no
+ * config-time *or* request-time path from this registry to a demo value.
+ * `places` has no live implementation and was never in scope for one; it
+ * reports `unavailable` the same as an unconfigured slot, not demo data.
+ *
+ * | Slot | Live when | Otherwise |
+ * |---|---|---|
+ * | weather, alerts | always | (no fallback — these have no config knob) |
+ * | traffic | `trafficApiBaseUrl` set | `unavailable` |
+ * | roads | `enableRoadConditions` (default true) | `unavailable` |
+ * | mountain (operations) | Liftie covers the resort | `unavailable` |
+ * | mountain (crowds) | never — retired, see `mountainStatus.ts` | `unavailable` |
+ * | pricing | never — no verifiable source, see `pricing.ts` | `unavailable` |
+ * | places | never — no live implementation | `unavailable` |
+ *
+ * `createProviderRegistry` (`providers/index.ts`) is the only caller; its
+ * own test (`providers/index.test.ts`) asserts that a live-mode registry
+ * never returns a `Demo*Provider` instance in any slot.
  */
 export function createLiveRegistry(options: LiveRegistryOptions = {}): ProviderRegistry {
   const hasTrafficServer = Boolean(options.trafficApiBaseUrl);
+  const roadConditionsEnabled = options.enableRoadConditions ?? true;
 
   return {
     weather: new OpenMeteoWeatherProvider(),
     traffic: hasTrafficServer
       ? new LiveTrafficProvider({ apiBaseUrl: options.trafficApiBaseUrl! })
-      : new DemoTrafficProvider(),
+      : new UnavailableTrafficProvider(),
     mountain: new LiveMountainProvider(),
     pricing: new LivePricingProvider(),
-    places: new DemoPlacesProvider(),
+    places: new UnavailablePlacesProvider(),
     alerts: new NwsAlertsProvider(),
-    roads: options.enableRoadConditions ? new CotripRoadProvider() : new DemoRoadConditionProvider(),
-    // "Any slot still demo" — true here only because `places` always is, and
-    // `traffic`/`roads` may be depending on configuration.
-    usingDemoData: true,
-    label: hasTrafficServer ? 'Live data (partial)' : 'Live weather, demo traffic',
+    roads: roadConditionsEnabled ? new CotripRoadProvider() : new UnavailableRoadConditionProvider(),
+    // No slot in this registry is ever a demo implementation — a config-time
+    // gap reports `unavailable`, not demo data. See the module docblock.
+    usingDemoData: false,
+    label: hasTrafficServer ? 'Live data' : 'Live data (traffic unavailable — no server configured)',
   };
 }
