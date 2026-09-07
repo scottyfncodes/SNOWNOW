@@ -6,6 +6,7 @@ import {
   type ScoringWeights,
 } from '@/config/weights';
 import type { DateKey } from '@/domain/dates';
+import { resortSourceFor } from '@/data/resortSources';
 import type { Mountain, Origin } from '@/domain/mountain';
 import type {
   DataSourceStatus,
@@ -73,6 +74,7 @@ export function buildPlan(inputs: DayInputs, options: PlanOptions = {}): SkiDayP
     score,
     snowClock,
     ticket: inputs.ticket.status === 'ok' ? inputs.ticket.data : null,
+    ticketPurchaseUrl: resortSourceFor(inputs.mountain.id).officialPurchaseUrl,
     alerts: inputs.alerts.status === 'ok' ? inputs.alerts.data : [],
     dataSources: buildDataSources(inputs),
     departure: optimized.departure,
@@ -105,20 +107,30 @@ function planProvenance(inputs: DayInputs): Provenance {
 
 /** One row per independent feed, so a single disclosure can show all six at once. */
 function buildDataSources(inputs: DayInputs): DataSourceStatus[] {
-  const row = (label: string, availability: Availability<unknown>): DataSourceStatus => ({
+  const row = (label: string, availability: Availability<unknown>, sourceUrl?: string): DataSourceStatus => ({
     label,
     status: displayStatus(availability),
     provider: availability.status === 'ok' ? availability.provenance.provider : availability.provider,
     fetchedAt: availability.status === 'ok' ? availability.provenance.fetchedAt : undefined,
+    attribution: availability.status === 'ok' ? availability.provenance.attribution : undefined,
+    sourceUrl,
   });
 
-  return [
+  const opsSourceUrl = inputs.operations.status === 'ok' ? inputs.operations.data.sourceUrl : undefined;
+
+  const rows = [
     row('Weather', inputs.weather),
     row('Traffic', inputs.outbound),
-    row('Lift operations', inputs.operations),
+    row('Lift operations', inputs.operations, opsSourceUrl),
     row('Ticket price', inputs.ticket),
     row('Alerts', inputs.alerts),
   ];
+
+  // Roads only gets a row when there was a corridor to ask about at all —
+  // an origin/mountain pair with no routes has nothing to report here.
+  if (inputs.primaryRoadStatus) rows.push(row('Roads', inputs.primaryRoadStatus));
+
+  return rows;
 }
 
 function collectCaveats(inputs: DayInputs, timingReason: string | null): string[] {

@@ -39,7 +39,7 @@ much certainty it is willing to claim.
 ```bash
 npm install
 npm run dev        # http://localhost:5173 — demo mode, zero setup
-npm test           # 261 tests
+npm test           # 284 tests
 npm run build      # type-check + production bundle
 npm run preview    # serve the built app
 npm run server     # the traffic proxy (server/index.mjs) — only needed for live traffic
@@ -86,10 +86,11 @@ Day 0 is deliberately shaped into a storm day — the product story starts at
 | **Weather** | Live | Nothing — Open-Meteo is free, keyless, CORS-enabled |
 | **Alerts** (NWS) | Live | Nothing — same deal, US mountains only |
 | **Traffic** | Live, opt-in | `server/` deployed + `GOOGLE_ROUTES_API_KEY` + `VITE_API_BASE_URL` |
-| **Road closures** (CDOT) | Live, unverified | `VITE_ENABLE_ROAD_CONDITIONS=true` — see the warning in `cotripRoad.ts` |
+| **Road closures** (CDOT/COtrip) | Live, unverified | `VITE_ENABLE_ROAD_CONDITIONS=true` — see the warning in `cotripRoad.ts` |
 | **Crowds** | Live (calendar heuristic) | Nothing — weekend/holiday/popularity, no feed to configure |
-| **Lift ops, terrain, grooming** | Unavailable by design | No config makes this live — see "Why these stay demo or unavailable" below |
-| **Pricing, places** | Demo/static | See "Why these stay demo or unavailable" below |
+| **Lift ops, terrain** | Live where covered, else unavailable | Nothing — tries Liftie (third-party) automatically; no fabricated fallback where it isn't covered |
+| **Pricing** | Unavailable (investigated, unverifiable) | Official purchase link shown instead — see below |
+| **Places** | Demo/static | Never in scope for live data — see below |
 
 ```bash
 cp .env.example .env
@@ -108,28 +109,72 @@ anywhere Node runs — GitHub Pages cannot host it, since Pages serves static
 files only and has no way to hold a server-side secret). Every variable is
 documented in `.env.example`.
 
-### Why lift ops, pricing and places stay demo or unavailable
+### Mountain operations: a three-tier strategy
 
-Not a gap I ran out of time for — a deliberate line. There is no reliable,
-public, machine-readable API for lift status or ticket pricing across
-arbitrary Colorado resorts. The alternative was scraping resort websites,
-which is exactly the "fragile HTML" the brief says to avoid: it breaks on
-every redesign, it's a legal grey area for several of these resorts, and a
-scraper silently failing would erode the one guarantee this whole
-architecture exists to keep. `MountainProvider` and `PricingProvider` are
-real interfaces with a real production path (a lift-ticketing platform's
-partner API, a resort data aggregator).
+`LiveMountainProvider.getOperations` (`providers/live/mountainStatus.ts`)
+tries, in order:
 
-Pricing and places keep their demo implementations in live mode and say so.
-Lift/terrain/grooming status (`LiveMountainProvider.getOperations` in
-`providers/live/mountainStatus.ts`) goes one step further and reports
-`unavailable` instead: serving the demo simulation's plausible-looking lift
-counts under a small badge risked reading as real, and the engine already
-has a correct, tested answer for "we don't have this" — `scoring.ts` and
-`snowClock.ts` impute a neutral value and flag it as imputed, which lowers
-the plan's confidence rather than quietly scoring a made-up number.
+1. **Official resort feed.** Not implemented. It would need a verified,
+   structured (JSON/REST/GraphQL) endpoint per resort, confirmed by actually
+   hitting it — and this sandbox has no network path to any resort's site to
+   find and confirm one for even a single mountain, let alone the thirteen
+   in the dataset. Guessing at undocumented endpoints across a dozen
+   different commerce/CMS platforms without verification is exactly the
+   fragile, unaccountable integration this project avoids everywhere else.
+2. **Liftie** (`providers/live/liftieOperations.ts`), a real, established
+   third-party lift-status aggregator with a documented REST API
+   (`GET https://liftie.info/api/resort/:id`) and existing Colorado
+   coverage. `data/resortSources.ts` is the registry of which mountains are
+   believed to have Liftie coverage; a resort with no entry there goes
+   straight to Tier 3 rather than guessing a slug. Every value sourced this
+   way carries `Provenance.attribution` saying plainly "Third-party
+   aggregator (Liftie) — not the resort's own feed" — the UI renders this
+   next to the provider name so a Liftie-sourced lift count can never read
+   as official.
+3. **Unavailable.** No real signal, no invented one. The engine already has
+   a correct, tested answer for this: `scoring.ts` and `snowClock.ts` impute
+   a neutral value and flag it as imputed, which lowers the plan's
+   confidence rather than quietly scoring a made-up number (see
+   `engine/scenarios.test.ts`, scenarios 11 and 12, for both halves of this
+   — a real closure marks the score down for real, and a missing feed
+   doesn't get treated as either "everything's open" or "everything's
+   closed").
 
-Crowds are the one exception with a genuine, if coarse, live answer: weekday
+⚠️ Same caveat as CDOT below: this sandbox's network policy blocks
+`liftie.info` outbound, so the Tier-2 response shape is implemented against
+Liftie's documented API, not confirmed against a live answer. It fails safe
+either way — an unrecognized shape returns `unavailable`, never a guessed
+lift count (see `liftieOperations.test.ts`).
+
+### Ticket pricing: investigated, and genuinely unavailable
+
+`LivePricingProvider` (`providers/live/pricing.ts`) is the result of
+actually checking, resort by resort: every one of the thirteen mountains
+prices tickets through a dynamic commerce platform (a date-picker → cart →
+checkout flow), not a stable, public "price for this date" endpoint. None
+publishes structured pricing data outside that flow. Building a scraper
+across thirteen different front-ends to extract a number that changes with
+the querying session — not just the date — is precisely the fragile,
+silently-breaking integration ruled out elsewhere in this project, and
+"reliably extractable" isn't achievable even in principle when the number
+is stateful.
+
+So live mode reports ticket price as `unavailable` for every resort,
+honestly — never the demo model's plausible number presented as live. The
+resort's real ticket page is still shown (`SkiDayPlan.ticketPurchaseUrl`,
+from the same `data/resortSources.ts` registry), so "we can't confirm the
+price" never means "and we won't tell you where to look." `PricingProvider`
+stays a real interface with a real production path (a ticketing platform's
+partner API) if one becomes available later.
+
+### Places: never in scope
+
+`PlacesProvider` (après suggestions) has no live implementation and wasn't
+investigated in this pass — it stays demo/static and says so.
+
+### Crowds: a genuine, coarse, live answer
+
+The one signal with no live *feed* but a defensible live *answer*: weekday
 vs. weekend, proximity to a real US holiday, and how popular a mountain
 already is with Front Range day-trippers are real, checkable facts about
 today, not a simulation. `LiveMountainProvider.getCrowdForecast` computes
@@ -168,7 +213,9 @@ src/
                   regions; access routes per origin
     origins.ts    Starting points
     corridors.ts  Shared traffic corridors, their severity and weather region
-    pricing.ts    Lift-ticket rate cards
+    pricing.ts    Demo lift-ticket rate cards
+    resortSources.ts  Per-resort live-data registry: Liftie slug, official
+                  ops page, official ticket page — where live providers look
 
   providers/    Interfaces first, implementations behind them
     types.ts      WeatherProvider · TrafficProvider · MountainProvider ·
@@ -176,7 +223,9 @@ src/
                   RoadConditionProvider
     demo/         The demo bundle — deterministic, used by every engine test
     live/         Production adapters: Open-Meteo, NWS, Google Routes (via
-                  server/), CDOT/COtrip (best-effort, see its file docblock)
+                  server/), CDOT/COtrip (best-effort, see its file docblock),
+                  Liftie (mountain operations, third-party, best-effort),
+                  LivePricingProvider (always unavailable — see docblock)
     index.ts      createProviderRegistry() — the one place mode is decided
 
   engine/       The product's actual intelligence. Pure, testable, no React.
@@ -314,7 +363,7 @@ end of the state while the other gets scraps.
 ## Tests
 
 ```
-npm test      # 261 tests, 21 files
+npm test      # 284 tests, 26 files
 ```
 
 The core optimisation logic is tested without rendering any UI, against
@@ -431,6 +480,32 @@ the cache is what keeps a small friend group well within it too, since they'd
 mostly be hitting warm cache. This has not been measured against a real
 Google Cloud billing account; treat it as an informed estimate, not a quote.
 
+## Live data matrix
+
+| Mountain | Operations source | Live? | Pricing source | Live? |
+|---|---|---|---|---|
+| Vail | Liftie (`vail`) | Attempted*, else unavailable | — | Unavailable — [buy](https://www.vail.com/plan-your-trip/lift-tickets.aspx) |
+| Beaver Creek | Liftie (`beavercreek`) | Attempted*, else unavailable | — | Unavailable — [buy](https://www.beavercreek.com/plan-your-trip/lift-tickets.aspx) |
+| Breckenridge | Liftie (`breckenridge`) | Attempted*, else unavailable | — | Unavailable — [buy](https://www.breckenridge.com/plan-your-trip/lift-tickets.aspx) |
+| Keystone | Liftie (`keystone`) | Attempted*, else unavailable | — | Unavailable — [buy](https://www.keystoneresort.com/plan-your-trip/lift-tickets.aspx) |
+| Crested Butte | Liftie (`crested-butte`) | Attempted*, else unavailable | — | Unavailable — [buy](https://www.skicb.com/plan-your-trip/lift-tickets.aspx) |
+| Winter Park | Liftie (`winter-park`) | Attempted*, else unavailable | — | Unavailable — [buy](https://www.winterparkresort.com/tickets-and-passes) |
+| Copper | Liftie (`copper`) | Attempted*, else unavailable | — | Unavailable — [buy](https://www.coppercolorado.com/lift-tickets) |
+| Arapahoe Basin | Liftie (`arapahoe-basin`) | Attempted*, else unavailable | — | Unavailable — [buy](https://www.arapahoebasin.com/tickets/) |
+| Loveland | Liftie (`loveland`) | Attempted*, else unavailable | — | Unavailable — [buy](https://www.skiloveland.com/lift-tickets/) |
+| Eldora | Liftie (`eldora`) | Attempted*, else unavailable | — | Unavailable — [buy](https://www.eldora.com/tickets-passes/lift-tickets/) |
+| Steamboat | Liftie (`steamboat`) | Attempted*, else unavailable | — | Unavailable — [buy](https://www.steamboat.com/lift-tickets) |
+| Purgatory | None (no confirmed Liftie coverage) | Unavailable | — | Unavailable — [buy](https://www.purgatoryresort.com/lift-tickets/) |
+| Wolf Creek | None (no confirmed Liftie coverage) | Unavailable | — | Unavailable — [buy](https://wolfcreekski.com/lift-tickets/) |
+
+\* "Attempted" means `LiveMountainProvider` calls Liftie for that resort and
+normalizes a successful response; whether it actually returns live data
+right now depends on Liftie's own current coverage and uptime, which this
+sandbox cannot check (see below) — a miss fails safe to `unavailable`, never
+a fabricated lift count. **Pricing is `unavailable` for all thirteen by
+design**, not by gap — see "Ticket pricing: investigated, and genuinely
+unavailable" above.
+
 ## Known limitations
 
 - **Google Routes traffic is live, deployed, and smoke-tested against a real
@@ -439,25 +514,39 @@ Google Cloud billing account; treat it as an informed estimate, not a quote.
   Mountain drive times (101–104 minutes across the sampled departure grid,
   congestion varying realistically by time of day). The GitHub Pages build
   is configured for live mode (`VITE_DATA_MODE=live`) and points at that
-  deployment. **Open-Meteo, NWS, and CDOT have not been smoke-tested against
-  their real endpoints** — this sandbox's network policy blocks
-  `api.open-meteo.com`, `api.weather.gov`, and `maps.cdot.info` outbound
-  (confirmed via the proxy's own denial log, not assumed), so those three
-  are verified with realistic mocked responses and passing tests only.
-  Open-Meteo and NWS are widely-used, well-documented public APIs, so this
-  is a lower-risk gap than it would be for an undocumented one — but
-  `cotripRoad.ts` is explicitly flagged as unverified and off by default for
-  exactly this reason. Before trusting road conditions in production: hit
-  the CDOT endpoint once by hand and confirm the response shape matches what
-  the normalizer expects.
-- **CDOT/COtrip integration is a scaffold, not a finished integration.** The
-  endpoint URL and field names are written from documented patterns, not a
-  confirmed live response. It fails safe (`unavailable`, never a fabricated
-  closure) if the schema is wrong, but "fails safe" is not the same claim as
-  "works." Off by default (`VITE_ENABLE_ROAD_CONDITIONS=false`).
-- **No shared cache for weather/alerts.** Fine at personal-use volume; a
-  multi-user production deployment should add one rather than calling
-  Open-Meteo/NWS once per page load per visitor.
+  deployment.
+- **Open-Meteo, NWS, CDOT, and Liftie have not been smoke-tested against
+  their real endpoints from this environment.** This sandbox's network
+  policy blocks `api.open-meteo.com`, `api.weather.gov`,
+  `manage-api.cotrip.org`, and `liftie.info` outbound — confirmed multiple
+  times via both a direct `curl` and a `WebFetch` attempt, both returning a
+  connection-level rejection from the egress proxy itself, not an API-level
+  error. All four are implemented with realistic mocked responses and
+  passing tests only; none has actually round-tripped a real answer from
+  its real endpoint from inside this environment. Open-Meteo and NWS are
+  widely-used, well-documented public APIs, so that gap is lower-risk than
+  it would be for an undocumented one. CDOT and Liftie are real, named,
+  official/established sources — `manage-api.cotrip.org` is the endpoint
+  the Colorado Information Marketplace documents for the COtrip real-time
+  feed, and `liftie.info/api/resort/:id` is Liftie's documented API — but
+  their exact field names are still unconfirmed, which is why both
+  `cotripRoad.ts` and `liftieOperations.ts` are written defensively enough
+  that an unrecognized shape fails safe (`unavailable`) rather than
+  fabricating a closure, a chain-law advisory, or a lift count. Before
+  trusting either in production: hit the endpoint once by hand (see the
+  "Verifying this" note in `cotripRoad.ts`) and confirm the response shape
+  matches what the normalizer expects.
+- **CDOT/COtrip and Liftie integrations are verified-shape scaffolds, not
+  confirmed integrations.** Both fail safe by construction (`unavailable`,
+  never a fabricated result) if the real schema differs from what's
+  implemented, but "fails safe" is not the same claim as "works." Road
+  conditions stay off by default (`VITE_ENABLE_ROAD_CONDITIONS=false`);
+  mountain operations is on by default since a per-resort miss is cheap and
+  self-contained (one mountain's card says UNAVAILABLE, nothing else is
+  affected).
+- **No shared cache for weather/alerts/operations.** Fine at personal-use
+  volume; a multi-user production deployment should add one rather than
+  calling these once per page load per visitor.
 - **The in-memory server cache doesn't survive a restart or scale past one
   instance.** A real multi-instance deployment needs Redis or a KV store
   behind the same `cacheGet`/`cacheSet` shape.
@@ -467,18 +556,23 @@ Google Cloud billing account; treat it as an informed estimate, not a quote.
 - **Google Routes' response schema has been confirmed against one real live
   response** (the Denver→Copper smoke test above), not exhaustively —
   `routes.duration` parsing has a single defensive fallback path (returns
-  `null`, the point gets skipped) rather
-  than exhaustive shape validation.
+  `null`, the point gets skipped) rather than exhaustive shape validation.
+- **Ticket pricing is unavailable for every resort, on purpose** — see
+  "Ticket pricing: investigated, and genuinely unavailable" above. This is
+  the one gap that isn't a "not yet verified" caveat: it's the documented
+  conclusion of actually checking, not a placeholder for future work.
+- **Liftie coverage for Purgatory and Wolf Creek is unconfirmed**, so
+  `data/resortSources.ts` leaves their `liftieSlug` unset rather than
+  guessing one — both report `unavailable` for operations until a real
+  slug is confirmed and added to the registry.
 
 ## What's intentionally still demo, and what's not built at all
 
-Lift status, terrain and grooming (`MountainProvider.getOperations`) report
-`unavailable` in live mode rather than serving demo data — see "Why these
-stay demo or unavailable" above. `PricingProvider` (ticket rates) stays
-demo/static for the same underlying reason (no reliable public API).
-`PlacesProvider` (après suggestions) was never in scope for this pass.
-Crowds (`MountainProvider.getCrowdForecast`) are the exception: a real,
-deterministic calendar-based heuristic, not demo data and not a simulation.
+Places (après suggestions) stays demo/static — never investigated for a live
+source in this pass, said so plainly. Everything else that touches real
+external data now either serves a real answer, a real third-party answer
+honestly attributed, or `unavailable` — never a demo value presented as
+live. See the three sections above for exactly which is which per feed.
 
 Not yet built, by design and unrelated to this pass: accounts, saved
 mountains, notifications, a service worker (the manifest is in place but

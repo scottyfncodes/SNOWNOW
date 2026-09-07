@@ -1399,6 +1399,18 @@
   color: var(--ink-faint);
 }
 
+.datasources-provider a {
+  color: inherit;
+  text-decoration: underline;
+}
+
+.datasources-attribution {
+  grid-column: 1 / -1;
+  font-size: 11px;
+  font-style: italic;
+  color: var(--ink-faint);
+}
+
 /* ============================================================ date picker */
 
 .datepicker {

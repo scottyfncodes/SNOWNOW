@@ -102,4 +102,78 @@ describe('CotripRoadProvider — best-effort, fails safe', () => {
     const result = await provider.getCorridorStatus('made-up-corridor', context);
     expect(result.status).toBe('unavailable');
   });
+
+  it('has a route mapping for every corridor in the dataset', async () => {
+    const { CORRIDORS } = await import('@/data/corridors');
+    const fetchSpy = vi.fn(async () => new Response(JSON.stringify([]), { status: 200 }));
+    vi.stubGlobal('fetch', fetchSpy);
+    const provider = new CotripRoadProvider();
+    for (const corridorId of Object.keys(CORRIDORS)) {
+      if (corridorId === 'local') continue; // Local roads have no CDOT record by design.
+      const result = await provider.getCorridorStatus(corridorId, context);
+      expect(result.status, `${corridorId} should resolve a CDOT route mapping`).toBe('ok');
+    }
+  });
+
+  it('accepts a bare JSON array (no wrapper envelope)', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(JSON.stringify([closureFeature('I-70').attributes]), { status: 200 })),
+    );
+    const provider = new CotripRoadProvider();
+    const result = await provider.getCorridorStatus('i70-west', context);
+    expect(result.status).toBe('ok');
+    if (result.status === 'ok') expect(result.data.condition).toBe('closed');
+  });
+
+  it('accepts an "incidents" wrapper envelope', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify({ incidents: [closureFeature('I-70').attributes] }), { status: 200 }),
+      ),
+    );
+    const provider = new CotripRoadProvider();
+    const result = await provider.getCorridorStatus('i70-west', context);
+    expect(result.status).toBe('ok');
+    if (result.status === 'ok') expect(result.data.condition).toBe('closed');
+  });
+
+  it('distinguishes a chain-law advisory from a full closure', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify([
+              {
+                Route: 'I-70',
+                Description: 'Traction law in effect westbound',
+                Location: 'Vail Pass',
+              },
+            ]),
+            { status: 200 },
+          ),
+      ),
+    );
+    const provider = new CotripRoadProvider();
+    const result = await provider.getCorridorStatus('i70-west', context);
+    expect(result.status).toBe('ok');
+    if (result.status !== 'ok') return;
+    expect(result.data.condition).toBe('chains-required');
+    expect(result.data.tractionLawInEffect).toBe(true);
+    // A traction-law advisory does not remove the route — only a real closure does.
+    expect(result.data.closures).toEqual([]);
+  });
+
+  it('resolves the two newest corridors (Eldora, Steamboat) to real CDOT route names', async () => {
+    const fetchSpy = vi.fn(async () => new Response(JSON.stringify([]), { status: 200 }));
+    vi.stubGlobal('fetch', fetchSpy);
+    const provider = new CotripRoadProvider();
+    const eldora = await provider.getCorridorStatus('co119-eldora', context);
+    const steamboat = await provider.getCorridorStatus('us40-rabbitears', context);
+    expect(eldora.status).toBe('ok');
+    expect(steamboat.status).toBe('ok');
+  });
 });

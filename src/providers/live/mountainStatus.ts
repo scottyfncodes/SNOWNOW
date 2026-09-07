@@ -1,23 +1,32 @@
 import type { CrowdCurve, OperationsReport } from '@/domain/conditions';
 import { holidayName, isWeekend } from '@/domain/dates';
 import type { Mountain } from '@/domain/mountain';
-import { type Availability, ok, unavailable } from '@/domain/provenance';
+import { type Availability, ok } from '@/domain/provenance';
 import { at, clamp, clamp01, minuteRange, type MinuteOfDay } from '@/domain/time';
 import { bell } from '@/lib/curve';
 import type { MountainProvider, ProviderContext } from '@/providers/types';
+import { getLiftieOperations } from './liftieOperations';
 
 /**
- * Live-mode mountain status.
+ * Live-mode mountain status: a three-tier strategy, tried in order.
  *
- * There is no reliable, public, machine-readable API for lift/terrain/
- * grooming status across arbitrary Colorado resorts — same conclusion as the
- * pricing and places integrations, and for the same reason: the only
- * alternative is scraping resort websites, which breaks on every redesign
- * and fails silently in exactly the way this architecture exists to prevent.
+ * **Tier 1 — official resort feed.** Not implemented in this pass. It would
+ * need a per-resort, verified, structured (JSON/REST/GraphQL) endpoint — not
+ * an HTML page — and this sandbox has no network path to any resort's site
+ * to find and confirm one for even a single mountain, let alone thirteen.
+ * Guessing at undocumented endpoints for a dozen different commerce/CMS
+ * platforms without verification is exactly the fragile, unaccountable
+ * integration this project avoids elsewhere (see the CDOT scaffold's own
+ * warning). `getOperations` is written so a real Tier-1 adapter — keyed by
+ * mountain id, same registry as Tier 2 — drops in per-resort without
+ * touching this method's shape.
  *
- * `getOperations` therefore reports `unavailable`, on purpose, rather than
- * serving the demo module's simulated lift counts under a misleading badge.
- * The engine already has a real answer for this: `scoring.ts` and
+ * **Tier 2 — Liftie** (`liftieOperations.ts`), a real third-party aggregator
+ * with a documented API and existing Colorado coverage. Tried whenever
+ * `data/resortSources.ts` has a Liftie slug for the mountain.
+ *
+ * **Tier 3 — unavailable.** No real signal, no invented one. The engine
+ * already has a correct, tested answer for this: `scoring.ts` and
  * `snowClock.ts` impute a neutral value and flag it, which lowers confidence
  * instead of silently scoring a made-up number as if it were real (see
  * `resolveOperations`/`FALLBACK_OPS` in `engine/snowClock.ts`).
@@ -35,13 +44,12 @@ export class LiveMountainProvider implements MountainProvider {
   readonly id = 'live-mountain-status';
 
   async getOperations(
-    _mountain: Mountain,
-    _context: ProviderContext,
+    mountain: Mountain,
+    context: ProviderContext,
   ): Promise<Availability<OperationsReport>> {
-    return unavailable(
-      this.id,
-      'No reliable public lift/terrain/grooming status feed exists for this resort.',
-    );
+    // Tier 1 (official per-resort feed) has no implementation to try — see
+    // the docblock above for exactly why, not just that it's missing.
+    return getLiftieOperations(mountain, context);
   }
 
   async getCrowdForecast(

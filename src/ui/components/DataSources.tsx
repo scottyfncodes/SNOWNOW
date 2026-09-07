@@ -17,7 +17,17 @@ export function DataSources({ sources }: { sources: DataSourceStatus[] }) {
           <span className="datasources-provider">
             {source.provider}
             {source.fetchedAt && ` · fetched ${relativeTime(source.fetchedAt)}`}
+            {source.sourceUrl && (
+              <>
+                {' · '}
+                <a href={source.sourceUrl} target="_blank" rel="noreferrer">
+                  official source
+                </a>
+              </>
+            )}
           </span>
+          {/* Never let a third-party feed read as if it came from the resort itself. */}
+          {source.attribution && <span className="datasources-attribution">{source.attribution}</span>}
         </li>
       ))}
     </ul>

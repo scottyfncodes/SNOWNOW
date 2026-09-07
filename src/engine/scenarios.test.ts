@@ -306,3 +306,112 @@ describe('scenario 10 — stale provider data', () => {
     expect(source.provider).toBe('fixture-stale-weather');
   });
 });
+
+describe('scenario 11 — great snow, a significant lift closure', () => {
+  it('marks operations down for real, without touching the snow it correctly reads as good', () => {
+    const halfClosed = buildPlan(
+      testInputs({
+        weather: testWeather({ overnightSnowIn: 10, temperatureF: 15, windMph: 10 }),
+        operations: testOperations({
+          liftsExpectedOpen: 6,
+          liftsTotal: 20,
+          terrainOpenShare: 0.3,
+          status: 'delayed',
+          notes: ['Upper mountain closed pending avalanche control.'],
+        }),
+      }),
+    );
+    const fullyOpen = buildPlan(
+      testInputs({
+        weather: testWeather({ overnightSnowIn: 10, temperatureF: 15, windMph: 10 }),
+        operations: testOperations({ liftsExpectedOpen: 19, liftsTotal: 20, terrainOpenShare: 0.95 }),
+      }),
+    );
+
+    const snow = halfClosed.score.factors.find((f) => f.key === 'snow')!;
+    expect(snow.imputed).toBe(false);
+    expect(snow.value).toBeGreaterThan(60); // The storm itself is still real and good.
+
+    const ops = halfClosed.score.factors.find((f) => f.key === 'operations')!;
+    expect(ops.imputed).toBe(false); // This is real data, not missing data.
+    expect(ops.value).toBeLessThan(50);
+    expect(halfClosed.score.score).toBeLessThan(fullyOpen.score.score);
+  });
+});
+
+describe('scenario 12 — great snow, operations unavailable', () => {
+  it('imputes a neutral operations read rather than assuming everything is open', () => {
+    const plan = buildPlan(
+      testInputs({
+        weather: testWeather({ overnightSnowIn: 10, temperatureF: 15, windMph: 10 }),
+        operations: 'unavailable',
+      }),
+    );
+
+    const ops = plan.score.factors.find((f) => f.key === 'operations')!;
+    const terrain = plan.score.factors.find((f) => f.key === 'terrain')!;
+    expect(ops.imputed).toBe(true);
+    expect(terrain.imputed).toBe(true);
+    // Neutral, not perfect: a made-up "everything is open" would score near
+    // the fully-open scenario above; a made-up "everything is closed" would
+    // score near zero. Neither is the honest answer to "we don't know."
+    expect(ops.value).toBeGreaterThan(30);
+    expect(ops.value).toBeLessThan(75);
+    expect(plan.score.confidence).not.toBe('high');
+    // The snow itself is still known and real — one missing feed doesn't
+    // drag down data the engine actually has.
+    const snow = plan.score.factors.find((f) => f.key === 'snow')!;
+    expect(snow.imputed).toBe(false);
+  });
+});
+
+describe('scenario 13 — a cheap ticket does not paper over a mediocre day', () => {
+  it('lets a low price nudge the score, never dominate what actually drives the day', () => {
+    const mediocreWeather = testWeather({ overnightSnowIn: 0, daysSinceStorm: 6, temperatureF: 36, windMph: 22 });
+    const expensive = buildPlan(
+      testInputs({ weather: mediocreWeather, ticket: testTicket(279, 289) }),
+    );
+    const cheap = buildPlan(testInputs({ weather: mediocreWeather, ticket: testTicket(45, 49) }));
+
+    // A real, visible nudge from a ~$234 swing in price...
+    expect(cheap.score.score).toBeGreaterThan(expensive.score.score);
+    // ...but small next to the scale a real ski day moves on (0-10): the
+    // full spread of the ticket market is calibrated (config/weights.ts) to
+    // never be able to swing the published score by more than ~0.35.
+    expect(cheap.score.score - expensive.score.score).toBeLessThan(0.5);
+    // Ticket stays a minor contributor next to what actually drives the day.
+    const ticketFactor = cheap.score.factors.find((f) => f.key === 'ticket')!;
+    const snowFactor = cheap.score.factors.find((f) => f.key === 'snow')!;
+    expect(ticketFactor.weight).toBeLessThan(snowFactor.weight);
+  });
+});
+
+describe('scenario 14 — total provider outage', () => {
+  it('still produces a real, finite, honestly-caveated plan when every feed but the mountain itself is down', () => {
+    const plan = buildPlan(
+      testInputs({
+        weather: 'unavailable',
+        operations: 'unavailable',
+        crowds: 'unavailable',
+        ticket: 'unavailable',
+        alerts: 'unavailable',
+        outbound: 'unavailable',
+        inbound: 'unavailable',
+      }),
+    );
+
+    expect(Number.isFinite(plan.score.score)).toBe(true);
+    expect(plan.score.confidence).toBe('low');
+    expect(plan.departure).toBeNull();
+    expect(plan.return).toBeNull();
+    expect(plan.ticket).toBeNull();
+    expect(plan.caveats.length).toBeGreaterThan(0);
+    // Every disclosed feed says so honestly — none silently reads as live or demo.
+    for (const source of plan.dataSources) {
+      expect(source.status).toBe('unavailable');
+    }
+    // Still names a mountain and a headline — a bad day for data is not a crash.
+    expect(plan.mountain).toBeTruthy();
+    expect(plan.headline.length).toBeGreaterThan(0);
+  });
+});

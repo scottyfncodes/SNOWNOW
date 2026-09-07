@@ -40,6 +40,13 @@ export interface DayInputs {
    * Kept around only so the caveat can name the road, not the mountain.
    */
   closedCorridors: string[];
+  /**
+   * Road status for the primary route's corridor, kept only so the "data
+   * sources" disclosure can show a Roads row — scoring and the optimiser
+   * never read this directly; `closedCorridors` above is what actually
+   * removes a route from consideration.
+   */
+  primaryRoadStatus: Availability<RoadStatus> | null;
   usingDemoData: boolean;
 }
 
@@ -154,6 +161,11 @@ export async function loadDayInputs(
     );
   };
 
+  const primaryRoute = routes.find((route) => route.isPrimary) ?? routes[0];
+  const primaryRoadStatus = primaryRoute
+    ? (roadStatusByCorridor.get(primaryRoute.corridorId) ?? null)
+    : null;
+
   return {
     mountain,
     origin,
@@ -171,6 +183,7 @@ export async function loadDayInputs(
     inboundOptions,
     routes,
     closedCorridors,
+    primaryRoadStatus,
     usingDemoData: registry.usingDemoData,
   };
 }

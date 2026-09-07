@@ -123,7 +123,7 @@ export function RecommendationCard({ plan, why, projected = false, onCompare }: 
         <p className="reccard-notiming">We can't time this day — see the notes below.</p>
       )}
 
-      {ticket && (
+      {ticket ? (
         <p className="reccard-ticket">
           <span className="reccard-ticket-label">Lift ticket</span>
           <span className="reccard-ticket-price numeral">
@@ -135,6 +135,18 @@ export function RecommendationCard({ plan, why, projected = false, onCompare }: 
               : ticket.note}
           </span>
         </p>
+      ) : (
+        plan.ticketPurchaseUrl && (
+          <p className="reccard-ticket">
+            <span className="reccard-ticket-label">Lift ticket</span>
+            <span className="reccard-ticket-note">
+              Current price unavailable —{' '}
+              <a href={plan.ticketPurchaseUrl} target="_blank" rel="noreferrer">
+                buy at the resort
+              </a>
+            </span>
+          </p>
+        )
       )}
 
       <div className="reccard-why">

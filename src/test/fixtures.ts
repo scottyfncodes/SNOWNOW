@@ -240,6 +240,7 @@ export interface InputsSpec {
   outbound?: TravelCurve | 'unavailable';
   inbound?: TravelCurve | 'unavailable';
   closedCorridors?: string[];
+  primaryRoadStatus?: RoadStatus | 'unavailable' | null;
   date?: string;
   horizonDays?: number;
 }
@@ -269,6 +270,12 @@ export function testInputs(spec: InputsSpec = {}): DayInputs {
     inboundOptions: inbound === 'unavailable' ? [] : [inbound],
     routes: mountain.accessRoutes,
     closedCorridors: spec.closedCorridors ?? [],
+    primaryRoadStatus:
+      spec.primaryRoadStatus === undefined
+        ? null
+        : spec.primaryRoadStatus === null
+          ? null
+          : wrap(spec.primaryRoadStatus, 'No road status.'),
     usingDemoData: true,
   };
 }

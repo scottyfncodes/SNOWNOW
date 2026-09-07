@@ -72,6 +72,22 @@ export interface OperationsReport {
   upperMountainDelayMinutes: Minutes;
   status: LiftStatus;
   notes: string[];
+  /**
+   * Per-status lift breakdown, when the source actually reports one (a
+   * real aggregator like Liftie does; the demo model and a source that only
+   * gives a single open/closed count do not). `liftsExpectedOpen` above
+   * stays the one field scoring reads, so a richer source doesn't require an
+   * engine change — these are additional, optional detail for the UI.
+   */
+  liftsOpen?: number;
+  liftsHold?: number;
+  liftsScheduled?: number;
+  liftsClosed?: number;
+  /** Open trail/terrain count, when the source reports one directly. */
+  trailsOpen?: number;
+  trailsTotal?: number;
+  /** Where a human can check this themselves — never fabricated if absent. */
+  sourceUrl?: string;
 }
 
 /** ---- Travel ------------------------------------------------------------ */

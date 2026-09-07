@@ -30,6 +30,13 @@ export interface Provenance {
    * for less. Demo provenance omits this too.
    */
   validUntil?: string;
+  /**
+   * Set only when `provider` could be mistaken for something it isn't —
+   * chiefly a third-party aggregator that did not come from the resort
+   * itself (e.g. "Third-party aggregator (Liftie), not the resort's own
+   * feed"). Absent for anything unambiguous, official or demo.
+   */
+  attribution?: string;
 }
 
 /** Successful or unavailable data, so the UI can render honest empty states. */

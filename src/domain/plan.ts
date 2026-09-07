@@ -16,6 +16,10 @@ export interface DataSourceStatus {
   status: DisplayStatus;
   provider: string;
   fetchedAt?: string;
+  /** Set only when `provider` needs a "this is third-party, not official" caveat. */
+  attribution?: string;
+  /** Where a human can check this themselves, when the source publishes one. */
+  sourceUrl?: string;
 }
 
 /** ---- Snow clock -------------------------------------------------------- */
@@ -170,6 +174,13 @@ export interface SkiDayPlan {
   snowClock: SnowClock;
   /** Null when pricing was unavailable — never a guessed number. */
   ticket: TicketPrice | null;
+  /**
+   * The resort's own ticket page, shown even when `ticket` is null — "we
+   * can't confirm the price" should never mean "and we won't tell you where
+   * to look." Static per-resort data, not fetched, so it is present whenever
+   * the resort is known regardless of whether the live price call succeeded.
+   */
+  ticketPurchaseUrl?: string;
   /** Active official alerts, supplementary only — scoring never reads this. */
   alerts: WeatherAlert[];
   /** Per-feed honesty, for the "data sources" disclosure. */

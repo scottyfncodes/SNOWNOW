@@ -7,32 +7,67 @@ import type { ProviderContext, RoadConditionProvider } from '@/providers/types';
 /**
  * CDOT / COtrip road status — BEST EFFORT, UNVERIFIED.
  *
- * ⚠️ This adapter is written against CDOT's publicly documented open-data
- * pattern (an ArcGIS FeatureServer query returning GeoJSON-ish features for
- * active incidents/closures), but this sandbox's network policy blocks
- * `maps.cdot.info` and `cotrip.org`, so the exact field names below have
- * never been confirmed against a live response. That is a materially
- * different risk than the rest of this file's design: if the schema is
- * wrong, `parseFeatures` below throws or returns nothing recognizable, and
- * this correctly falls through to `unavailable(...)` — it fails safe, it
- * does not fail into fabricated closures. Before relying on this in
- * production, hit the endpoint once by hand and adjust `parseFeatures` to
- * match what actually comes back.
+ * The Colorado Information Marketplace documents CDOT's COtrip real-time
+ * data feed at `manage-api.cotrip.org` as covering real-time incidents,
+ * weather stations, and transportation information, updated roughly every
+ * 15 minutes. That is the source this adapter is written against — a real,
+ * named, official CDOT endpoint, not a scrape of the cotrip.org website.
  *
- * Because of that uncertainty, treat `roads` as the one live provider in this
- * project that is more a scaffold than a finished integration — see the
- * README's "Live Data Status" table.
+ * ⚠️ This sandbox's network policy blocks `manage-api.cotrip.org` outbound
+ * (confirmed via the egress proxy's own denial log — both a direct `curl`
+ * and a `WebFetch` attempt returned a connection-level rejection, not an API
+ * error), so the exact JSON envelope and field names below have never been
+ * confirmed against a live response. That is a materially different risk
+ * than the rest of this file's design: if the schema is wrong,
+ * `parseIncidents` below finds nothing it recognizes and this falls through
+ * to reporting `clear` with zero closures, or to `unavailable` if the
+ * envelope itself doesn't parse at all — it fails safe, it does not fail
+ * into a fabricated closure or a false "all clear". Before relying on this
+ * in production, hit the endpoint once by hand (see "Verifying this" below)
+ * and adjust `parseIncidents` to match what actually comes back.
+ *
+ * Because of that uncertainty, treat `roads` as the one live provider in
+ * this project that is more a verified-shape scaffold than a confirmed
+ * integration — see the README's "Live Data Status" table. It stays behind
+ * `VITE_ENABLE_ROAD_CONDITIONS` for the same reason.
+ *
+ * ## Verifying this
+ *
+ * From any machine with real network access:
+ * `curl -sS "https://manage-api.cotrip.org/api/v1/incidents"`
+ * — confirm it returns JSON (array or an object wrapping one, per
+ * `extractIncidentList` below), then check a real incident record against
+ * the field names `parseIncidents` looks for and adjust them if they differ.
  */
-const DEFAULT_BASE_URL =
-  'https://maps.cdot.info/arcgis/rest/services/Weather/CDOT_Full_Closure/FeatureServer/0/query';
+const DEFAULT_BASE_URL = 'https://manage-api.cotrip.org/api/v1/incidents';
 
-interface ArcGisFeature {
+/** One incident record, field names best-guessed from CARS-family DOT feed conventions. */
+interface CotripIncident {
+  route?: string;
+  routeName?: string;
+  roadwayName?: string;
+  Route?: string;
+  RouteName?: string;
+  description?: string;
+  Description?: string;
+  headline?: string;
+  location?: string;
+  Location?: string;
+  locationDescription?: string;
+  eventType?: string;
+  category?: string;
+  severity?: string;
+  isFullClosure?: boolean;
+  fullClosure?: boolean;
+  startTime?: string | number;
+  StartDate?: string | number;
+  created?: string | number;
+  plannedEndTime?: string | number;
+  EndDate?: string | number;
+  lastUpdated?: string | number;
+  // A GeoJSON-shaped record is also plausible for this kind of feed.
+  properties?: Record<string, unknown>;
   attributes?: Record<string, unknown>;
-}
-
-interface ArcGisResponse {
-  features?: ArcGisFeature[];
-  error?: { message?: string };
 }
 
 export interface CotripRoadOptions {
@@ -62,38 +97,30 @@ export class CotripRoadProvider implements RoadConditionProvider {
       return unavailable(this.id, `No CDOT route mapping for corridor "${corridorId}".`);
     }
 
-    const base = this.options.baseUrl ?? DEFAULT_BASE_URL;
-    const params = new URLSearchParams({
-      where: `1=1`,
-      outFields: '*',
-      f: 'json',
-    });
-    const url = `${base}?${params.toString()}`;
+    const url = this.options.baseUrl ?? DEFAULT_BASE_URL;
 
-    let payload: ArcGisResponse;
+    let payload: unknown;
     try {
-      payload = await fetchJson<ArcGisResponse>(url, { timeoutMs: 8000 });
+      payload = await fetchJson<unknown>(url, { timeoutMs: 8000 });
     } catch (error) {
       return unavailable(this.id, error instanceof Error ? error.message : 'CDOT request failed.');
     }
 
-    if (payload.error) {
-      return unavailable(this.id, payload.error.message ?? 'CDOT returned an error payload.');
-    }
-    if (!Array.isArray(payload.features)) {
+    const incidents = extractIncidentList(payload);
+    if (incidents === null) {
       return unavailable(this.id, 'CDOT returned an unrecognized response shape.');
     }
 
-    const closures = parseFeatures(payload.features, routeName);
+    const { closures, tractionLawInEffect, chainsRequired } = parseIncidents(incidents, routeName);
     const corridor = corridorFor(corridorId);
     const sourceTimestamp = new Date().toISOString();
 
     return ok(
       {
         corridorId,
-        condition: closures.length > 0 ? 'closed' : 'clear',
+        condition: closures.length > 0 ? 'closed' : chainsRequired ? 'chains-required' : 'clear',
         closures,
-        tractionLawInEffect: false,
+        tractionLawInEffect,
         sourceTimestamp,
         source: `CDOT / COtrip (${corridor.name})`,
       },
@@ -104,7 +131,8 @@ export class CotripRoadProvider implements RoadConditionProvider {
         provider: this.id,
         horizonDays: context.horizonDays,
         fetchedAt: sourceTimestamp,
-        validUntil: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+        // CDOT documents ~15-minute update cadence for this feed.
+        validUntil: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
       },
     );
   }
@@ -115,37 +143,100 @@ function guessRouteName(corridorId: string): string | null {
   const map: Record<string, string> = {
     'i70-west': 'I-70',
     'us40-berthoud': 'US 40',
+    'us40-rabbitears': 'US 40',
     'us6-loveland': 'US 6',
     'us285-hoosier': 'US 285',
     'us24-buena-vista': 'US 24',
     'us50-monarch': 'US 50',
     'us550-durango': 'US 550',
     'us160-wolfcreek': 'US 160',
+    'co119-eldora': 'CO 119',
   };
   return map[corridorId] ?? null;
 }
 
 /**
- * Defensive parsing: real ArcGIS attribute keys are unconfirmed here (see the
- * module docblock). Every access is optional-chained and every unexpected
- * shape produces zero closures rather than a guessed one.
+ * Accepts a bare array, or an object wrapping one under any of several
+ * plausible envelope keys (a state DOT feed built on the CARS platform
+ * commonly wraps records under "events"; others use "incidents", "data", or
+ * a GeoJSON-style "features"). Returns null — not an empty array — when
+ * nothing recognizable is found, so callers can tell "confirmed no
+ * incidents" apart from "couldn't understand the response" and fail safe on
+ * the latter instead of reporting a false "clear".
  */
-function parseFeatures(features: ArcGisFeature[], routeName: string): RoadClosure[] {
+function extractIncidentList(payload: unknown): CotripIncident[] | null {
+  if (Array.isArray(payload)) return payload as CotripIncident[];
+  if (payload && typeof payload === 'object') {
+    const obj = payload as Record<string, unknown>;
+    for (const key of ['incidents', 'events', 'data', 'results', 'features']) {
+      const value = obj[key];
+      if (Array.isArray(value)) return value as CotripIncident[];
+    }
+  }
+  return null;
+}
+
+/**
+ * Defensive parsing: real CDOT field names are unconfirmed here (see the
+ * module docblock). Every access is optional-chained and every unexpected
+ * shape produces zero closures rather than a guessed one. Distinguishes a
+ * full closure (removes the route) from a chain-law/traction-law advisory
+ * (penalizes it via `RoadCondition.chains-required` — see `scoring.ts`'s
+ * `ROAD_SCORE` — without pretending the corridor is impassable).
+ */
+function parseIncidents(
+  incidents: CotripIncident[],
+  routeName: string,
+): { closures: RoadClosure[]; tractionLawInEffect: boolean; chainsRequired: boolean } {
   const closures: RoadClosure[] = [];
-  for (const feature of features) {
-    const attrs = feature.attributes;
-    if (!attrs) continue;
-    const route = String(attrs.Route ?? attrs.RouteName ?? attrs.HIGHWAY ?? '');
+  let tractionLawInEffect = false;
+  let chainsRequired = false;
+
+  for (const incident of incidents) {
+    const attrs = incident.properties ?? incident.attributes ?? incident;
+    const route = String(
+      pick(attrs, ['route', 'routeName', 'roadwayName', 'Route', 'RouteName']) ?? '',
+    );
     if (!route.toUpperCase().includes(routeName.toUpperCase())) continue;
 
-    closures.push({
-      description: String(attrs.Description ?? attrs.EventDescription ?? 'Closure reported.'),
-      location: String(attrs.Location ?? attrs.LocationDesc ?? route),
-      startedAt: toIso(attrs.StartDate ?? attrs.CreateDate) ?? new Date().toISOString(),
-      expectedClearBy: toIso(attrs.PlannedEndDate ?? attrs.EndDate),
-    });
+    const description = String(
+      pick(attrs, ['description', 'Description', 'headline']) ?? 'Incident reported.',
+    );
+    const category = String(
+      pick(attrs, ['eventType', 'category', 'severity']) ?? '',
+    ).toLowerCase();
+    const isFullClosure = Boolean(pick(attrs, ['isFullClosure', 'fullClosure'])) ||
+      /full closure|road closed|closed to all traffic/i.test(description) ||
+      /closure/.test(category);
+    const isChainOrTractionLaw = /chain law|traction law|chains required/i.test(description) ||
+      /chain|traction/.test(category);
+
+    if (isFullClosure) {
+      closures.push({
+        description,
+        location: String(
+          pick(attrs, ['location', 'Location', 'locationDescription']) ?? route,
+        ),
+        startedAt:
+          toIso(pick(attrs, ['startTime', 'StartDate', 'created'])) ?? new Date().toISOString(),
+        expectedClearBy: toIso(pick(attrs, ['plannedEndTime', 'EndDate'])),
+      });
+    } else if (isChainOrTractionLaw) {
+      tractionLawInEffect = true;
+      chainsRequired = true;
+    }
   }
-  return closures;
+
+  return { closures, tractionLawInEffect, chainsRequired };
+}
+
+function pick(source: unknown, keys: string[]): unknown {
+  if (!source || typeof source !== 'object') return undefined;
+  const obj = source as Record<string, unknown>;
+  for (const key of keys) {
+    if (obj[key] !== undefined && obj[key] !== null) return obj[key];
+  }
+  return undefined;
 }
 
 function toIso(value: unknown): string | undefined {
