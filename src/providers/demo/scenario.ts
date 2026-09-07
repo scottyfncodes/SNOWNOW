@@ -47,6 +47,8 @@ export interface MountainProfile {
  *  Crested Butte deepest and emptiest      · the drive
  *  Winter Park   real snow, real terrain   · Berthoud Pass in a storm
  *  Purgatory     San Juan track, no lines  · south-facing, low, and far from everywhere
+ *  Copper        best-sorted terrain, closest· the good stuff up high goes on wind hold
+ *  Wolf Creek    the most snow in the state  · four and a half hours from Denver
  */
 const PROFILES: Record<string, MountainProfile> = {
   vail: { snow: 1.34, wind: 1.3, operations: 0.96, crowds: 1.06, grooming: 0.78, controlDelay: 35 },
@@ -56,6 +58,8 @@ const PROFILES: Record<string, MountainProfile> = {
   'crested-butte': { snow: 1.5, wind: 1.12, operations: 0.86, crowds: 0.34, grooming: 0.6, controlDelay: 45 },
   'winter-park': { snow: 1.2, wind: 1.08, operations: 0.98, crowds: 0.78, grooming: 0.8, controlDelay: 30 },
   purgatory: { snow: 1.0, wind: 0.45, operations: 1.12, crowds: 0.26, grooming: 0.9, controlDelay: 8 },
+  copper: { snow: 0.95, wind: 1.3, operations: 0.95, crowds: 0.92, grooming: 0.84, controlDelay: 35 },
+  'wolf-creek': { snow: 1.75, wind: 1.02, operations: 1.08, crowds: 0.5, grooming: 0.66, controlDelay: 25 },
 };
 
 const NEUTRAL_PROFILE: MountainProfile = {

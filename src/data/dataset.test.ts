@@ -103,6 +103,60 @@ describe('Purgatory', () => {
   });
 });
 
+describe('Copper', () => {
+  const copper = findMountain('copper')!;
+
+  it('is the closest big mountain to Denver on the corridor', () => {
+    const drive = (id: string) =>
+      findMountain(id)!.accessRoutes.find((r) => r.originId === 'denver' && r.isPrimary)!
+        .freeFlowMinutes;
+    for (const rival of ['keystone', 'breckenridge', 'vail', 'beaver-creek']) {
+      expect(drive('copper'), `copper vs ${rival}`).toBeLessThan(drive(rival));
+    }
+  });
+
+  it('pays for that with exposure up high and a later first chair', () => {
+    const keystone = findMountain('keystone')!;
+    expect(copper.terrain.aboveTreelineShare).toBeGreaterThan(keystone.terrain.aboveTreelineShare);
+    expect(copper.operations.weekendOpen).toBeGreaterThan(keystone.operations.weekendOpen);
+  });
+
+  it('rounds out the Ikon side of the dataset', () => {
+    expect(copper.passAffiliations).toEqual(['ikon']);
+    expect(copper.snowRegion).toBe('i70-corridor');
+  });
+});
+
+describe('Wolf Creek', () => {
+  const wolfCreek = findMountain('wolf-creek')!;
+
+  it('is the snowiest and the cheapest in the dataset', () => {
+    const pricing = MOUNTAINS.map((m) => pricingFor(m.id).windowRate);
+    expect(pricingFor('wolf-creek').windowRate).toBe(Math.min(...pricing));
+    // Barely flexes with demand, which is most of the point of the place.
+    expect(pricingFor('wolf-creek').dynamicRange).toBeLessThan(0.3);
+  });
+
+  it('trades all of that against being a long way from anywhere', () => {
+    const fromDurango = wolfCreek.accessRoutes.find((r) => r.originId === 'durango')!;
+    const fromDenver = wolfCreek.accessRoutes.find((r) => r.originId === 'denver')!;
+    expect(fromDurango.freeFlowMinutes).toBeLessThan(120);
+    expect(fromDenver.freeFlowMinutes).toBeGreaterThan(240);
+    // Small hill, high up, on the divide — not a big-vertical destination.
+    expect(wolfCreek.elevations.verticalFt).toBeLessThan(2000);
+    expect(wolfCreek.weatherLocation.forecastElevationFt).toBeGreaterThan(11_000);
+  });
+
+  it('gives Durango a real choice rather than one option', () => {
+    const fromDurango = MOUNTAINS.filter((m) =>
+      m.accessRoutes.some((r) => r.originId === 'durango'),
+    );
+    expect(fromDurango.length).toBeGreaterThan(2);
+    expect(fromDurango.map((m) => m.id)).toContain('purgatory');
+    expect(fromDurango.map((m) => m.id)).toContain('wolf-creek');
+  });
+});
+
 describe('adding a mountain is a data change', () => {
   it('plans a mountain the engine has never seen, with no code path of its own', async () => {
     // A wholly invented mountain, no profile, no pricing entry, new corridor.

@@ -2,10 +2,10 @@ import type { AccessRoute, Mountain } from '@/domain/mountain';
 import { at } from '@/domain/time';
 
 /**
- * The initial dataset is Epic-affiliated Colorado mountains plus one Ikon
- * mountain, so the generic model is exercised from day one. Adding a mountain,
- * a pass network, or a country is a data change — the engine, the scoring and
- * the UI never learn a mountain's name.
+ * Colorado, across three pass networks and two snow regions, so the generic
+ * model is exercised from day one. Adding a mountain, a pass network, or a
+ * country is a data change — the engine, the scoring and the UI never learn a
+ * mountain's name.
  *
  * Drive distances and free-flow times are representative demo values.
  */
@@ -272,6 +272,72 @@ export const MOUNTAINS: Mountain[] = [
     passAffiliations: ['independent'],
     popularity: 0.3,
     character: 'San Juan snow, no lift lines, and a base area that never feels like a mall.',
+  },
+  {
+    id: 'copper',
+    name: 'Copper Mountain',
+    shortName: 'COPPER',
+    region: 'Summit County',
+    snowRegion: 'i70-corridor',
+    state: 'CO',
+    country: 'US',
+    coordinates: { lat: 39.5022, lon: -106.1497 },
+    elevations: { baseFt: 9712, summitFt: 12441, verticalFt: 2729 },
+    operations: {
+      weekdayOpen: at(9, 0),
+      weekendOpen: at(9, 0),
+      lastChair: at(16, 0),
+      upperMountainOpenOffset: 30,
+    },
+    lifts: { total: 24, highSpeed: 8, windExposed: 7 },
+    terrain: { trails: 150, acres: 2490, aboveTreelineShare: 0.36, lateOpeningShare: 0.3 },
+    weatherLocation: {
+      point: { lat: 39.4817, lon: -106.1553 },
+      forecastElevationFt: 11000,
+      aspect: 'divide',
+    },
+    accessRoutes: buildRoutes('copper', [
+      { originId: 'denver', label: 'I-70 west to exit 195', corridorId: 'i70-west', miles: 75, freeFlow: 76, stormPenalty: 18, weatherSensitivity: 0.6, primary: true },
+      { originId: 'boulder', label: 'CO-93 to I-70 west', corridorId: 'i70-west', miles: 93, freeFlow: 92, stormPenalty: 20, weatherSensitivity: 0.6 },
+      { originId: 'fort-collins', label: 'I-25 to I-70 west', corridorId: 'i70-west', miles: 120, freeFlow: 124, stormPenalty: 22, weatherSensitivity: 0.58 },
+      { originId: 'colorado-springs', label: 'I-25 to I-70 west', corridorId: 'i70-west', miles: 143, freeFlow: 144, stormPenalty: 24, weatherSensitivity: 0.58 },
+      { originId: 'frisco', label: 'I-70 west, one exit', corridorId: 'local', miles: 8, freeFlow: 12, stormPenalty: 6, weatherSensitivity: 0.45 },
+    ]),
+    passAffiliations: ['ikon'],
+    popularity: 0.8,
+    character: 'Terrain that sorts itself west to east, right off the interstate — when the wind lets the top open.',
+  },
+  {
+    id: 'wolf-creek',
+    name: 'Wolf Creek',
+    shortName: 'WOLF CREEK',
+    region: 'San Juans',
+    snowRegion: 'san-juans',
+    state: 'CO',
+    country: 'US',
+    coordinates: { lat: 37.4722, lon: -106.7933 },
+    elevations: { baseFt: 10300, summitFt: 11904, verticalFt: 1604 },
+    operations: {
+      weekdayOpen: at(9, 0),
+      weekendOpen: at(8, 30),
+      lastChair: at(16, 0),
+      upperMountainOpenOffset: 25,
+    },
+    lifts: { total: 9, highSpeed: 2, windExposed: 3 },
+    terrain: { trails: 77, acres: 1600, aboveTreelineShare: 0.28, lateOpeningShare: 0.12 },
+    weatherLocation: {
+      point: { lat: 37.4722, lon: -106.7933 },
+      forecastElevationFt: 11200,
+      aspect: 'divide',
+    },
+    accessRoutes: buildRoutes('wolf-creek', [
+      { originId: 'durango', label: 'US-160 east over Wolf Creek Pass', corridorId: 'us160-wolfcreek', miles: 83, freeFlow: 108, stormPenalty: 26, weatherSensitivity: 0.9, primary: true },
+      { originId: 'colorado-springs', label: 'US-50 to US-285 to South Fork', corridorId: 'us160-wolfcreek', miles: 232, freeFlow: 258, stormPenalty: 32, weatherSensitivity: 0.8 },
+      { originId: 'denver', label: 'US-285 over Poncha Pass to South Fork', corridorId: 'us160-wolfcreek', miles: 252, freeFlow: 272, stormPenalty: 34, weatherSensitivity: 0.8 },
+    ]),
+    passAffiliations: ['independent'],
+    popularity: 0.42,
+    character: 'The most snow in Colorado, a long way from anywhere, and a lift ticket that still has two digits.',
   },
 ];
 

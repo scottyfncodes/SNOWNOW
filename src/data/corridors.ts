@@ -12,6 +12,7 @@ export const CORRIDORS: Record<string, TrafficCorridor> = {
   'us24-buena-vista': { id: 'us24-buena-vista', name: 'US-24 / Buena Vista', shorthand: 'US-24' },
   'us50-monarch': { id: 'us50-monarch', name: 'US-50 / Monarch Pass', shorthand: 'US-50' },
   'us550-durango': { id: 'us550-durango', name: 'US-550 / San Juan Skyway', shorthand: 'US-550' },
+  'us160-wolfcreek': { id: 'us160-wolfcreek', name: 'US-160 / Wolf Creek Pass', shorthand: 'US-160' },
   local: { id: 'local', name: 'Local roads', shorthand: 'Local' },
 };
 
@@ -27,6 +28,8 @@ export const CORRIDOR_SEVERITY: Record<string, number> = {
   'us24-buena-vista': 0.2,
   'us50-monarch': 0.16,
   'us550-durango': 0.12,
+  // Empty road, serious pass. The risk here is weather, not volume.
+  'us160-wolfcreek': 0.1,
   local: 0.14,
 };
 
@@ -42,6 +45,7 @@ export const CORRIDOR_REGION: Record<string, string> = {
   'us24-buena-vista': 'i70-corridor',
   'us50-monarch': 'san-juans',
   'us550-durango': 'san-juans',
+  'us160-wolfcreek': 'san-juans',
   local: 'i70-corridor',
 };
 

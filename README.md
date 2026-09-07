@@ -39,7 +39,7 @@ much certainty it is willing to claim.
 ```bash
 npm install
 npm run dev        # http://localhost:5173
-npm test           # 175 tests
+npm test           # 181 tests
 npm run build      # type-check + production bundle
 npm run preview    # serve the built app
 ```
@@ -206,11 +206,13 @@ weather generator produces the conditions that expose them:
 | Breckenridge | Cold, calm, decent snow | Wind holds, long control work |
 | Keystone | Dry and firm — first chair, best corduroy | Any real storm |
 | Winter Park | Real snow and clear roads | Berthoud Pass in a storm |
+| Copper | Closest big mountain to Denver, terrain that sorts itself | The top goes on wind hold |
 | Crested Butte | Deep enough to justify the drive | The drive |
 | Purgatory | The San Juans get the storm | Being nowhere near Denver |
+| Wolf Creek | It's deep, and the ticket is $99 | Four and a half hours from Denver |
 
-Over 60 simulated days from Denver the winner is spread across five mountains,
-and it moves for reasons the explanation states out loud. Storm days go to the
+Over 60 simulated days from Denver the winner is spread across seven
+mountains, and it moves for reasons the explanation states out loud. Storm days go to the
 powder mountains, wind events go to the sheltered ones, dry days go to whoever
 grooms hardest and is closest.
 
@@ -226,7 +228,7 @@ end of the state while the other gets scraps.
 ## Tests
 
 ```
-npm test      # 138 tests, 11 files
+npm test      # 181 tests, 12 files
 ```
 
 The core optimisation logic is tested without rendering any UI, against
