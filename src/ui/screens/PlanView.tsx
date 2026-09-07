@@ -29,10 +29,15 @@ export function PlanView({ recommendation, now, projected = false }: PlanViewPro
   const scrollToAlternatives = useCallback(() => {
     const node = alternativesRef.current;
     if (!node) return;
-    node.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    // Move focus too, so the jump works for keyboard and screen-reader users
-    // rather than only for people who can watch the page slide.
-    node.focus({ preventScroll: true });
+
+    // Smooth scrolling is the nicety; moving focus is the part that matters,
+    // because it is what makes the jump work for keyboard and screen-reader
+    // users rather than only for people who can watch the page slide. So the
+    // scroll is optional, and where it is unavailable focus does the scrolling
+    // instead of being told to suppress it.
+    const canScroll = typeof node.scrollIntoView === 'function';
+    if (canScroll) node.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    node.focus({ preventScroll: canScroll });
   }, []);
 
   const plan: SkiDayPlan =
