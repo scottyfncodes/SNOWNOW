@@ -1,8 +1,22 @@
+import type { WeatherAlert } from './alerts';
 import type { DateKey } from './dates';
 import type { Mountain, Origin } from './mountain';
 import type { TicketPrice } from './pricing';
-import type { ConfidenceLevel, Provenance } from './provenance';
+import type { ConfidenceLevel, DisplayStatus, Provenance } from './provenance';
 import type { MinuteOfDay, Minutes } from './time';
+
+/**
+ * One row of "what did this number actually come from". Built once per plan
+ * so a single disclosure panel can list every input's honesty at a glance,
+ * instead of the user having to trust one aggregate badge to speak for six
+ * independent feeds that can each be live, stale, demo, or down on their own.
+ */
+export interface DataSourceStatus {
+  label: string;
+  status: DisplayStatus;
+  provider: string;
+  fetchedAt?: string;
+}
 
 /** ---- Snow clock -------------------------------------------------------- */
 
@@ -156,6 +170,10 @@ export interface SkiDayPlan {
   snowClock: SnowClock;
   /** Null when pricing was unavailable — never a guessed number. */
   ticket: TicketPrice | null;
+  /** Active official alerts, supplementary only — scoring never reads this. */
+  alerts: WeatherAlert[];
+  /** Per-feed honesty, for the "data sources" disclosure. */
+  dataSources: DataSourceStatus[];
   departure: DepartureOption | null;
   departureOptions: DepartureOption[];
   return: ReturnOption | null;

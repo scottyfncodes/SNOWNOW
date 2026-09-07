@@ -38,35 +38,87 @@ much certainty it is willing to claim.
 
 ```bash
 npm install
-npm run dev        # http://localhost:5173
-npm test           # 181 tests
+npm run dev        # http://localhost:5173 — demo mode, zero setup
+npm test           # 254 tests
 npm run build      # type-check + production bundle
 npm run preview    # serve the built app
+npm run server     # the traffic proxy (server/index.mjs) — only needed for live traffic
 ```
 
-Node 20+ required. No API keys, no environment variables, no services.
+Node 20+ required. **With no environment variables set, the app runs entirely
+in demo mode** — no API keys, no services, no network calls beyond loading the
+page. See "Going live" below for what each optional variable turns on.
 
 ---
 
-## ⚠️ Demo data
+## ⚠️ Data honesty
 
-**No live weather, traffic, lift, road or crowd feeds are connected.** Every
-number the app shows today is produced by the demo provider bundle in
-`src/providers/demo/`.
+SNOWNOW can run on demo data, a mix of live and demo, or (mostly) live data —
+and it is always honest about which. This is enforced structurally, not by
+convention:
 
-This is enforced structurally, not by convention:
-
-- every value carries a `Provenance` stamp (`source`, `observation`, `confidence`)
-- the UI renders a `DEMO DATA` badge wherever demo numbers appear
-- the word `LIVE` is never shown for demo data — `DataBadge` refuses it
+- every value carries a `Provenance` stamp (`source`, `observation`,
+  `confidence`, and for live data `fetchedAt`/`validUntil`)
+- the UI resolves that into exactly one of four words — **LIVE**, **STALE**,
+  **DEMO DATA**, **UNAVAILABLE** — via `domain/provenance.ts#displayStatus`,
+  and never shows a fifth
+- a live value past its own freshness window reads **STALE**, not LIVE
+- demo data is never upgraded to LIVE, no matter how fresh it "feels"
 - when a feed is unavailable the app says so and declines to fill the gap
   ("Road intel is offline. We can show the mountain, but we're not going to
   fake the drive.")
+- a request that fails is never silently answered with demo data — that only
+  happens once, at startup, as an explicit *configuration* choice (no traffic
+  server configured ⇒ traffic provider is demo), never per-request
+- tap "Where this data came from" on any recommendation to see every feed's
+  status, provider and fetch time individually — the one aggregate badge on
+  the card is a summary, not the only source of truth
 
 The demo world is deterministic: the same date always produces the same
 mountain day, so recommendations don't flicker and everything is testable.
 Day 0 is deliberately shaped into a storm day — the product story starts at
 4:47am with snow on the ground.
+
+### Going live
+
+| Provider | Status | What it needs |
+|---|---|---|
+| **Weather** | Live | Nothing — Open-Meteo is free, keyless, CORS-enabled |
+| **Alerts** (NWS) | Live | Nothing — same deal, US mountains only |
+| **Traffic** | Live, opt-in | `server/` deployed + `GOOGLE_ROUTES_API_KEY` + `VITE_API_BASE_URL` |
+| **Road closures** (CDOT) | Live, unverified | `VITE_ENABLE_ROAD_CONDITIONS=true` — see the warning in `cotripRoad.ts` |
+| **Lift ops, terrain, pricing, places** | Demo/static | See "Why these stay demo" below |
+
+```bash
+cp .env.example .env
+# edit .env — at minimum: VITE_DATA_MODE=live
+npm run build
+```
+
+`VITE_*` variables are baked into the client bundle **at build time**, not
+read at runtime — switching modes means rebuilding, which is also what keeps
+demo mode the safe, can't-happen-by-accident default: there is no runtime
+toggle to flip on live data without a deliberate build.
+
+Full traffic and road-closure integration needs `server/index.mjs` running
+somewhere with `GOOGLE_ROUTES_API_KEY` set (Render, Fly, a small VPS,
+anywhere Node runs — GitHub Pages cannot host it, since Pages serves static
+files only and has no way to hold a server-side secret). Every variable is
+documented in `.env.example`.
+
+### Why lift ops, pricing and places stay demo
+
+Not a gap I ran out of time for — a deliberate line. There is no reliable,
+public, machine-readable API for lift status or ticket pricing across
+arbitrary Colorado resorts. The alternative was scraping resort websites,
+which is exactly the "fragile HTML" the brief says to avoid: it breaks on
+every redesign, it's a legal grey area for several of these resorts, and a
+scraper silently failing would erode the one guarantee this whole
+architecture exists to keep. `MountainProvider` and `PricingProvider` are
+real interfaces with a real production path (a lift-ticketing platform's
+partner API, a resort data aggregator) — this release keeps their demo
+implementations and says so, rather than building an integration nobody
+could trust.
 
 ---
 
@@ -77,27 +129,41 @@ src/
   domain/       Types and pure primitives. No I/O, no React.
     time.ts       Minutes-since-local-midnight, the engine's unit of time
     dates.ts      DateKey helpers, weekday/holiday logic
-    mountain.ts   The generic Mountain model
+    mountain.ts   The generic Mountain model (routes carry their own lat/lon)
     conditions.ts Weather, operations, travel curves, crowds
+    alerts.ts     Official weather alerts — supplements the forecast only
+    road.ts       Authoritative road/corridor status, separate from traffic
     plan.ts       SnowClock, DayScore, DepartureOption, ReturnOption, SkiDayPlan
-    provenance.ts Availability<T>, confidence, live-vs-demo
+    provenance.ts Availability<T>, confidence, displayStatus (LIVE/STALE/DEMO/UNAVAILABLE)
 
   config/       Everything tunable, in one place
     weights.ts    Scoring weights, rider preferences, optimiser economics
+    env.ts        The one place that reads import.meta.env
+
+  lib/          Small, dependency-free utilities shared across providers
+    cache.ts      TTL cache + memoizeAsync (in-flight de-duplication)
+    http.ts       fetchJson with a hard timeout and typed failures
+    snow.ts       Snow-density physics shared by demo and live weather
 
   data/         Content, not code
-    mountains.ts  Epic Colorado + one Ikon mountain, access routes per origin
+    mountains.ts  Nine Colorado mountains, three pass networks, two snow
+                  regions; access routes per origin
     origins.ts    Starting points
-    corridors.ts  Shared traffic corridors and their severity
+    corridors.ts  Shared traffic corridors, their severity and weather region
+    pricing.ts    Lift-ticket rate cards
 
   providers/    Interfaces first, implementations behind them
-    types.ts      WeatherProvider · TrafficProvider · MountainProvider
-                  · PricingProvider · PlacesProvider
-    demo/         The demo bundle (scenario, weather, traffic, mountain,
-                  pricing, places)
+    types.ts      WeatherProvider · TrafficProvider · MountainProvider ·
+                  PricingProvider · PlacesProvider · AlertsProvider ·
+                  RoadConditionProvider
+    demo/         The demo bundle — deterministic, used by every engine test
+    live/         Production adapters: Open-Meteo, NWS, Google Routes (via
+                  server/), CDOT/COtrip (best-effort, see its file docblock)
+    index.ts      createProviderRegistry() — the one place mode is decided
 
   engine/       The product's actual intelligence. Pure, testable, no React.
-    inputs.ts     Fan-out to providers; per-feed availability
+    inputs.ts     Fan-out to providers; per-feed availability; enforces that
+                  a closed corridor removes a route, not just its score
     snowClock.ts  When is the mountain actually good?
     optimize.ts   Joint (leave home × leave mountain) optimisation
     scoring.ts    The number on the card, and why
@@ -109,9 +175,11 @@ src/
 ```
 
 **The rule that shapes everything:** the UI never talks to a provider, and the
-engine never talks to React. `App.tsx` is the only file that names a concrete
-provider implementation — swapping the demo bundle for live integrations is a
-one-line change there.
+engine never talks to React. `App.tsx` calls exactly one function —
+`createProviderRegistry()` — and that function, plus `resolveEnvironment()`
+right beside it, are the only two places in the entire codebase that decide
+demo vs. live. Every other file, including every engine test, talks to
+`ProviderRegistry` and has no idea which world it's in.
 
 ### The Snow Clock
 
@@ -228,7 +296,7 @@ end of the state while the other gets scraps.
 ## Tests
 
 ```
-npm test      # 181 tests, 12 files
+npm test      # 254 tests, 20 files
 ```
 
 The core optimisation logic is tested without rendering any UI, against
@@ -246,6 +314,29 @@ best-bet discounting), dataset integrity, planning a mountain the engine has
 never seen, demo-provider determinism, regional storm tracks and pricing,
 provider-failure handling, and the UI end-to-end — including the ten-second
 test as an executable acceptance test, honest empty states, and accessibility.
+
+**Live-data-specific coverage** (all against mocked `fetch`, since this
+sandbox's network policy blocks the real endpoints — see "Known limitations"):
+Open-Meteo response normalization, unit conversion, malformed/incomplete
+payloads, the 16-day forecast ceiling, timeouts and network failures; NWS
+alert parsing, non-US scope, malformed features; the Google Routes client's
+request shape (proves no API key or Google URL ever appears in what the
+browser sends), response normalization, and every failure mode; the CDOT
+adapter's fail-safe behaviour on an unconfirmed schema; the TTL cache
+(expiry, in-flight de-duplication); `displayStatus` (LIVE/STALE/DEMO/
+UNAVAILABLE) including the stale-past-`validUntil` case; a corridor closure
+that removes a route from consideration entirely rather than scoring it down,
+including the case where the whole mountain becomes unreachable; and mixed
+live+demo inputs flowing through the pipeline without special-casing.
+
+**The scenario suite** (`engine/scenarios.test.ts`) is the one explicitly
+asked for beyond code coverage: ten realistic Colorado ski days — a huge
+overnight storm at Wolf Creek, light snow at Copper, a wind event a sheltered
+mountain wins, heavy I-70 traffic, an I-70 closure, a great morning ruined by
+afternoon traffic, poor new snow saved by grooming, and missing traffic,
+missing weather, and stale data — each asserting not just a number but that
+the plan's own explanation (`headline`, `reasons`, `caveats`) states the real
+reason a knowledgeable Colorado skier would recognise.
 
 ---
 
@@ -281,19 +372,89 @@ season, which is the point of having it.
 
 ---
 
-## What would need real integrations
+## Caching and API cost
 
-Everything below is behind a provider interface and needs credentials to go live:
+The optimiser was already built to ask a provider for one whole travel curve
+per (route, direction) and interpolate locally (`engine/travel.ts#travelAt`) —
+it never asks again per candidate departure time. Going live only had to
+preserve that contract, not invent it.
 
-| Interface | Needs |
-|---|---|
-| `WeatherProvider` | A mountain-grade forecast API (hourly snowfall, temperature, wind, density) |
-| `TrafficProvider` | **Departure-time-dependent** routing (e.g. Google Routes with `departureTime`, or HERE) — a single current-ETA API is not enough, the whole product depends on the curve |
-| `MountainProvider` | Lift/terrain status, grooming reports and snow reports; crowd signal (visitation, parking, lift-scan data) |
-| `PricingProvider` | Resort commerce APIs or a ticket reseller — day rates by date and purchase lead time |
-| `PlacesProvider` | A places API, for the après / wait-out-traffic layer |
+- **Client-side**: `React` re-renders don't re-fetch — `loadDayInputs` is
+  called once per (mountain, date) and its result flows through props.
+- **Server-side** (`server/index.mjs`): every (corridor, direction, date)
+  travel curve is cached for `TRAFFIC_CACHE_TTL_SECONDS` (default 15 min) and
+  **shared across every visitor**, not per-session. The first person to ask
+  about Breck today pays the Google Routes calls; everyone else in the next 15
+  minutes gets the cached curve.
+- **Open-Meteo and NWS** need no server-side cache to be cheap — both are
+  free, keyless, rate-generous public APIs — but a production deployment
+  fielding real traffic should still put a short (~5 min) cache in front of
+  them rather than one call per page load, which this build does not yet do
+  (see "Known limitations").
 
-Also not yet built, by design: accounts, saved mountains, notifications, service
-worker (the manifest is in place but nothing is cached offline), webcams, chain
-requirements, parking, multi-day trips, and pass ownership — SNOWNOW shows what
-a day ticket costs but has no idea whether you already hold the pass.
+**API calls for one NOW request** (one mountain, one origin, cache cold):
+
+| Call | Count | Notes |
+|---|---|---|
+| Open-Meteo forecast | 1 | One HTTP request, all hourly fields |
+| NWS alerts | 1 | One HTTP request |
+| Google Routes (server) | up to 20 | 9 outbound + 11 return departure-time samples — see `server/index.mjs`'s `OUTBOUND_MINUTES`/`RETURN_MINUTES` |
+| CDOT (if enabled) | 1 per unique corridor | Unverified integration, off by default |
+
+A full NOW screen (the recommendation plus every reachable alternative — 5-8
+mountains from Denver) multiplies the Google Routes count by the number of
+mountains on a cold cache, since each mountain's route is a different
+corridor. **Estimated cost at low personal-use volume:** Open-Meteo and NWS
+are free with no meaningful limit at this scale. Google Routes' `computeRoutes`
+is billed per call past its free tier; at roughly 20 calls per cold-cache
+mountain and a 15-minute shared cache, a single person checking SNOWNOW a
+handful of times a day sits comfortably inside typical free-tier allowances —
+the cache is what keeps a small friend group well within it too, since they'd
+mostly be hitting warm cache. This has not been measured against a real
+Google Cloud billing account; treat it as an informed estimate, not a quote.
+
+## Known limitations
+
+- **Never smoke-tested against the real endpoints.** This sandbox's network
+  policy blocks `api.open-meteo.com`, `api.weather.gov`, and
+  `maps.cdot.info` outbound (confirmed via the proxy's own denial log, not
+  assumed) — every live provider is verified with realistic mocked
+  responses and passing tests, but none has actually round-tripped a real
+  answer from its real endpoint from inside this environment. `routes.
+  googleapis.com` **is** reachable here, and the server proxy was exercised
+  against it live (with an invalid key, so every sample correctly failed and
+  the endpoint correctly degraded to `unavailable` — see the commit history
+  for that run). Before trusting this in production: hit each endpoint once
+  by hand and confirm the response shape matches what the normalizer expects,
+  especially `cotripRoad.ts`, which is explicitly flagged as unverified.
+- **CDOT/COtrip integration is a scaffold, not a finished integration.** The
+  endpoint URL and field names are written from documented patterns, not a
+  confirmed live response. It fails safe (`unavailable`, never a fabricated
+  closure) if the schema is wrong, but "fails safe" is not the same claim as
+  "works." Off by default (`VITE_ENABLE_ROAD_CONDITIONS=false`).
+- **No shared cache for weather/alerts.** Fine at personal-use volume; a
+  multi-user production deployment should add one rather than calling
+  Open-Meteo/NWS once per page load per visitor.
+- **The in-memory server cache doesn't survive a restart or scale past one
+  instance.** A real multi-instance deployment needs Redis or a KV store
+  behind the same `cacheGet`/`cacheSet` shape.
+- **Colorado/`America/Denver` only.** The server's local→UTC departure-time
+  conversion is correct and DST-aware (tested), but a mountain outside that
+  time zone needs the zone threaded through, not hard-coded.
+- **Google Routes' actual response schema is inferred from public
+  documentation**, not confirmed against a live paid response (this sandbox
+  has no real API key to test with) — `routes.duration` parsing has a single
+  defensive fallback path (returns `null`, the point gets skipped) rather
+  than exhaustive shape validation.
+
+## What's intentionally still demo, and what's not built at all
+
+`MountainProvider` (lift status, terrain, grooming) and `PricingProvider`
+(ticket rates) stay demo/static — see "Why these stay demo" above. `PlacesProvider`
+(après suggestions) was never in scope for this pass.
+
+Not yet built, by design and unrelated to this pass: accounts, saved
+mountains, notifications, a service worker (the manifest is in place but
+nothing is cached offline), webcams, chain requirements, parking, multi-day
+trips, and pass ownership — SNOWNOW shows what a day ticket costs but has no
+idea whether you already hold the pass.

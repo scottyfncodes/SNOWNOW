@@ -6,9 +6,11 @@ import type {
   RoadCondition,
   TravelCurve,
 } from '@/domain/conditions';
+import type { WeatherAlert } from '@/domain/alerts';
 import type { Mountain, Origin } from '@/domain/mountain';
 import type { TicketPrice } from '@/domain/pricing';
 import { type Availability, ok, unavailable, type Provenance } from '@/domain/provenance';
+import type { RoadStatus } from '@/domain/road';
 import { at, HOUR, minuteRange, type MinuteOfDay } from '@/domain/time';
 import type { DayInputs } from '@/engine/inputs';
 
@@ -65,6 +67,8 @@ export function testMountain(overrides: Partial<Mountain> = {}): Mountain {
         originId: 'home',
         label: 'Test Highway',
         corridorId: 'test-corridor',
+        originPoint: TEST_ORIGIN.coordinates,
+        destinationPoint: { lat: 39.5, lon: -106 },
         distanceMiles: 80,
         freeFlowMinutes: 90,
         stormPenaltyMinutes: 10,
@@ -153,6 +157,32 @@ export function testTicket(adultDay = 179, windowRate = 229): TicketPrice {
   };
 }
 
+export function testAlert(overrides: Partial<WeatherAlert> = {}): WeatherAlert {
+  return {
+    id: 'fixture-alert-1',
+    event: 'Winter Storm Warning',
+    headline: 'Winter Storm Warning in effect',
+    severity: 'severe',
+    effective: '2026-01-17T00:00:00Z',
+    expires: '2026-01-18T00:00:00Z',
+    areaDesc: 'Summit County',
+    source: 'fixture',
+    ...overrides,
+  };
+}
+
+export function testRoadStatus(overrides: Partial<RoadStatus> = {}): RoadStatus {
+  return {
+    corridorId: 'test-corridor',
+    condition: 'clear',
+    closures: [],
+    tractionLawInEffect: false,
+    sourceTimestamp: '2026-01-17T05:00:00Z',
+    source: 'fixture',
+    ...overrides,
+  };
+}
+
 export function testCrowds(level = 0.4): CrowdCurve {
   return {
     samples: minuteRange(at(7), at(17), 15).map((minute) => ({ minute, crowding: level })),
@@ -206,8 +236,10 @@ export interface InputsSpec {
   operations?: OperationsReport | 'unavailable';
   crowds?: CrowdCurve | 'unavailable';
   ticket?: TicketPrice | 'unavailable';
+  alerts?: WeatherAlert[] | 'unavailable';
   outbound?: TravelCurve | 'unavailable';
   inbound?: TravelCurve | 'unavailable';
+  closedCorridors?: string[];
   date?: string;
   horizonDays?: number;
 }
@@ -230,11 +262,13 @@ export function testInputs(spec: InputsSpec = {}): DayInputs {
     operations: wrap(spec.operations ?? testOperations(), 'No lift report.'),
     crowds: wrap(spec.crowds ?? testCrowds(), 'No crowd data.'),
     ticket: wrap(spec.ticket ?? testTicket(), 'No ticket pricing.'),
+    alerts: wrap(spec.alerts ?? [], 'No alert feed.'),
     outbound: wrap(outbound, 'No route data.'),
     inbound: wrap(inbound, 'No route data.'),
     outboundOptions: outbound === 'unavailable' ? [] : [outbound],
     inboundOptions: inbound === 'unavailable' ? [] : [inbound],
     routes: mountain.accessRoutes,
+    closedCorridors: spec.closedCorridors ?? [],
     usingDemoData: true,
   };
 }

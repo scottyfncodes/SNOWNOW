@@ -1,3 +1,4 @@
+import type { WeatherAlert } from '@/domain/alerts';
 import type { DateKey } from '@/domain/dates';
 import type {
   CrowdCurve,
@@ -8,6 +9,7 @@ import type {
 import type { AccessRoute, Mountain, Origin } from '@/domain/mountain';
 import type { TicketPrice } from '@/domain/pricing';
 import type { Availability } from '@/domain/provenance';
+import type { RoadStatus } from '@/domain/road';
 import type { MinuteOfDay } from '@/domain/time';
 
 /**
@@ -57,6 +59,29 @@ export interface MountainProvider {
     mountain: Mountain,
     context: ProviderContext,
   ): Promise<Availability<CrowdCurve>>;
+}
+
+/**
+ * Official alerts supplement the forecast; they never replace it and the
+ * engine never scores on them. `getAlerts` is allowed to return an empty,
+ * *ok* list — "no active alerts" is a real, confident answer, not a failure.
+ */
+export interface AlertsProvider {
+  readonly id: string;
+  getAlerts(mountain: Mountain, context: ProviderContext): Promise<Availability<WeatherAlert[]>>;
+}
+
+/**
+ * Authoritative road status, separate from what a traffic provider infers
+ * from travel-time inflation. Reported per corridor (I-70, US-40, ...), since
+ * that is how closures actually happen — one incident affects every mountain
+ * behind it. The engine boundary (`engine/inputs.ts`) is responsible for
+ * turning a `closed` status into an unusable route rather than a merely
+ * worse-scoring one.
+ */
+export interface RoadConditionProvider {
+  readonly id: string;
+  getCorridorStatus(corridorId: string, context: ProviderContext): Promise<Availability<RoadStatus>>;
 }
 
 /**
@@ -112,7 +137,16 @@ export interface ProviderRegistry {
   mountain: MountainProvider;
   pricing: PricingProvider;
   places: PlacesProvider;
-  /** True when any provider in the bundle is serving demo data. */
+  alerts: AlertsProvider;
+  roads: RoadConditionProvider;
+  /**
+   * True when any provider *slot* in this bundle is a demo implementation —
+   * a configuration-time fact, decided when the registry was assembled. It is
+   * deliberately not the same claim as "this specific request returned live
+   * data": that per-value claim lives on each `Provenance` and is what the UI
+   * actually renders. This flag exists for the coarse cases (the whole-bundle
+   * demo badge on the homepage) where per-field nuance would be noise.
+   */
   usingDemoData: boolean;
   label: string;
 }

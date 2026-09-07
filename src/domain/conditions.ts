@@ -18,6 +18,22 @@ export interface HourlyWeather {
    * ~0.06 is blower powder, ~0.12 is heavy coastal-style snow.
    */
   density: number;
+  /**
+   * Fields below are additional, provider-sourced detail the engine does not
+   * read today (the Snow Clock and scoring only use the fields above). They
+   * exist so a live forecast can be normalized without throwing away what it
+   * actually reported, and so a richer UI can surface them later without a
+   * domain-model change. Optional because demo weather has no reason to
+   * invent them.
+   */
+  /** 0..100, chance of any precipitation in the hour. */
+  precipitationProbability?: number;
+  /** 0..100, sky covered by cloud. */
+  cloudCoverPct?: number;
+  /** Compass degrees, 0 = true north. */
+  windDirectionDeg?: number;
+  /** Elevation above which precipitation falls as rain, feet. */
+  freezingLevelFt?: number;
 }
 
 export interface MountainWeather {

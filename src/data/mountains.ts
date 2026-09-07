@@ -1,4 +1,5 @@
-import type { AccessRoute, Mountain } from '@/domain/mountain';
+import { findOrigin } from '@/data/origins';
+import type { AccessRoute, GeoPoint, Mountain } from '@/domain/mountain';
 import { at } from '@/domain/time';
 
 /**
@@ -21,12 +22,18 @@ interface RouteSpec {
   primary?: boolean;
 }
 
-const buildRoutes = (mountainId: string, specs: RouteSpec[]): AccessRoute[] =>
+const buildRoutes = (
+  mountainId: string,
+  destinationPoint: GeoPoint,
+  specs: RouteSpec[],
+): AccessRoute[] =>
   specs.map((spec, index) => ({
     id: `${mountainId}:${spec.originId}:${index}`,
     originId: spec.originId,
     label: spec.label,
     corridorId: spec.corridorId,
+    originPoint: findOrigin(spec.originId).coordinates,
+    destinationPoint,
     distanceMiles: spec.miles,
     freeFlowMinutes: spec.freeFlow,
     stormPenaltyMinutes: spec.stormPenalty,
@@ -58,7 +65,7 @@ export const MOUNTAINS: Mountain[] = [
       forecastElevationFt: 10350,
       aspect: 'west-facing',
     },
-    accessRoutes: buildRoutes('vail', [
+    accessRoutes: buildRoutes('vail', { lat: 39.6403, lon: -106.3742 }, [
       { originId: 'denver', label: 'I-70 west', corridorId: 'i70-west', miles: 100, freeFlow: 100, stormPenalty: 22, weatherSensitivity: 0.7, primary: true },
       { originId: 'boulder', label: 'CO-93 to I-70 west', corridorId: 'i70-west', miles: 118, freeFlow: 116, stormPenalty: 24, weatherSensitivity: 0.7 },
       { originId: 'fort-collins', label: 'I-25 to I-70 west', corridorId: 'i70-west', miles: 145, freeFlow: 148, stormPenalty: 26, weatherSensitivity: 0.68 },
@@ -92,7 +99,7 @@ export const MOUNTAINS: Mountain[] = [
       forecastElevationFt: 10200,
       aspect: 'west-facing',
     },
-    accessRoutes: buildRoutes('beaver-creek', [
+    accessRoutes: buildRoutes('beaver-creek', { lat: 39.6042, lon: -106.5165 }, [
       { originId: 'denver', label: 'I-70 west to Avon', corridorId: 'i70-west', miles: 112, freeFlow: 112, stormPenalty: 22, weatherSensitivity: 0.66, primary: true },
       { originId: 'boulder', label: 'CO-93 to I-70 west', corridorId: 'i70-west', miles: 130, freeFlow: 128, stormPenalty: 24, weatherSensitivity: 0.66 },
       { originId: 'fort-collins', label: 'I-25 to I-70 west', corridorId: 'i70-west', miles: 157, freeFlow: 160, stormPenalty: 26, weatherSensitivity: 0.64 },
@@ -126,7 +133,7 @@ export const MOUNTAINS: Mountain[] = [
       forecastElevationFt: 11000,
       aspect: 'divide',
     },
-    accessRoutes: buildRoutes('breckenridge', [
+    accessRoutes: buildRoutes('breckenridge', { lat: 39.4817, lon: -106.0384 }, [
       { originId: 'denver', label: 'I-70 west to CO-9', corridorId: 'i70-west', miles: 80, freeFlow: 87, stormPenalty: 20, weatherSensitivity: 0.68, primary: true },
       { originId: 'denver', label: 'US-285 over Hoosier Pass', corridorId: 'us285-hoosier', miles: 105, freeFlow: 126, stormPenalty: 30, weatherSensitivity: 0.85 },
       { originId: 'boulder', label: 'CO-93 to I-70 west', corridorId: 'i70-west', miles: 98, freeFlow: 103, stormPenalty: 22, weatherSensitivity: 0.68 },
@@ -161,7 +168,7 @@ export const MOUNTAINS: Mountain[] = [
       forecastElevationFt: 10800,
       aspect: 'east-facing',
     },
-    accessRoutes: buildRoutes('keystone', [
+    accessRoutes: buildRoutes('keystone', { lat: 39.6084, lon: -105.9437 }, [
       { originId: 'denver', label: 'I-70 west to US-6', corridorId: 'i70-west', miles: 70, freeFlow: 78, stormPenalty: 18, weatherSensitivity: 0.62, primary: true },
       { originId: 'denver', label: 'US-6 over Loveland Pass', corridorId: 'us6-loveland', miles: 74, freeFlow: 92, stormPenalty: 26, weatherSensitivity: 0.9 },
       { originId: 'boulder', label: 'CO-93 to I-70 west', corridorId: 'i70-west', miles: 88, freeFlow: 94, stormPenalty: 20, weatherSensitivity: 0.62 },
@@ -196,7 +203,7 @@ export const MOUNTAINS: Mountain[] = [
       forecastElevationFt: 10800,
       aspect: 'west-facing',
     },
-    accessRoutes: buildRoutes('crested-butte', [
+    accessRoutes: buildRoutes('crested-butte', { lat: 38.8992, lon: -106.9653 }, [
       { originId: 'denver', label: 'US-285 to US-50 over Monarch', corridorId: 'us50-monarch', miles: 200, freeFlow: 218, stormPenalty: 34, weatherSensitivity: 0.8, primary: true },
       { originId: 'boulder', label: 'US-285 to US-50 over Monarch', corridorId: 'us50-monarch', miles: 222, freeFlow: 240, stormPenalty: 34, weatherSensitivity: 0.8 },
       { originId: 'fort-collins', label: 'I-25 to US-285 to US-50', corridorId: 'us50-monarch', miles: 258, freeFlow: 272, stormPenalty: 36, weatherSensitivity: 0.78 },
@@ -231,7 +238,7 @@ export const MOUNTAINS: Mountain[] = [
       forecastElevationFt: 10700,
       aspect: 'east-facing',
     },
-    accessRoutes: buildRoutes('winter-park', [
+    accessRoutes: buildRoutes('winter-park', { lat: 39.8868, lon: -105.7625 }, [
       { originId: 'denver', label: 'I-70 to US-40 over Berthoud Pass', corridorId: 'us40-berthoud', miles: 67, freeFlow: 80, stormPenalty: 28, weatherSensitivity: 0.95, primary: true },
       { originId: 'boulder', label: 'CO-119 to I-70 to US-40', corridorId: 'us40-berthoud', miles: 72, freeFlow: 88, stormPenalty: 28, weatherSensitivity: 0.95 },
       { originId: 'fort-collins', label: 'I-25 to I-70 to US-40', corridorId: 'us40-berthoud', miles: 112, freeFlow: 122, stormPenalty: 30, weatherSensitivity: 0.92 },
@@ -265,7 +272,7 @@ export const MOUNTAINS: Mountain[] = [
       forecastElevationFt: 9900,
       aspect: 'south-facing',
     },
-    accessRoutes: buildRoutes('purgatory', [
+    accessRoutes: buildRoutes('purgatory', { lat: 37.6303, lon: -107.8145 }, [
       { originId: 'durango', label: 'US-550 north', corridorId: 'us550-durango', miles: 26, freeFlow: 32, stormPenalty: 14, weatherSensitivity: 0.6, primary: true },
       { originId: 'colorado-springs', label: 'US-50 to US-550', corridorId: 'us550-durango', miles: 305, freeFlow: 322, stormPenalty: 34, weatherSensitivity: 0.7 },
     ]),
@@ -296,7 +303,7 @@ export const MOUNTAINS: Mountain[] = [
       forecastElevationFt: 11000,
       aspect: 'divide',
     },
-    accessRoutes: buildRoutes('copper', [
+    accessRoutes: buildRoutes('copper', { lat: 39.5022, lon: -106.1497 }, [
       { originId: 'denver', label: 'I-70 west to exit 195', corridorId: 'i70-west', miles: 75, freeFlow: 76, stormPenalty: 18, weatherSensitivity: 0.6, primary: true },
       { originId: 'boulder', label: 'CO-93 to I-70 west', corridorId: 'i70-west', miles: 93, freeFlow: 92, stormPenalty: 20, weatherSensitivity: 0.6 },
       { originId: 'fort-collins', label: 'I-25 to I-70 west', corridorId: 'i70-west', miles: 120, freeFlow: 124, stormPenalty: 22, weatherSensitivity: 0.58 },
@@ -330,7 +337,7 @@ export const MOUNTAINS: Mountain[] = [
       forecastElevationFt: 11200,
       aspect: 'divide',
     },
-    accessRoutes: buildRoutes('wolf-creek', [
+    accessRoutes: buildRoutes('wolf-creek', { lat: 37.4722, lon: -106.7933 }, [
       { originId: 'durango', label: 'US-160 east over Wolf Creek Pass', corridorId: 'us160-wolfcreek', miles: 83, freeFlow: 108, stormPenalty: 26, weatherSensitivity: 0.9, primary: true },
       { originId: 'colorado-springs', label: 'US-50 to US-285 to South Fork', corridorId: 'us160-wolfcreek', miles: 232, freeFlow: 258, stormPenalty: 32, weatherSensitivity: 0.8 },
       { originId: 'denver', label: 'US-285 over Poncha Pass to South Fork', corridorId: 'us160-wolfcreek', miles: 252, freeFlow: 272, stormPenalty: 34, weatherSensitivity: 0.8 },

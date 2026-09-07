@@ -230,6 +230,18 @@ a {
   border-color: rgba(124, 231, 255, 0.3);
 }
 
+/* A live value past its freshness window: still real, no longer current. */
+.chip-stale {
+  color: var(--stop);
+  border-color: rgba(255, 107, 107, 0.35);
+}
+
+.chip-unavailable {
+  color: var(--ink-faint);
+  border-color: var(--line);
+  border-style: dashed;
+}
+
 /* ------------------------------------------------------------ scrollables */
 
 .scroll-x {

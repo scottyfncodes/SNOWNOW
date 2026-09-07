@@ -64,6 +64,15 @@ export interface AccessRoute {
   originId: string;
   label: string;
   corridorId: string;
+  /**
+   * The two endpoints a real routing API needs. Denormalized onto the route
+   * (rather than looked up from Origin/Mountain at call time) so a
+   * `TrafficProvider` can build a request from `route` alone, exactly as it
+   * does today for the demo model — a live provider is a drop-in, not a
+   * reason to widen the interface every consumer already depends on.
+   */
+  originPoint: GeoPoint;
+  destinationPoint: GeoPoint;
   distanceMiles: number;
   /** Free-flow drive time with no traffic and clear roads. */
   freeFlowMinutes: number;

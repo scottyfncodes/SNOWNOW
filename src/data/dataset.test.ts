@@ -171,6 +171,8 @@ describe('adding a mountain is a data change', () => {
           originId: 'denver',
           label: 'Made-up Highway',
           corridorId: 'i70-west',
+          originPoint: findOrigin('denver').coordinates,
+          destinationPoint: { lat: 39.5, lon: -106.2 },
           distanceMiles: 90,
           freeFlowMinutes: 95,
           stormPenaltyMinutes: 15,

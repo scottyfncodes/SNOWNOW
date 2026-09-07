@@ -2,8 +2,10 @@ import { useCallback, useRef, useState } from 'react';
 import type { Recommendation, SkiDayPlan } from '@/domain/plan';
 import type { MinuteOfDay } from '@/domain/time';
 import { planSummary } from '@/engine/explain';
+import { AlertBanner } from '@/ui/components/AlertBanner';
 import { AlternativeList } from '@/ui/components/AlternativeList';
 import { Caveats } from '@/ui/components/Caveats';
+import { DataSources } from '@/ui/components/DataSources';
 import { DepartureWhatIf } from '@/ui/components/DepartureWhatIf';
 import { FactorBreakdown } from '@/ui/components/FactorBreakdown';
 import { RecommendationCard } from '@/ui/components/RecommendationCard';
@@ -24,6 +26,7 @@ export interface PlanViewProps {
 export function PlanView({ recommendation, now, projected = false }: PlanViewProps) {
   const [selectedId, setSelectedId] = useState(recommendation.best.mountain.id);
   const [showFactors, setShowFactors] = useState(false);
+  const [showSources, setShowSources] = useState(false);
   const alternativesRef = useRef<HTMLElement | null>(null);
 
   const scrollToAlternatives = useCallback(() => {
@@ -50,6 +53,8 @@ export function PlanView({ recommendation, now, projected = false }: PlanViewPro
       <p className="visually-hidden" role="status">
         {planSummary(plan)}
       </p>
+
+      <AlertBanner alerts={plan.alerts} />
 
       <RecommendationCard
         plan={plan}
@@ -98,6 +103,19 @@ export function PlanView({ recommendation, now, projected = false }: PlanViewPro
           <span aria-hidden="true">{showFactors ? '−' : '+'}</span>
         </button>
         {showFactors && <FactorBreakdown score={plan.score} />}
+      </section>
+
+      <section className="panel">
+        <button
+          type="button"
+          className="disclosure"
+          onClick={() => setShowSources((value) => !value)}
+          aria-expanded={showSources}
+        >
+          <span className="section-title">Where this data came from</span>
+          <span aria-hidden="true">{showSources ? '−' : '+'}</span>
+        </button>
+        {showSources && <DataSources sources={plan.dataSources} />}
       </section>
 
       <Caveats items={plan.caveats} />

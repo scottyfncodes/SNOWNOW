@@ -1,9 +1,12 @@
+import { corridorFor } from '@/data/corridors';
+import type { WeatherAlert } from '@/domain/alerts';
 import type { CrowdCurve, MountainWeather, OperationsReport, TravelCurve } from '@/domain/conditions';
 import type { DateKey } from '@/domain/dates';
 import { daysBetween } from '@/domain/dates';
 import { type AccessRoute, type Mountain, type Origin, routesFrom } from '@/domain/mountain';
 import type { TicketPrice } from '@/domain/pricing';
 import { type Availability, unavailable } from '@/domain/provenance';
+import { isImpassable, type RoadStatus } from '@/domain/road';
 import type { MinuteOfDay } from '@/domain/time';
 import type { ProviderContext, ProviderRegistry } from '@/providers/types';
 import { bestCurve } from './travel';
@@ -23,12 +26,20 @@ export interface DayInputs {
   operations: Availability<OperationsReport>;
   crowds: Availability<CrowdCurve>;
   ticket: Availability<TicketPrice>;
+  /** Official alerts (NWS in the US). Supplements the forecast; scoring never reads this. */
+  alerts: Availability<WeatherAlert[]>;
   outbound: Availability<TravelCurve>;
   inbound: Availability<TravelCurve>;
   /** Every route considered, so the UI can talk about alternatives. */
   outboundOptions: TravelCurve[];
   inboundOptions: TravelCurve[];
   routes: AccessRoute[];
+  /**
+   * Routes that were reachable in every other sense but got dropped because
+   * an authoritative road-condition source reported that corridor closed.
+   * Kept around only so the caveat can name the road, not the mountain.
+   */
+  closedCorridors: string[];
   usingDemoData: boolean;
 }
 
@@ -56,26 +67,70 @@ export async function loadDayInputs(
   context: ProviderContext,
 ): Promise<DayInputs> {
   const routes = routesFrom(mountain, origin.id);
+  const corridorIds = [...new Set(routes.map((route) => route.corridorId))];
 
-  const [weather, operations, crowds, ticket, outboundResults, inboundResults] = await Promise.all([
-    attempt(registry.weather.id, () => registry.weather.getMountainWeather(mountain, context)),
-    attempt(registry.mountain.id, () => registry.mountain.getOperations(mountain, context)),
-    attempt(registry.mountain.id, () => registry.mountain.getCrowdForecast(mountain, context)),
-    attempt(registry.pricing.id, () => registry.pricing.getTicketPrice(mountain, context)),
-    Promise.all(
-      routes.map((route) =>
-        attempt(registry.traffic.id, () => registry.traffic.getTravelCurve(route, 'outbound', context)),
+  const [weather, operations, crowds, ticket, alerts, roadStatusResults, outboundResults, inboundResults] =
+    await Promise.all([
+      attempt(registry.weather.id, () => registry.weather.getMountainWeather(mountain, context)),
+      attempt(registry.mountain.id, () => registry.mountain.getOperations(mountain, context)),
+      attempt(registry.mountain.id, () => registry.mountain.getCrowdForecast(mountain, context)),
+      attempt(registry.pricing.id, () => registry.pricing.getTicketPrice(mountain, context)),
+      attempt(registry.alerts.id, () => registry.alerts.getAlerts(mountain, context)),
+      Promise.all(
+        corridorIds.map(
+          async (corridorId) =>
+            [corridorId, await attempt(registry.roads.id, () => registry.roads.getCorridorStatus(corridorId, context))] as const,
+        ),
       ),
-    ),
-    Promise.all(
-      routes.map((route) =>
-        attempt(registry.traffic.id, () => registry.traffic.getTravelCurve(route, 'return', context)),
+      Promise.all(
+        routes.map((route) =>
+          attempt(registry.traffic.id, () => registry.traffic.getTravelCurve(route, 'outbound', context)),
+        ),
       ),
-    ),
-  ]);
+      Promise.all(
+        routes.map((route) =>
+          attempt(registry.traffic.id, () => registry.traffic.getTravelCurve(route, 'return', context)),
+        ),
+      ),
+    ]);
 
-  const outboundOptions = outboundResults.flatMap((r) => (r.status === 'ok' ? [r.data] : []));
-  const inboundOptions = inboundResults.flatMap((r) => (r.status === 'ok' ? [r.data] : []));
+  const roadStatusByCorridor = new Map<string, Availability<RoadStatus>>(roadStatusResults);
+
+  /*
+   * A closure is authoritative: it removes the route from consideration
+   * entirely, the same way a route the traffic provider never returned would
+   * be removed. This is deliberately not a scoring penalty — the instructions
+   * are explicit that a full closure makes a corridor *unavailable*, and the
+   * optimiser has no notion of "drive here anyway, badly". Where a road
+   * status call itself failed, we do not assume closed *or* clear — the
+   * route stays in play exactly as it would if only the traffic provider had
+   * been asked, which is the existing, already-correct degrade path.
+   */
+  const isRouteClosed = (route: AccessRoute): boolean => {
+    const status = roadStatusByCorridor.get(route.corridorId);
+    return status?.status === 'ok' && isImpassable(status.data);
+  };
+
+  const closedCorridors = [
+    ...new Set(routes.filter(isRouteClosed).map((route) => corridorFor(route.corridorId).name)),
+  ];
+
+  const dropClosed = <T extends { routeId: string }>(
+    items: T[],
+    matchRoute: (item: T) => AccessRoute | undefined,
+  ): T[] => items.filter((item) => !isRouteClosed(matchRoute(item) as AccessRoute));
+
+  const routeById = new Map(routes.map((route) => [route.id, route]));
+  const findRoute = (routeId: string) => routeById.get(routeId);
+
+  const outboundOptions = dropClosed(
+    outboundResults.flatMap((r) => (r.status === 'ok' ? [r.data] : [])),
+    (curve) => findRoute(curve.routeId),
+  );
+  const inboundOptions = dropClosed(
+    inboundResults.flatMap((r) => (r.status === 'ok' ? [r.data] : [])),
+    (curve) => findRoute(curve.routeId),
+  );
 
   const pickBest = (
     options: TravelCurve[],
@@ -85,6 +140,12 @@ export async function loadDayInputs(
     if (chosen) {
       const match = results.find((r) => r.status === 'ok' && r.data.routeId === chosen.routeId);
       if (match && match.status === 'ok') return match;
+    }
+    if (routes.length > 0 && routes.every(isRouteClosed)) {
+      return unavailable<TravelCurve>(
+        registry.roads.id,
+        `${closedCorridors.join(', ') || 'The road'} closed — no route to this mountain today.`,
+      );
     }
     const firstFailure = results.find((r) => r.status === 'unavailable');
     return (
@@ -103,11 +164,13 @@ export async function loadDayInputs(
     operations,
     crowds,
     ticket,
+    alerts,
     outbound: pickBest(outboundOptions, outboundResults),
     inbound: pickBest(inboundOptions, inboundResults),
     outboundOptions,
     inboundOptions,
     routes,
+    closedCorridors,
     usingDemoData: registry.usingDemoData,
   };
 }

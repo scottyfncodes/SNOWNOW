@@ -8,13 +8,20 @@ import {
 import type { DateKey } from '@/domain/dates';
 import type { Mountain, Origin } from '@/domain/mountain';
 import type {
+  DataSourceStatus,
   Recommendation,
   ReturnOption,
   SkiDayPlan,
   StayOrGoAdvice,
   TimelineEvent,
 } from '@/domain/plan';
-import { confidenceForHorizon, observationForHorizon, type Provenance } from '@/domain/provenance';
+import {
+  confidenceForHorizon,
+  type Availability,
+  displayStatus,
+  observationForHorizon,
+  type Provenance,
+} from '@/domain/provenance';
 import { formatClock, formatDuration, type MinuteOfDay } from '@/domain/time';
 import type { ProviderContext, ProviderRegistry } from '@/providers/types';
 import { comparisonFor, headlineFor, reasonsFor, tradeoffsAgainst, verdictFor } from './explain';
@@ -66,6 +73,8 @@ export function buildPlan(inputs: DayInputs, options: PlanOptions = {}): SkiDayP
     score,
     snowClock,
     ticket: inputs.ticket.status === 'ok' ? inputs.ticket.data : null,
+    alerts: inputs.alerts.status === 'ok' ? inputs.alerts.data : [],
+    dataSources: buildDataSources(inputs),
     departure: optimized.departure,
     departureOptions: optimized.departureOptions,
     return: optimized.ret,
@@ -94,6 +103,24 @@ function planProvenance(inputs: DayInputs): Provenance {
   };
 }
 
+/** One row per independent feed, so a single disclosure can show all six at once. */
+function buildDataSources(inputs: DayInputs): DataSourceStatus[] {
+  const row = (label: string, availability: Availability<unknown>): DataSourceStatus => ({
+    label,
+    status: displayStatus(availability),
+    provider: availability.status === 'ok' ? availability.provenance.provider : availability.provider,
+    fetchedAt: availability.status === 'ok' ? availability.provenance.fetchedAt : undefined,
+  });
+
+  return [
+    row('Weather', inputs.weather),
+    row('Traffic', inputs.outbound),
+    row('Lift operations', inputs.operations),
+    row('Ticket price', inputs.ticket),
+    row('Alerts', inputs.alerts),
+  ];
+}
+
 function collectCaveats(inputs: DayInputs, timingReason: string | null): string[] {
   const caveats: string[] = [];
   if (inputs.weather.status === 'unavailable') {
@@ -107,6 +134,9 @@ function collectCaveats(inputs: DayInputs, timingReason: string | null): string[
   }
   if (inputs.ticket.status === 'unavailable') {
     caveats.push("Ticket pricing isn't loading, so the cost of the day is missing.");
+  }
+  if (inputs.closedCorridors.length > 0) {
+    caveats.push(`${inputs.closedCorridors.join(', ')} closed. Routing around it wasn't possible from here today.`);
   }
   if (inputs.outbound.status === 'unavailable' || inputs.inbound.status === 'unavailable') {
     caveats.push("Road intel is offline. We'll show the mountain, but we're not going to fake the drive.");

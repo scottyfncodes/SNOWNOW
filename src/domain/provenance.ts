@@ -18,6 +18,18 @@ export interface Provenance {
   provider: string;
   /** How far ahead of "now" this describes, in days. 0 = today. */
   horizonDays: number;
+  /**
+   * When this value was actually fetched, ISO 8601. Optional because demo
+   * data has no real fetch moment — a demo provenance simply omits it rather
+   * than inventing a timestamp for something that never happened.
+   */
+  fetchedAt?: string;
+  /**
+   * How long the value should be trusted before it counts as stale, ISO 8601.
+   * A live weather pull is good for the next hour or so; a live travel curve
+   * for less. Demo provenance omits this too.
+   */
+  validUntil?: string;
 }
 
 /** Successful or unavailable data, so the UI can render honest empty states. */
@@ -64,3 +76,37 @@ export function observationForHorizon(horizonDays: number): Observation {
 
 export const confidenceLabel = (level: ConfidenceLevel): string =>
   ({ high: 'HIGH CONFIDENCE', medium: 'MEDIUM CONFIDENCE', low: 'LOW CONFIDENCE' })[level];
+
+/**
+ * The four states the product is willing to show for a piece of data. This is
+ * the whole point of carrying provenance: the UI renders exactly one of these
+ * words, and it is never allowed to say LIVE about something that isn't.
+ */
+export type DisplayStatus = 'live' | 'stale' | 'demo' | 'unavailable';
+
+export const DISPLAY_STATUS_LABEL: Record<DisplayStatus, string> = {
+  live: 'LIVE',
+  stale: 'STALE',
+  demo: 'DEMO DATA',
+  unavailable: 'UNAVAILABLE',
+};
+
+/**
+ * Resolves an Availability into the one honest word the UI is allowed to use.
+ * Demo data is always 'demo', however fresh it "feels" — it never gets to
+ * borrow LIVE's credibility. Live data ages out to 'stale' once past its
+ * `validUntil`; a live value with no `validUntil` set is treated as live for
+ * as long as the caller holds it (the provider chose not to time-box it).
+ */
+export function displayStatus(
+  availability: { status: 'ok'; provenance: Provenance } | { status: 'unavailable' },
+  now: Date = new Date(),
+): DisplayStatus {
+  if (availability.status === 'unavailable') return 'unavailable';
+  const { provenance } = availability;
+  if (provenance.source === 'demo') return 'demo';
+  if (provenance.validUntil && new Date(provenance.validUntil).getTime() < now.getTime()) {
+    return 'stale';
+  }
+  return 'live';
+}

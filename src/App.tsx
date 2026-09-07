@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { DEFAULT_PREFERENCES } from '@/config/weights';
-import { createDemoRegistry } from '@/providers/demo';
+import { createProviderRegistry } from '@/providers';
 import type { ProviderRegistry } from '@/providers/types';
 import { useClock } from '@/ui/hooks/useClock';
 import { HomeScreen } from '@/ui/screens/HomeScreen';
@@ -23,7 +23,7 @@ export interface AppProps {
 }
 
 export default function App({ registry: injected }: AppProps = {}) {
-  const registry = useMemo(() => injected ?? createDemoRegistry(), [injected]);
+  const registry = useMemo(() => injected ?? createProviderRegistry(), [injected]);
   const clock = useClock();
   const [mode, setMode] = useState<Mode>('home');
   const [originId, setOriginId] = useState(DEFAULT_PREFERENCES.originId);
