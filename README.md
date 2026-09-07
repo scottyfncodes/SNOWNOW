@@ -39,7 +39,7 @@ much certainty it is willing to claim.
 ```bash
 npm install
 npm run dev        # http://localhost:5173 — demo mode, zero setup
-npm test           # 254 tests
+npm test           # 261 tests
 npm run build      # type-check + production bundle
 npm run preview    # serve the built app
 npm run server     # the traffic proxy (server/index.mjs) — only needed for live traffic
@@ -87,7 +87,9 @@ Day 0 is deliberately shaped into a storm day — the product story starts at
 | **Alerts** (NWS) | Live | Nothing — same deal, US mountains only |
 | **Traffic** | Live, opt-in | `server/` deployed + `GOOGLE_ROUTES_API_KEY` + `VITE_API_BASE_URL` |
 | **Road closures** (CDOT) | Live, unverified | `VITE_ENABLE_ROAD_CONDITIONS=true` — see the warning in `cotripRoad.ts` |
-| **Lift ops, terrain, pricing, places** | Demo/static | See "Why these stay demo" below |
+| **Crowds** | Live (calendar heuristic) | Nothing — weekend/holiday/popularity, no feed to configure |
+| **Lift ops, terrain, grooming** | Unavailable by design | No config makes this live — see "Why these stay demo or unavailable" below |
+| **Pricing, places** | Demo/static | See "Why these stay demo or unavailable" below |
 
 ```bash
 cp .env.example .env
@@ -106,7 +108,7 @@ anywhere Node runs — GitHub Pages cannot host it, since Pages serves static
 files only and has no way to hold a server-side secret). Every variable is
 documented in `.env.example`.
 
-### Why lift ops, pricing and places stay demo
+### Why lift ops, pricing and places stay demo or unavailable
 
 Not a gap I ran out of time for — a deliberate line. There is no reliable,
 public, machine-readable API for lift status or ticket pricing across
@@ -116,9 +118,25 @@ every redesign, it's a legal grey area for several of these resorts, and a
 scraper silently failing would erode the one guarantee this whole
 architecture exists to keep. `MountainProvider` and `PricingProvider` are
 real interfaces with a real production path (a lift-ticketing platform's
-partner API, a resort data aggregator) — this release keeps their demo
-implementations and says so, rather than building an integration nobody
-could trust.
+partner API, a resort data aggregator).
+
+Pricing and places keep their demo implementations in live mode and say so.
+Lift/terrain/grooming status (`LiveMountainProvider.getOperations` in
+`providers/live/mountainStatus.ts`) goes one step further and reports
+`unavailable` instead: serving the demo simulation's plausible-looking lift
+counts under a small badge risked reading as real, and the engine already
+has a correct, tested answer for "we don't have this" — `scoring.ts` and
+`snowClock.ts` impute a neutral value and flag it as imputed, which lowers
+the plan's confidence rather than quietly scoring a made-up number.
+
+Crowds are the one exception with a genuine, if coarse, live answer: weekday
+vs. weekend, proximity to a real US holiday, and how popular a mountain
+already is with Front Range day-trippers are real, checkable facts about
+today, not a simulation. `LiveMountainProvider.getCrowdForecast` computes
+this deterministically (no randomness) and says exactly what it is in its
+own `drivers` list — a calendar proxy, not measured attendance or lift-line
+telemetry, and weighted lightly in scoring (`crowds: 0.6` in
+`config/weights.ts`) so it can inform a plan without dominating one.
 
 ---
 
@@ -146,7 +164,7 @@ src/
     snow.ts       Snow-density physics shared by demo and live weather
 
   data/         Content, not code
-    mountains.ts  Nine Colorado mountains, three pass networks, two snow
+    mountains.ts  Thirteen Colorado mountains, four pass networks, two snow
                   regions; access routes per origin
     origins.ts    Starting points
     corridors.ts  Shared traffic corridors, their severity and weather region
@@ -296,7 +314,7 @@ end of the state while the other gets scraps.
 ## Tests
 
 ```
-npm test      # 254 tests, 20 files
+npm test      # 261 tests, 21 files
 ```
 
 The core optimisation logic is tested without rendering any UI, against
@@ -415,18 +433,23 @@ Google Cloud billing account; treat it as an informed estimate, not a quote.
 
 ## Known limitations
 
-- **Never smoke-tested against the real endpoints.** This sandbox's network
-  policy blocks `api.open-meteo.com`, `api.weather.gov`, and
-  `maps.cdot.info` outbound (confirmed via the proxy's own denial log, not
-  assumed) — every live provider is verified with realistic mocked
-  responses and passing tests, but none has actually round-tripped a real
-  answer from its real endpoint from inside this environment. `routes.
-  googleapis.com` **is** reachable here, and the server proxy was exercised
-  against it live (with an invalid key, so every sample correctly failed and
-  the endpoint correctly degraded to `unavailable` — see the commit history
-  for that run). Before trusting this in production: hit each endpoint once
-  by hand and confirm the response shape matches what the normalizer expects,
-  especially `cotripRoad.ts`, which is explicitly flagged as unverified.
+- **Google Routes traffic is live, deployed, and smoke-tested against a real
+  key** — `server/index.mjs` is running on Render with a real
+  `GOOGLE_ROUTES_API_KEY`, and a real request returned real Denver→Copper
+  Mountain drive times (101–104 minutes across the sampled departure grid,
+  congestion varying realistically by time of day). The GitHub Pages build
+  is configured for live mode (`VITE_DATA_MODE=live`) and points at that
+  deployment. **Open-Meteo, NWS, and CDOT have not been smoke-tested against
+  their real endpoints** — this sandbox's network policy blocks
+  `api.open-meteo.com`, `api.weather.gov`, and `maps.cdot.info` outbound
+  (confirmed via the proxy's own denial log, not assumed), so those three
+  are verified with realistic mocked responses and passing tests only.
+  Open-Meteo and NWS are widely-used, well-documented public APIs, so this
+  is a lower-risk gap than it would be for an undocumented one — but
+  `cotripRoad.ts` is explicitly flagged as unverified and off by default for
+  exactly this reason. Before trusting road conditions in production: hit
+  the CDOT endpoint once by hand and confirm the response shape matches what
+  the normalizer expects.
 - **CDOT/COtrip integration is a scaffold, not a finished integration.** The
   endpoint URL and field names are written from documented patterns, not a
   confirmed live response. It fails safe (`unavailable`, never a fabricated
@@ -441,17 +464,21 @@ Google Cloud billing account; treat it as an informed estimate, not a quote.
 - **Colorado/`America/Denver` only.** The server's local→UTC departure-time
   conversion is correct and DST-aware (tested), but a mountain outside that
   time zone needs the zone threaded through, not hard-coded.
-- **Google Routes' actual response schema is inferred from public
-  documentation**, not confirmed against a live paid response (this sandbox
-  has no real API key to test with) — `routes.duration` parsing has a single
-  defensive fallback path (returns `null`, the point gets skipped) rather
+- **Google Routes' response schema has been confirmed against one real live
+  response** (the Denver→Copper smoke test above), not exhaustively —
+  `routes.duration` parsing has a single defensive fallback path (returns
+  `null`, the point gets skipped) rather
   than exhaustive shape validation.
 
 ## What's intentionally still demo, and what's not built at all
 
-`MountainProvider` (lift status, terrain, grooming) and `PricingProvider`
-(ticket rates) stay demo/static — see "Why these stay demo" above. `PlacesProvider`
-(après suggestions) was never in scope for this pass.
+Lift status, terrain and grooming (`MountainProvider.getOperations`) report
+`unavailable` in live mode rather than serving demo data — see "Why these
+stay demo or unavailable" above. `PricingProvider` (ticket rates) stays
+demo/static for the same underlying reason (no reliable public API).
+`PlacesProvider` (après suggestions) was never in scope for this pass.
+Crowds (`MountainProvider.getCrowdForecast`) are the exception: a real,
+deterministic calendar-based heuristic, not demo data and not a simulation.
 
 Not yet built, by design and unrelated to this pass: accounts, saved
 mountains, notifications, a service worker (the manifest is in place but

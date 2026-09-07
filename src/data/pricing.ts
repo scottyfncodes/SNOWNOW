@@ -31,6 +31,11 @@ export const TICKET_PRICING: Record<string, TicketPricingProfile> = {
   copper: { mountainId: 'copper', currency: 'USD', windowRate: 229, advanceFloor: 132, dynamicRange: 0.85 },
   // Wolf Creek barely flexes its price at all, which is most of the point of it.
   'wolf-creek': { mountainId: 'wolf-creek', currency: 'USD', windowRate: 99, advanceFloor: 89, dynamicRange: 0.18 },
+  'arapahoe-basin': { mountainId: 'arapahoe-basin', currency: 'USD', windowRate: 149, advanceFloor: 89, dynamicRange: 0.55 },
+  // Loveland barely flexes its price either — same story as Wolf Creek.
+  loveland: { mountainId: 'loveland', currency: 'USD', windowRate: 109, advanceFloor: 79, dynamicRange: 0.25 },
+  eldora: { mountainId: 'eldora', currency: 'USD', windowRate: 149, advanceFloor: 89, dynamicRange: 0.6 },
+  steamboat: { mountainId: 'steamboat', currency: 'USD', windowRate: 239, advanceFloor: 139, dynamicRange: 0.9 },
 };
 
 /** A mountain with no published profile still gets a plausible, clearly-generic rate. */
