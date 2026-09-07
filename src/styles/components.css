@@ -305,6 +305,8 @@
   align-items: baseline;
   gap: 10px;
   flex: 1;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .screenhead-mode {
@@ -315,6 +317,7 @@
 }
 
 .screenhead-date {
+  flex: none;
   white-space: nowrap;
   font-size: 11px;
   font-weight: 800;
@@ -381,32 +384,48 @@
 }
 
 .reccard-name {
-  font-size: clamp(30px, 9.4vw, 54px);
+  font-size: clamp(30px, 9.2vw, 52px);
   font-weight: 900;
   letter-spacing: -0.045em;
   line-height: 0.92;
-  margin-top: 6px;
 }
 
-.reccard-region {
-  margin-top: 8px;
-  font-size: 13px;
-  color: var(--ink-faint);
-}
-
+/* The verdict is the product's actual output; the decimal is supporting
+   evidence. Sizing follows that, not the other way round. */
 .reccard-verdict {
-  margin-top: 18px;
-  font-size: clamp(22px, 6.4vw, 30px);
+  margin-top: 10px;
+  font-size: clamp(24px, 7vw, 34px);
   font-weight: 900;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.025em;
+  line-height: 1;
   color: var(--ice);
 }
 
+.reccard-fullname {
+  margin-top: 5px;
+  font-size: 12.5px;
+  color: var(--ink-faint);
+}
+
+.reccard-scorewrap {
+  flex: none;
+  text-align: right;
+  padding-top: 4px;
+}
+
+.reccard-scorelabel {
+  margin-top: 2px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
 .reccard-headline {
-  margin-top: 4px;
+  margin-top: 12px;
   font-size: 15px;
-  font-weight: 700;
-  letter-spacing: 0.01em;
+  line-height: 1.45;
   color: var(--ink-dim);
 }
 
@@ -415,6 +434,15 @@
   flex-wrap: wrap;
   gap: 6px;
   margin-top: 14px;
+}
+
+/* Metadata, not headlines: legible, checkable, and quiet enough that the
+   verdict above still wins the page. */
+.reccard-badges .chip {
+  font-size: 9.5px;
+  padding: 4px 8px;
+  letter-spacing: 0.1em;
+  background: transparent;
 }
 
 .badge-row {
@@ -472,8 +500,66 @@
   font-weight: 700;
 }
 
-.reccard-reasons {
+.reccard-projection {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(124, 231, 255, 0.25);
+  background: rgba(124, 231, 255, 0.05);
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--ink-dim);
+}
+
+.reccard-ticket {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: baseline;
+  column-gap: 10px;
+  row-gap: 3px;
+  padding: 14px 0 0;
+  font-size: 13px;
+}
+
+.reccard-ticket-note {
+  grid-column: 1 / -1;
+}
+
+.reccard-ticket-label {
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.reccard-ticket-price {
+  font-size: 19px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.reccard-ticket-note {
+  color: var(--ink-faint);
+  font-size: 12.5px;
+}
+
+/* The sixth question — "why this one?" — used to live three screens down. */
+.reccard-why {
   margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.reccard-whyline {
+  margin-top: 8px;
+  font-size: 14.5px;
+  line-height: 1.5;
+  color: var(--ink);
+}
+
+.reccard-reasons {
+  margin-top: 12px;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -516,7 +602,8 @@
 }
 
 .scoredial-lg .scoredial-value {
-  font-size: clamp(42px, 12.4vw, 68px);
+  font-size: clamp(34px, 10vw, 52px);
+  color: var(--ink-dim);
 }
 
 .scoredial-sm .scoredial-value {
@@ -526,7 +613,7 @@
 .scoredial-scale {
   font-size: 12px;
   font-weight: 700;
-  color: var(--ink-ghost);
+  color: var(--ink-faint);
 }
 
 .scoredial-sm .scoredial-scale {
@@ -555,14 +642,37 @@
 .snowclock-line {
   fill: none;
   stroke: var(--ice);
-  stroke-width: 2.4;
+  stroke-width: 2.2;
   stroke-linecap: round;
   stroke-linejoin: round;
-  filter: drop-shadow(0 0 10px var(--ice-glow));
+  opacity: 0.6;
 }
 
-.snowclock-closed {
-  fill: rgba(4, 6, 10, 0.55);
+/* Before first chair the snow is doing something you can't ski yet. */
+.snowclock-line.is-closed {
+  opacity: 0.28;
+  stroke-dasharray: 3 5;
+  stroke-width: 1.8;
+}
+
+.snowclock-line.is-prime {
+  opacity: 1;
+  stroke-width: 3.4;
+  filter: drop-shadow(0 0 12px var(--ice-glow));
+}
+
+.snowclock-primelabel text {
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  fill: var(--ice);
+}
+
+.snowclock-caption {
+  margin-bottom: 14px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink-dim);
 }
 
 .snowclock-prime {
@@ -578,8 +688,8 @@
 .snowclock-marker text {
   font-size: 9px;
   font-weight: 800;
-  letter-spacing: 0.14em;
-  fill: var(--ink-ghost);
+  letter-spacing: 0.12em;
+  fill: var(--ink-faint);
 }
 
 .snowclock-marker.is-accent line {
@@ -847,12 +957,15 @@
 }
 
 .linkbutton {
-  font-size: 12.5px;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-size: 13px;
   font-weight: 700;
   color: var(--ice);
   text-decoration: underline;
   text-underline-offset: 3px;
-  padding: 6px 0;
+  padding: 4px 0;
 }
 
 .trafficword.is-green {
@@ -1045,10 +1158,22 @@
   gap: 10px;
 }
 
+.alt-names {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
 .alt-name {
-  font-size: 21px;
+  font-size: 20px;
   font-weight: 900;
   letter-spacing: -0.03em;
+}
+
+.alt-fullname {
+  font-size: 11.5px;
+  color: var(--ink-faint);
 }
 
 .alt-score {
@@ -1077,6 +1202,17 @@
   font-size: 11.5px;
   font-weight: 700;
   color: var(--ink-dim);
+}
+
+/* Sign as well as colour, so the list scans in greyscale too. */
+.alt-tradeoff.is-better {
+  border-color: rgba(79, 224, 160, 0.35);
+  color: var(--go);
+}
+
+.alt-tradeoff.is-worse {
+  border-color: rgba(255, 255, 255, 0.14);
+  color: var(--ink-faint);
 }
 
 /* =============================================================== factors */
@@ -1467,4 +1603,13 @@
   .whatif-grid {
     grid-template-columns: repeat(6, minmax(0, 1fr));
   }
+}
+
+/* ========================================================== return lead */
+
+.return-lead {
+  margin-bottom: 14px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink-dim);
 }

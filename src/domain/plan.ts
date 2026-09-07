@@ -1,5 +1,6 @@
 import type { DateKey } from './dates';
 import type { Mountain, Origin } from './mountain';
+import type { TicketPrice } from './pricing';
 import type { ConfidenceLevel, Provenance } from './provenance';
 import type { MinuteOfDay, Minutes } from './time';
 
@@ -55,7 +56,8 @@ export type ScoreFactorKey =
   | 'traffic'
   | 'roads'
   | 'crowds'
-  | 'usableTime';
+  | 'usableTime'
+  | 'ticket';
 
 export interface ScoreFactor {
   key: ScoreFactorKey;
@@ -129,6 +131,12 @@ export interface ReturnOption {
   trafficLight: 'green' | 'yellow' | 'red';
 }
 
+export interface Tradeoff {
+  text: string;
+  /** True when this is a point in the alternative's favour. */
+  better: boolean;
+}
+
 export interface TimelineEvent {
   minute: MinuteOfDay;
   icon: string;
@@ -146,6 +154,8 @@ export interface SkiDayPlan {
   isToday: boolean;
   score: DayScore;
   snowClock: SnowClock;
+  /** Null when pricing was unavailable — never a guessed number. */
+  ticket: TicketPrice | null;
   departure: DepartureOption | null;
   departureOptions: DepartureOption[];
   return: ReturnOption | null;
@@ -155,7 +165,7 @@ export interface SkiDayPlan {
   headline: string;
   verdict: string;
   reasons: string[];
-  tradeoffs: string[];
+  tradeoffs: Tradeoff[];
   provenance: Provenance;
   /** Human-readable notes about missing data that limited the call. */
   caveats: string[];

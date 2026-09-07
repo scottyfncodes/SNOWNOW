@@ -31,6 +31,39 @@ describe('demo data honesty', () => {
   });
 });
 
+describe('regional storm tracks', () => {
+  it('models the two regions separately', () => {
+    const i70 = regionalPattern(TODAY, 0, 'i70-corridor');
+    const sanJuans = regionalPattern(TODAY, 0, 'san-juans');
+    expect(i70.region).toBe('i70-corridor');
+    expect(sanJuans.region).toBe('san-juans');
+    expect(i70.stormIntensity).not.toBe(sanJuans.stormIntensity);
+  });
+
+  it('lets one region get hammered while the other gets nothing', () => {
+    let diverged = false;
+    for (let day = 1; day <= 60 && !diverged; day += 1) {
+      const date = `2026-01-${String(day <= 31 ? day : day - 31).padStart(2, '0')}`;
+      const key = day <= 31 ? date : date.replace('01-', '02-');
+      const a = regionalPattern(key, day, 'i70-corridor').stormIntensity;
+      const b = regionalPattern(key, day, 'san-juans').stormIntensity;
+      if (Math.abs(a - b) > 0.45) diverged = true;
+    }
+    expect(diverged).toBe(true);
+  });
+
+  it('still correlates them — they are the same state, not two planets', () => {
+    let together = 0;
+    for (let day = 1; day <= 28; day += 1) {
+      const key = `2026-01-${String(day).padStart(2, '0')}`;
+      const a = regionalPattern(key, day, 'i70-corridor').stormIntensity;
+      const b = regionalPattern(key, day, 'san-juans').stormIntensity;
+      if (Math.abs(a - b) < 0.25) together += 1;
+    }
+    expect(together).toBeGreaterThan(4);
+  });
+});
+
 describe('determinism', () => {
   it('returns the same world for the same date', () => {
     expect(regionalPattern(TODAY, 0)).toEqual(regionalPattern(TODAY, 0));
@@ -154,5 +187,93 @@ describe('places', () => {
     if (result.status === 'ok') {
       expect(result.data.every((place) => place.kind === 'apres')).toBe(true);
     }
+  });
+});
+
+describe('ticket pricing', () => {
+  it('quotes every mountain and stamps the quote as demo', async () => {
+    for (const mountain of MOUNTAINS) {
+      const result = await registry.pricing.getTicketPrice(mountain, context);
+      expect(result.status, mountain.id).toBe('ok');
+      if (result.status !== 'ok') continue;
+      expect(result.provenance.source).toBe('demo');
+      expect(result.data.adultDay).toBeGreaterThan(0);
+      expect(result.data.mountainId).toBe(mountain.id);
+      expect(result.data.currency).toBe('USD');
+    }
+  });
+
+  it('is deterministic for a given mountain and date', async () => {
+    const [a, b] = await Promise.all([
+      registry.pricing.getTicketPrice(MOUNTAINS[0]!, context),
+      registry.pricing.getTicketPrice(MOUNTAINS[0]!, context),
+    ]);
+    expect(a).toEqual(b);
+  });
+
+  it('charges same-day window pricing and discounts booking ahead', async () => {
+    const mountain = findMountain('vail')!;
+    const sameDay = await registry.pricing.getTicketPrice(mountain, context);
+    const ahead = await registry.pricing.getTicketPrice(
+      mountain,
+      makeContext('2026-02-05', TODAY, at(5, 0)),
+    );
+    if (sameDay.status !== 'ok' || ahead.status !== 'ok') throw new Error('expected pricing');
+    expect(sameDay.data.kind).toBe('window');
+    expect(ahead.data.kind).toBe('advance');
+    expect(ahead.data.adultDay).toBeLessThan(sameDay.data.adultDay);
+  });
+
+  it('never quotes above the published window rate', async () => {
+    for (const mountain of MOUNTAINS) {
+      const result = await registry.pricing.getTicketPrice(mountain, context);
+      if (result.status !== 'ok') continue;
+      expect(result.data.adultDay, mountain.id).toBeLessThanOrEqual(result.data.windowRate);
+    }
+  });
+
+  it('prices the independent well below the destination resorts', async () => {
+    const [purgatory, vail] = await Promise.all([
+      registry.pricing.getTicketPrice(findMountain('purgatory')!, context),
+      registry.pricing.getTicketPrice(findMountain('vail')!, context),
+    ]);
+    if (purgatory.status !== 'ok' || vail.status !== 'ok') throw new Error('expected pricing');
+    expect(purgatory.data.adultDay).toBeLessThan(vail.data.adultDay * 0.7);
+  });
+
+  it('reports unavailable rather than inventing a price', async () => {
+    const failing = createDemoRegistry({ pricing: { failFor: () => true } });
+    const result = await failing.pricing.getTicketPrice(MOUNTAINS[0]!, context);
+    expect(result.status).toBe('unavailable');
+  });
+});
+
+describe('mountain identity', () => {
+  it('gives Purgatory its own weather, not a copy of the I-70 corridor', async () => {
+    const [purgatory, keystone] = await Promise.all([
+      registry.weather.getMountainWeather(findMountain('purgatory')!, context),
+      registry.weather.getMountainWeather(findMountain('keystone')!, context),
+    ]);
+    if (purgatory.status !== 'ok' || keystone.status !== 'ok') throw new Error('expected weather');
+    expect(purgatory.data.overnightSnowIn).not.toBe(keystone.data.overnightSnowIn);
+  });
+
+  it('reports grooming, and gives the grooming-focused mountain more of it', async () => {
+    const [keystone, crestedButte] = await Promise.all([
+      registry.mountain.getOperations(findMountain('keystone')!, context),
+      registry.mountain.getOperations(findMountain('crested-butte')!, context),
+    ]);
+    if (keystone.status !== 'ok' || crestedButte.status !== 'ok') throw new Error('expected ops');
+    expect(keystone.data.groomedShare).toBeGreaterThan(crestedButte.data.groomedShare);
+  });
+
+  it('exposes the alpine mountain to wind far more than the sheltered one', async () => {
+    const [breck, purgatory] = await Promise.all([
+      registry.weather.getMountainWeather(findMountain('breckenridge')!, context),
+      registry.weather.getMountainWeather(findMountain('purgatory')!, context),
+    ]);
+    if (breck.status !== 'ok' || purgatory.status !== 'ok') throw new Error('expected weather');
+    const peak = (hours: { windGustMph: number }[]) => Math.max(...hours.map((h) => h.windGustMph));
+    expect(peak(breck.data.hourly)).toBeGreaterThan(peak(purgatory.data.hourly));
   });
 });

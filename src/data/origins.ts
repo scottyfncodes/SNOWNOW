@@ -30,6 +30,12 @@ export const ORIGINS: Origin[] = [
     coordinates: { lat: 38.8339, lon: -104.8214 },
   },
   {
+    id: 'durango',
+    name: 'Durango',
+    shortName: 'Durango',
+    coordinates: { lat: 37.2753, lon: -107.8801 },
+  },
+  {
     id: 'frisco',
     name: 'Frisco (Summit County)',
     shortName: 'Frisco',

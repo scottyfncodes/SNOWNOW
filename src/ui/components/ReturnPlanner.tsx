@@ -38,6 +38,8 @@ export function ReturnPlanner({ plan, now }: ReturnPlannerProps) {
         </p>
       </header>
 
+      <p className="return-lead">{leadFor(plan)}</p>
+
       {advice && (
         <div className={`stayorgo is-${advice.verdict}`} role="status">
           <p className="stayorgo-head">{advice.headline}</p>
@@ -103,6 +105,27 @@ export function ReturnPlanner({ plan, now }: ReturnPlannerProps) {
       <p className="ladder-verdict">{returnVerdict(recommended, ladder)}</p>
     </section>
   );
+}
+
+/**
+ * The return decision stated up front. Without this the panel opened on a
+ * chart and a table and left the reader to work out what it was arguing — for
+ * the half of the ski day most people never think about until they are sitting
+ * in it, that is the wrong way round.
+ */
+function leadFor(plan: SkiDayPlan): string {
+  const recommended = plan.return;
+  if (!recommended) return '';
+  const worst = plan.returnOptions.reduce((top, option) =>
+    option.driveMinutes > top.driveMinutes ? option : top,
+  );
+  const cost = worst.driveMinutes - recommended.driveMinutes;
+  const home = formatClock(recommended.homeArrival);
+
+  if (cost <= 12) {
+    return `Leave at ${formatClock(recommended.departure)} and you're home by ${home}. The road holds up all afternoon, so this is about the skiing, not the traffic.`;
+  }
+  return `Leave at ${formatClock(recommended.departure)} and you're home by ${home}. Leave in the thick of it around ${formatClock(worst.departure)} and the same drive takes ${formatDelta(cost)} longer.`;
 }
 
 function returnVerdict(recommended: ReturnOption, ladder: ReturnOption[]): string {

@@ -1,11 +1,11 @@
 import { useId } from 'react';
 import type { SnowClock } from '@/domain/plan';
-import { formatClock, formatClockShort, type MinuteOfDay } from '@/domain/time';
+import { clamp, formatClock, formatClockShort, type MinuteOfDay } from '@/domain/time';
 import { linearScale, smoothPath } from './chart';
 
 const WIDTH = 720;
 const HEIGHT = 210;
-const PAD = { top: 16, right: 14, bottom: 26, left: 14 };
+const PAD = { top: 30, right: 14, bottom: 26, left: 14 };
 
 export interface SnowClockChartProps {
   clock: SnowClock;
@@ -21,8 +21,14 @@ export interface SnowClockChartProps {
  * The Snow Clock: the whole day at a glance.
  *
  * Deliberately not a meteogram. One curve — how good is it, right then — with
- * the moments that matter marked on top of it. The underlying numbers are
- * exposed to assistive technology as a table rather than being lost in the SVG.
+ * the moments that matter marked on top of it.
+ *
+ * Two things earn their complexity here. The vertical scale is zoomed to the
+ * day's own range, because a curve pinned in the top quarter of a 0-100 axis
+ * shows a flat line on a day that actually has a peak and a decline. And the
+ * prime window is drawn as a *lit* band rather than a grey one: an earlier
+ * version used a pale grey overlay, which every reader interpreted as "this
+ * part is disabled" — precisely backwards.
  */
 export function SnowClockChart({ clock, firstTurn, leaveAt, now }: SnowClockChartProps) {
   const gradientId = useId();
@@ -32,12 +38,19 @@ export function SnowClockChart({ clock, firstTurn, leaveAt, now }: SnowClockChar
 
   const start = points[0]!.minute;
   const end = points[points.length - 1]!.minute + clock.stepMinutes;
+  const openPoints = points.filter((point) => !point.closed);
+  const lowest = Math.min(...(openPoints.length > 0 ? openPoints : points).map((p) => p.quality));
+
+  // Zoom to the day, but never so far that a flat day looks dramatic: the
+  // floor is capped so a genuinely mediocre day still sits low in the frame.
+  const floor = clamp(Math.floor(lowest - 14), 0, 55);
+
   const x = linearScale([start, end], [PAD.left, WIDTH - PAD.right]);
-  const y = linearScale([0, 100], [HEIGHT - PAD.bottom, PAD.top]);
+  const y = linearScale([floor, 100], [HEIGHT - PAD.bottom, PAD.top]);
 
   const curve = points.map((point) => ({ x: x(point.minute), y: y(point.quality) }));
   const line = smoothPath(curve);
-  const area = `${line} L${x(end)},${y(0)} L${x(start)},${y(0)} Z`;
+  const area = `${line} L${x(end)},${HEIGHT - PAD.bottom} L${x(start)},${HEIGHT - PAD.bottom} Z`;
 
   const prime = clock.prime;
   const hourMarks: MinuteOfDay[] = [];
@@ -58,54 +71,66 @@ export function SnowClockChart({ clock, firstTurn, leaveAt, now }: SnowClockChar
       >
         <defs>
           <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="var(--ice)" stopOpacity="0.5" />
-            <stop offset="70%" stopColor="var(--ice)" stopOpacity="0.06" />
+            <stop offset="0%" stopColor="var(--ice)" stopOpacity="0.26" />
+            <stop offset="72%" stopColor="var(--ice)" stopOpacity="0.03" />
             <stop offset="100%" stopColor="var(--ice)" stopOpacity="0" />
           </linearGradient>
           <linearGradient id={primeId} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#ffffff" stopOpacity="0.16" />
-            <stop offset="100%" stopColor="#ffffff" stopOpacity="0.02" />
+            <stop offset="0%" stopColor="var(--ice)" stopOpacity="0.15" />
+            <stop offset="100%" stopColor="var(--ice)" stopOpacity="0.015" />
           </linearGradient>
+          <clipPath id={`${primeId}-clip`}>
+            {prime && (
+              <rect
+                x={x(prime.start)}
+                width={Math.max(2, x(prime.end) - x(prime.start))}
+                y={0}
+                height={HEIGHT}
+              />
+            )}
+          </clipPath>
+          <clipPath id={`${primeId}-open`}>
+            <rect
+              x={x(clock.open)}
+              width={Math.max(0, WIDTH - PAD.right - x(clock.open))}
+              y={0}
+              height={HEIGHT}
+            />
+          </clipPath>
         </defs>
 
-        {[25, 50, 75].map((value) => (
-          <line
-            key={value}
-            x1={PAD.left}
-            x2={WIDTH - PAD.right}
-            y1={y(value)}
-            y2={y(value)}
-            className="snowclock-grid"
-          />
-        ))}
-
+        {/*
+         * Three passes over one curve rather than boxes drawn on top of it.
+         * Boxes read as "this region is disabled"; a curve that gets brighter
+         * where the skiing gets better reads as what it is.
+         */}
+        <path d={area} fill={`url(#${gradientId})`} clipPath={`url(#${primeId}-open)`} />
+        <path d={line} className="snowclock-line is-closed" />
+        <path d={line} className="snowclock-line" clipPath={`url(#${primeId}-open)`} />
         {prime && (
-          <rect
-            x={x(prime.start)}
-            width={Math.max(2, x(prime.end) - x(prime.start))}
-            y={PAD.top - 6}
-            height={HEIGHT - PAD.bottom - PAD.top + 6}
-            fill={`url(#${primeId})`}
-            className="snowclock-prime"
-          />
+          <>
+            <rect
+              x={x(prime.start)}
+              width={Math.max(2, x(prime.end) - x(prime.start))}
+              y={PAD.top - 8}
+              height={HEIGHT - PAD.bottom - PAD.top + 8}
+              fill={`url(#${primeId})`}
+              className="snowclock-prime"
+            />
+            <path d={line} className="snowclock-line is-prime" clipPath={`url(#${primeId}-clip)`} />
+            <g className="snowclock-primelabel">
+              <text x={(x(prime.start) + x(prime.end)) / 2} y={PAD.top - 14} textAnchor="middle">
+                PRIME SNOW
+              </text>
+            </g>
+          </>
         )}
 
-        <path d={area} fill={`url(#${gradientId})`} />
-        <path d={line} className="snowclock-line" />
-
-        {/* Closed hours are dimmed rather than cut off: the snow is still doing
-            something before first chair, you just can't ski it yet. */}
-        <rect
-          x={PAD.left}
-          width={Math.max(0, x(clock.open) - PAD.left)}
-          y={PAD.top - 6}
-          height={HEIGHT - PAD.bottom - PAD.top + 6}
-          className="snowclock-closed"
-        />
-
-        <Marker x={x(clock.open)} label="OPEN" />
-        {firstTurn != null && <Marker x={x(firstTurn)} label="YOU" accent />}
-        {leaveAt != null && leaveAt <= end && <Marker x={x(leaveAt)} label="GO" accent />}
+        <Marker x={x(clock.open)} label="LIFTS OPEN" />
+        {firstTurn != null && Math.abs(firstTurn - clock.open) > 25 && (
+          <Marker x={x(firstTurn)} label="YOU ARRIVE" accent />
+        )}
+        {leaveAt != null && leaveAt <= end && <Marker x={x(leaveAt)} label="YOU LEAVE" accent />}
         {now != null && now >= start && now <= end && <Marker x={x(now)} label="NOW" pulse />}
 
         {hourMarks.map((minute) => (
@@ -136,24 +161,30 @@ export function SnowClockChart({ clock, firstTurn, leaveAt, now }: SnowClockChar
   );
 }
 
+/** Labels are nudged inboard near the edges so they never clip off the chart. */
 function Marker({
   x,
   label,
   accent,
   pulse,
+  low,
 }: {
   x: number;
   label: string;
   accent?: boolean;
   pulse?: boolean;
+  low?: boolean;
 }) {
   const className = ['snowclock-marker', accent && 'is-accent', pulse && 'is-now']
     .filter(Boolean)
     .join(' ');
+  const margin = 46;
+  const anchor = x < margin ? 'start' : x > WIDTH - margin ? 'end' : 'middle';
+  const textX = anchor === 'start' ? x + 4 : anchor === 'end' ? x - 4 : x;
   return (
     <g className={className}>
-      <line x1={x} x2={x} y1={PAD.top - 6} y2={HEIGHT - PAD.bottom} />
-      <text x={x} y={PAD.top - 9} textAnchor="middle">
+      <line x1={x} x2={x} y1={PAD.top - 4} y2={HEIGHT - PAD.bottom} />
+      <text x={textX} y={low ? HEIGHT - PAD.bottom + 13 : PAD.top - 2} textAnchor={anchor}>
         {label}
       </text>
     </g>

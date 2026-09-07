@@ -65,6 +65,7 @@ export function buildPlan(inputs: DayInputs, options: PlanOptions = {}): SkiDayP
     isToday: inputs.isToday,
     score,
     snowClock,
+    ticket: inputs.ticket.status === 'ok' ? inputs.ticket.data : null,
     departure: optimized.departure,
     departureOptions: optimized.departureOptions,
     return: optimized.ret,
@@ -103,6 +104,9 @@ function collectCaveats(inputs: DayInputs, timingReason: string | null): string[
   }
   if (inputs.crowds.status === 'unavailable') {
     caveats.push('No crowd signal for this mountain.');
+  }
+  if (inputs.ticket.status === 'unavailable') {
+    caveats.push("Ticket pricing isn't loading, so the cost of the day is missing.");
   }
   if (inputs.outbound.status === 'unavailable' || inputs.inbound.status === 'unavailable') {
     caveats.push("Road intel is offline. We'll show the mountain, but we're not going to fake the drive.");
@@ -304,13 +308,30 @@ export function stayOrGo(
   };
 }
 
-/** Compare "leave now" against a handful of later departures. */
-export function stayOrGoLadder(plan: SkiDayPlan, count = 4): ReturnOption[] {
+/**
+ * A handful of departure times spanning the whole afternoon, always including
+ * the recommended one.
+ *
+ * It deliberately shows both sides. An earlier version only listed *later*
+ * departures, which collapsed to a useless table on the days when the
+ * recommendation is already last chair — every row saying "no extra skiing,
+ * no extra driving". The question is not only "should I stay?" but "what does
+ * this decision look like either way", and that needs the shape, not a tail.
+ */
+export function stayOrGoLadder(plan: SkiDayPlan, count = 5): ReturnOption[] {
   const recommended = plan.return;
-  if (!recommended) return [];
-  const later = plan.returnOptions.filter((option) => option.departure > recommended.departure);
-  if (later.length === 0) return [recommended];
-  const stride = Math.max(1, Math.floor(later.length / count));
-  const picks = later.filter((_, index) => index % stride === 0).slice(0, count);
-  return [recommended, ...picks];
+  if (!recommended || plan.returnOptions.length === 0) return recommended ? [recommended] : [];
+
+  const options = plan.returnOptions;
+  if (options.length <= count) return options;
+
+  const stride = (options.length - 1) / (count - 1);
+  const picked = new Map<number, ReturnOption>();
+  for (let i = 0; i < count; i += 1) {
+    const option = options[Math.round(i * stride)];
+    if (option) picked.set(option.departure, option);
+  }
+  picked.set(recommended.departure, recommended);
+
+  return [...picked.values()].sort((a, b) => a.departure - b.departure);
 }

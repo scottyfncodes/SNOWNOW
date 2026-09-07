@@ -15,7 +15,7 @@ export interface ScoringWeights {
 
 export const DEFAULT_WEIGHTS: ScoringWeights = {
   factors: {
-    snow: 1.7,
+    snow: 1.8,
     snowTiming: 1.2,
     weather: 0.6,
     wind: 0.7,
@@ -28,7 +28,17 @@ export const DEFAULT_WEIGHTS: ScoringWeights = {
     traffic: 0.7,
     roads: 0.9,
     crowds: 0.6,
-    usableTime: 2.2,
+    usableTime: 2.0,
+    /*
+     * Ticket price is real decision context, not the decision. It is weighted
+     * so the full spread of the market — roughly a $200 gap between the
+     * cheapest independent and a peak window rate at a destination resort —
+     * moves the published score by at most about 0.35 out of 10. That is
+     * enough to break a genuine tie and to be visible in the explanation, and
+     * deliberately nowhere near enough for a cheap ticket to outrank a
+     * materially better ski day. `scoring.test.ts` holds that line.
+     */
+    ticket: 0.5,
   },
   labels: {
     snow: 'Snow',
@@ -42,6 +52,7 @@ export const DEFAULT_WEIGHTS: ScoringWeights = {
     roads: 'Roads',
     crowds: 'Crowds',
     usableTime: 'Useful ski time',
+    ticket: 'Ticket price',
   },
 };
 

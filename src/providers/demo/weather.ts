@@ -10,7 +10,7 @@ import {
 import { at, clamp, clamp01, HOUR, type MinuteOfDay } from '@/domain/time';
 import { bell } from '@/lib/curve';
 import type { ProviderContext, WeatherProvider } from '@/providers/types';
-import { mountainRng, orographicFactor, profileFor, regionalPattern } from './scenario';
+import { exposedWind, mountainRng, orographicFactor, patternFor, profileFor } from './scenario';
 
 const FIRST_HOUR = at(4);
 const LAST_HOUR = at(20);
@@ -43,7 +43,7 @@ export class DemoWeatherProvider implements WeatherProvider {
       return unavailable(this.id, 'No forecast returned for this location.');
     }
 
-    const pattern = regionalPattern(context.date, context.horizonDays);
+    const pattern = patternFor(mountain, context.date, context.horizonDays);
     const profile = profileFor(mountain.id);
     const oro = orographicFactor(mountain, pattern);
     const rng = mountainRng(mountain, context.date, 'weather');
@@ -52,7 +52,7 @@ export class DemoWeatherProvider implements WeatherProvider {
     const snowMultiplier = profile.snow * oro;
     const overnightIn = mix(pattern.overnightIn * snowMultiplier, 2.4 * snowMultiplier, blend);
     const daytimeRate = mix(pattern.daytimeRateInPerHour * snowMultiplier, 0.18 * snowMultiplier, blend);
-    const windScale = profile.wind * mix(1, 0.95, blend);
+    const windMph = exposedWind(pattern.windBaseMph, profile.wind) * mix(1, 0.95, blend);
 
     const hourly: HourlyWeather[] = [];
     for (let minute = FIRST_HOUR; minute <= LAST_HOUR; minute += HOUR) {
@@ -62,7 +62,7 @@ export class DemoWeatherProvider implements WeatherProvider {
           taper: pattern.stormTaperMinute,
           baseTempF: mix(pattern.baseTempF, 20, blend) + (10400 - mountain.weatherLocation.forecastElevationFt) / 320,
           diurnalRangeF: pattern.diurnalRangeF,
-          windBaseMph: pattern.windBaseMph * windScale,
+          windBaseMph: windMph,
           sunBase: pattern.sunBase,
           density: pattern.density,
           jitter: rng.range(-0.12, 0.12),

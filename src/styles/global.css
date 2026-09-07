@@ -14,10 +14,17 @@
   --bg-raise: #0a0f18;
   --bg-deep: #010204;
 
+  /*
+   * Dark is not an excuse for low contrast. These four steps were measured
+   * against the surfaces they actually sit on: --dim, --faint and the text
+   * uses of --ghost all clear 4.5:1 at small sizes. Hierarchy is carried by
+   * size, weight and letter-spacing rather than by fading text out until it
+   * stops being readable at 5am.
+   */
   --ink: #f3f7ff;
-  --ink-dim: rgba(243, 247, 255, 0.66);
-  --ink-faint: rgba(243, 247, 255, 0.42);
-  --ink-ghost: rgba(243, 247, 255, 0.22);
+  --ink-dim: rgba(243, 247, 255, 0.74);
+  --ink-faint: rgba(243, 247, 255, 0.6);
+  --ink-ghost: rgba(243, 247, 255, 0.48);
 
   --surface: rgba(255, 255, 255, 0.045);
   --surface-2: rgba(255, 255, 255, 0.08);

@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_PREFERENCES, DEFAULT_WEIGHTS } from '@/config/weights';
 import { at } from '@/domain/time';
-import { testCrowds, testInputs, testOperations, testTravel, testWeather } from '@/test/fixtures';
+import {
+  testCrowds,
+  testInputs,
+  testOperations,
+  testTicket,
+  testTravel,
+  testWeather,
+} from '@/test/fixtures';
 import { optimizeDay } from './optimize';
 import { scoreDay } from './scoring';
 import { buildSnowClock } from './snowClock';
@@ -209,5 +216,85 @@ describe('extremes', () => {
     );
     expect(score.score).toBeGreaterThan(8.5);
     expect(score.strengths.length).toBeGreaterThan(0);
+  });
+});
+
+describe('ticket price', () => {
+  it('scores a cheap ticket above an expensive one', () => {
+    const cheap = scoreFor(testInputs({ ticket: testTicket(99, 139) })).score;
+    const dear = scoreFor(testInputs({ ticket: testTicket(289, 289) })).score;
+    expect(factor(cheap, 'ticket').value).toBeGreaterThan(factor(dear, 'ticket').value);
+    expect(factor(cheap, 'ticket').note).toMatch(/\$99/);
+  });
+
+  it('mentions what you saved against the walk-up rate', () => {
+    const { score } = scoreFor(testInputs({ ticket: testTicket(150, 249) }));
+    expect(factor(score, 'ticket').note).toMatch(/under the window rate/i);
+  });
+
+  it('imputes and flags a missing price rather than guessing one', () => {
+    const { score } = scoreFor(testInputs({ ticket: 'unavailable' }));
+    expect(factor(score, 'ticket').imputed).toBe(true);
+    expect(factor(score, 'ticket').note).toMatch(/no ticket pricing/i);
+  });
+
+  /**
+   * The guarantee behind the weight in config/weights.ts. Price is decision
+   * context; it is not allowed to win an argument against fresh snow, and if
+   * someone raises that weight, this is the test that should stop them.
+   */
+  it('cannot make a cheap bad day beat an expensive good one', () => {
+    const cheapAndMediocre = scoreFor(
+      testInputs({
+        weather: testWeather({ overnightSnowIn: 0, daysSinceStorm: 8 }),
+        ticket: testTicket(75, 89),
+      }),
+    ).score;
+    const dearAndExcellent = scoreFor(
+      testInputs({
+        weather: testWeather({ overnightSnowIn: 12, temperatureF: 16, windMph: 5 }),
+        ticket: testTicket(299, 299),
+      }),
+    ).score;
+    expect(dearAndExcellent.score).toBeGreaterThan(cheapAndMediocre.score);
+  });
+
+  it('moves the whole score by well under a point across the entire price range', () => {
+    const cheapest = scoreFor(testInputs({ ticket: testTicket(75, 89) })).score;
+    const dearest = scoreFor(testInputs({ ticket: testTicket(299, 299) })).score;
+    const swing = cheapest.score - dearest.score;
+    expect(swing).toBeGreaterThan(0);
+    expect(swing).toBeLessThan(0.8);
+  });
+
+  it('can still break a tie between two otherwise identical days', () => {
+    const base = { weather: testWeather({ overnightSnowIn: 5 }) };
+    const cheap = scoreFor(testInputs({ ...base, ticket: testTicket(99, 149) })).score;
+    const dear = scoreFor(testInputs({ ...base, ticket: testTicket(279, 279) })).score;
+    expect(cheap.raw).toBeGreaterThan(dear.raw);
+  });
+});
+
+describe('grooming', () => {
+  it('rescues a dry day and barely matters on a powder day', () => {
+    const dry = (groomedShare: number) =>
+      scoreFor(
+        testInputs({
+          weather: testWeather({ overnightSnowIn: 0, daysSinceStorm: 6 }),
+          operations: testOperations({ groomedShare }),
+        }),
+      ).score.raw;
+    const deep = (groomedShare: number) =>
+      scoreFor(
+        testInputs({
+          weather: testWeather({ overnightSnowIn: 13 }),
+          operations: testOperations({ groomedShare }),
+        }),
+      ).score.raw;
+
+    const dryGain = dry(0.95) - dry(0.2);
+    const deepGain = deep(0.95) - deep(0.2);
+    expect(dryGain).toBeGreaterThan(0);
+    expect(dryGain).toBeGreaterThan(deepGain);
   });
 });

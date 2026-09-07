@@ -11,7 +11,7 @@ import {
 import { at, clamp, clamp01, minuteRange } from '@/domain/time';
 import { bell } from '@/lib/curve';
 import type { MountainProvider, ProviderContext } from '@/providers/types';
-import { mountainRng, orographicFactor, profileFor, regionalPattern } from './scenario';
+import { exposedWind, mountainRng, orographicFactor, patternFor, profileFor } from './scenario';
 
 export interface DemoMountainOptions {
   failOperationsFor?: (mountain: Mountain) => boolean;
@@ -35,14 +35,13 @@ export class DemoMountainProvider implements MountainProvider {
       return unavailable(this.id, 'Lift report is not responding.');
     }
 
-    const pattern = regionalPattern(context.date, context.horizonDays);
+    const pattern = patternFor(mountain, context.date, context.horizonDays);
     const profile = profileFor(mountain.id);
     const rng = mountainRng(mountain, context.date, 'ops');
     const weekend = isWeekend(context.date);
     const scheduledOpen = openTimeFor(mountain, weekend);
 
-    const windScale = profile.wind;
-    const dayWind = pattern.windBaseMph * windScale;
+    const dayWind = exposedWind(pattern.windBaseMph, profile.wind);
     const exposedShare = mountain.lifts.windExposed / Math.max(1, mountain.lifts.total);
     const windHoldRisk = clamp01(
       ((dayWind - 16) / 34) * (0.5 + exposedShare) * (2 - profile.operations),
@@ -69,6 +68,14 @@ export class DemoMountainProvider implements MountainProvider {
       Math.round(mountain.lifts.total * clamp01(terrainOpenShare * profile.operations + 0.05)),
     );
 
+    // Grooming is the counterweight to a thin snow year: a mountain that puts
+    // the cats out every night is a genuinely better place to be on a firm day.
+    const groomedShare = clamp(
+      profile.grooming * (1 - pattern.stormIntensity * 0.35) * rng.around(1, 0.06, 0.85, 1.12),
+      0.15,
+      0.98,
+    );
+
     const notes: string[] = [];
     if (controlDelay > 0) notes.push(`Upper mountain expected around ${formatDelay(controlDelay)} after first chair (avalanche control).`);
     if (baseDelay > 0) notes.push('Base area opening running late.');
@@ -86,6 +93,7 @@ export class DemoMountainProvider implements MountainProvider {
         liftsExpectedOpen,
         liftsTotal: mountain.lifts.total,
         terrainOpenShare: Math.round(terrainOpenShare * 100) / 100,
+        groomedShare: Math.round(groomedShare * 100) / 100,
         windHoldRisk: Math.round(windHoldRisk * 100) / 100,
         upperMountainDelayMinutes: controlDelay + mountain.operations.upperMountainOpenOffset,
         status,
@@ -109,7 +117,7 @@ export class DemoMountainProvider implements MountainProvider {
       return unavailable(this.id, 'No visitation signal for this mountain.');
     }
 
-    const pattern = regionalPattern(context.date, context.horizonDays);
+    const pattern = patternFor(mountain, context.date, context.horizonDays);
     const profile = profileFor(mountain.id);
     const weekend = isWeekend(context.date);
     const open = openTimeFor(mountain, weekend);

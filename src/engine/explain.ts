@@ -1,4 +1,11 @@
-import type { DayScore, ScoreFactor, ScoreFactorKey, SkiDayPlan, SnowClock } from '@/domain/plan';
+import type {
+  DayScore,
+  ScoreFactor,
+  ScoreFactorKey,
+  SkiDayPlan,
+  SnowClock,
+  Tradeoff,
+} from '@/domain/plan';
 import { formatClock, formatDuration, formatWindowLabel } from '@/domain/time';
 import type { DayInputs } from './inputs';
 import { resolveOperations, resolveWeather } from './snowClock';
@@ -9,13 +16,22 @@ import { resolveOperations, resolveWeather } from './snowClock';
  * canned recommendations, no hard-coded mountains.
  */
 
+/*
+ * Calibrated against what the scoring model actually produces, not against a
+ * tidy-looking 0-10 ruler. A real ski day pays a permanent tax — the drive is
+ * never free, the ticket is never cheap, and a big storm brings snow-packed
+ * roads with it — so the weighted average of honest factors lands in the 6s
+ * and 7s most of the time. Pinning "LET'S RIDE." to a number the model can
+ * only reach a couple of times a season is the point: it should mean
+ * something when it appears.
+ */
 export function verdictFor(score: number, hasSnow: boolean): string {
-  if (score >= 9) return "LET'S RIDE.";
-  if (score >= 8.2) return hasSnow ? 'SEND IT.' : 'GO.';
-  if (score >= 7.4) return 'WORTH IT.';
+  if (score >= 8.5) return "LET'S RIDE.";
+  if (score >= 7.9) return hasSnow ? 'SEND IT.' : 'GO.';
+  if (score >= 7.2) return 'WORTH IT.';
   if (score >= 6.5) return 'PRETTY CHILL.';
-  if (score >= 5.5) return "IT'S A DAY.";
-  if (score >= 4.4) return "IT'LL DO.";
+  if (score >= 5.8) return "IT'S A DAY.";
+  if (score >= 4.8) return "IT'LL DO.";
   return 'SLEEP IN.';
 }
 
@@ -33,7 +49,14 @@ export function headlineFor(inputs: DayInputs, clock: SnowClock, score: DayScore
   return 'FIRM AND FAST.';
 }
 
-/** Two to four short evidence lines, strongest first. */
+/**
+ * The evidence, in the order a skier would ask for it.
+ *
+ * Deliberately short and deliberately not a restatement of the card above it:
+ * the prime window already has its own slot, so repeating it here would spend
+ * a line saying nothing. Three or four lines is the budget — past that people
+ * stop reading and the recommendation stops feeling like a decision.
+ */
 export function reasonsFor(inputs: DayInputs, clock: SnowClock, score: DayScore): string[] {
   const weather = resolveWeather(inputs);
   const ops = resolveOperations(inputs);
@@ -44,31 +67,44 @@ export function reasonsFor(inputs: DayInputs, clock: SnowClock, score: DayScore)
     if (weather.overnightSnowIn >= 0.6) {
       reasons.push(
         dayfall >= 0.8
-          ? `${weather.overnightSnowIn.toFixed(1)}" overnight and another ${dayfall.toFixed(1)}" expected through the morning.`
+          ? `${weather.overnightSnowIn.toFixed(1)}" overnight, still stacking.`
           : `${weather.overnightSnowIn.toFixed(1)}" overnight.`,
       );
     } else if (dayfall >= 0.8) {
       reasons.push(`${dayfall.toFixed(1)}" expected to fall during the day.`);
+    } else if (clock.prime && clock.prime.averageQuality >= 74) {
+      reasons.push(`No new snow, but the grooming is holding up.`);
     } else {
       reasons.push(`No new snow — ${weather.daysSinceStorm} days since the last one.`);
     }
   }
 
-  if (clock.prime) {
-    reasons.push(`Best snow ${formatWindowLabel(clock.prime.start, clock.prime.end)}.`);
+  // Whichever of wind, terrain and roads is most worth knowing about today —
+  // strongest opinion first, so a real problem is never the fourth line.
+  const spoken = new Set<string>();
+  const speak = (key: string) => {
+    const factor = score.factors.find((candidate) => candidate.key === key);
+    if (!factor || factor.imputed || spoken.has(key)) return;
+    spoken.add(key);
+    reasons.push(factor.note);
+  };
+
+  const ranked = [...score.factors]
+    .filter((factor) => ['wind', 'roads', 'crowds', 'operations'].includes(factor.key))
+    .sort((a, b) => a.value - b.value);
+  for (const factor of ranked) {
+    if (factor.value < 62) speak(factor.key);
   }
 
-  const wind = score.factors.find((factor) => factor.key === 'wind');
-  if (wind && !wind.imputed) reasons.push(wind.note);
-
-  if (inputs.operations.status === 'ok') {
-    reasons.push(`${Math.round(ops.terrainOpenShare * 100)}% terrain expected open, ${ops.liftsExpectedOpen} lifts spinning.`);
+  if (inputs.operations.status === 'ok' && !spoken.has('operations')) {
+    reasons.push(
+      `${Math.round(ops.terrainOpenShare * 100)}% terrain open, ${ops.liftsExpectedOpen} of ${ops.liftsTotal} lifts spinning.`,
+    );
   }
+  speak('wind');
+  speak('roads');
 
-  const roads = score.factors.find((factor) => factor.key === 'roads');
-  if (roads && !roads.imputed) reasons.push(roads.note);
-
-  return reasons.slice(0, 5);
+  return reasons.slice(0, 4);
 }
 
 const FACTOR_PHRASES: Record<ScoreFactorKey, { better: string; worse: string }> = {
@@ -83,10 +119,11 @@ const FACTOR_PHRASES: Record<ScoreFactorKey, { better: string; worse: string }> 
   roads: { better: 'Better roads.', worse: 'Dicier roads.' },
   crowds: { better: 'Quieter.', worse: 'More crowded.' },
   usableTime: { better: 'More time on snow.', worse: 'Less time on snow.' },
+  ticket: { better: 'Cheaper ticket.', worse: 'Pricier ticket.' },
 };
 
 /** Three short bullets contrasting an alternative with the winner. */
-export function tradeoffsAgainst(alternative: DayScore, winner: DayScore, limit = 3): string[] {
+export function tradeoffsAgainst(alternative: DayScore, winner: DayScore, limit = 3): Tradeoff[] {
   const winnerByKey = new Map(winner.factors.map((factor) => [factor.key, factor]));
   const deltas = alternative.factors
     .map((factor) => {
@@ -97,13 +134,14 @@ export function tradeoffsAgainst(alternative: DayScore, winner: DayScore, limit 
     .filter((entry) => Math.abs(entry.delta) >= 7)
     .sort((a, b) => b.magnitude - a.magnitude);
 
-  const out: string[] = [];
+  const out: Tradeoff[] = [];
   for (const entry of deltas) {
     const phrases = FACTOR_PHRASES[entry.factor.key];
-    out.push(entry.delta > 0 ? phrases.better : phrases.worse);
+    const better = entry.delta > 0;
+    out.push({ text: better ? phrases.better : phrases.worse, better });
     if (out.length >= limit) break;
   }
-  return out.length > 0 ? out : ['Very close call.'];
+  return out.length > 0 ? out : [{ text: 'Very close call.', better: false }];
 }
 
 /** "Vail has more snow, but Breck is the better overall day." */
@@ -156,6 +194,8 @@ const describeEdge = (factor: ScoreFactor): string => {
       return 'more terrain open';
     case 'wind':
       return 'less wind';
+    case 'ticket':
+      return 'a cheaper ticket';
     default:
       return `better ${factor.label.toLowerCase()}`;
   }

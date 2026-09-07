@@ -206,11 +206,19 @@ describe('stay or go', () => {
     expect(advice.leaveNow).toBeNull();
   });
 
-  it('builds a ladder that starts at the recommendation and only looks later', () => {
-    const ladder = stayOrGoLadder(plan());
-    expect(ladder[0]!.recommended).toBe(true);
+  it('builds a ladder that spans the afternoon and always includes the recommendation', () => {
+    const subject = plan();
+    const ladder = stayOrGoLadder(subject);
+    expect(ladder.length).toBeGreaterThan(2);
+    expect(ladder.some((option) => option.recommended)).toBe(true);
     for (let i = 1; i < ladder.length; i += 1) {
       expect(ladder[i]!.departure).toBeGreaterThan(ladder[i - 1]!.departure);
     }
+    // Both sides of the decision, so the table still says something on days
+    // when the recommendation is already last chair.
+    const first = subject.returnOptions[0]!;
+    const last = subject.returnOptions[subject.returnOptions.length - 1]!;
+    expect(ladder[0]!.departure).toBe(first.departure);
+    expect(ladder[ladder.length - 1]!.departure).toBe(last.departure);
   });
 });

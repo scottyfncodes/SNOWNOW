@@ -7,6 +7,7 @@ import type {
   TravelCurve,
 } from '@/domain/conditions';
 import type { Mountain, Origin } from '@/domain/mountain';
+import type { TicketPrice } from '@/domain/pricing';
 import { type Availability, ok, unavailable, type Provenance } from '@/domain/provenance';
 import { at, HOUR, minuteRange, type MinuteOfDay } from '@/domain/time';
 import type { DayInputs } from '@/engine/inputs';
@@ -40,6 +41,7 @@ export function testMountain(overrides: Partial<Mountain> = {}): Mountain {
     name: 'Test Mountain',
     shortName: 'TEST',
     region: 'Test Range',
+    snowRegion: 'test-region',
     state: 'CO',
     country: 'US',
     coordinates: { lat: 39.5, lon: -106 },
@@ -129,11 +131,25 @@ export function testOperations(overrides: Partial<OperationsReport> = {}): Opera
     liftsExpectedOpen: 18,
     liftsTotal: 20,
     terrainOpenShare: 0.9,
+    groomedShare: 0.8,
     windHoldRisk: 0.1,
     upperMountainDelayMinutes: 20,
     status: 'open',
     notes: [],
     ...overrides,
+  };
+}
+
+export function testTicket(adultDay = 179, windowRate = 229): TicketPrice {
+  return {
+    mountainId: 'test-mtn',
+    date: '2026-01-17',
+    currency: 'USD',
+    adultDay,
+    windowRate,
+    kind: 'window',
+    purchasedDaysAhead: 0,
+    note: 'Fixture pricing.',
   };
 }
 
@@ -189,6 +205,7 @@ export interface InputsSpec {
   weather?: MountainWeather | 'unavailable';
   operations?: OperationsReport | 'unavailable';
   crowds?: CrowdCurve | 'unavailable';
+  ticket?: TicketPrice | 'unavailable';
   outbound?: TravelCurve | 'unavailable';
   inbound?: TravelCurve | 'unavailable';
   date?: string;
@@ -212,6 +229,7 @@ export function testInputs(spec: InputsSpec = {}): DayInputs {
     weather: wrap(spec.weather ?? testWeather(), 'No forecast.'),
     operations: wrap(spec.operations ?? testOperations(), 'No lift report.'),
     crowds: wrap(spec.crowds ?? testCrowds(), 'No crowd data.'),
+    ticket: wrap(spec.ticket ?? testTicket(), 'No ticket pricing.'),
     outbound: wrap(outbound, 'No route data.'),
     inbound: wrap(inbound, 'No route data.'),
     outboundOptions: outbound === 'unavailable' ? [] : [outbound],

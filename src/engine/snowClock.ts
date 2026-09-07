@@ -18,6 +18,15 @@ import type { DayInputs } from './inputs';
  */
 
 /** Relative weights of the six things that decide whether a run is good. */
+/**
+ * The best corduroy day there has ever been is still not a powder day. Without
+ * this ceiling the model would let a perfectly groomed afternoon outrank a
+ * tracked-out morning, and the optimiser — which counts quality-minutes —
+ * would cheerfully recommend skiing until last chair and driving home in the
+ * worst traffic of the day.
+ */
+const GROOMER_CEILING = 0.82;
+
 const QUALITY_MIX = {
   snow: 0.52,
   wind: 0.13,
@@ -46,6 +55,7 @@ const FALLBACK_OPS = (inputs: DayInputs): OperationsReport => {
     liftsExpectedOpen: Math.round(inputs.mountain.lifts.total * 0.8),
     liftsTotal: inputs.mountain.lifts.total,
     terrainOpenShare: 0.8,
+    groomedShare: 0.75,
     windHoldRisk: 0.2,
     upperMountainDelayMinutes: inputs.mountain.operations.upperMountainOpenOffset,
     status: 'open',
@@ -128,24 +138,35 @@ function crowdingCurve(crowds: CrowdCurve | null): ControlPoint[] {
 }
 
 /** Comfort of the snow surface itself: temperature band, sun, and grooming. */
-function surfaceScore(weather: HourlyWeather | null, daysSinceStorm: number, crowding: number): number {
+function surfaceScore(
+  weather: HourlyWeather | null,
+  daysSinceStorm: number,
+  crowding: number,
+  groomedShare: number,
+): number {
   if (!weather) return 55;
   const temp = weather.temperatureF;
+  // Peaks a little below 100 so grooming, sun and traffic have room to move it.
   const tempScore =
     temp < 0
-      ? scoreBetween(temp, -20, 0) * 0.55 + 30
+      ? scoreBetween(temp, -20, 0) * 0.55 + 28
       : temp <= 30
-        ? 100 - Math.abs(temp - 20) * 0.9
-        : clamp(100 - (temp - 30) * 7.5, 10, 100);
+        ? 94 - Math.abs(temp - 20) * 0.9
+        : clamp(94 - (temp - 30) * 7.5, 10, 100);
 
   // Sun on warm snow turns it to glue in the afternoon; sun on cold snow is free joy.
   const solarPenalty = temp > 28 ? weather.sunFactor * (temp - 28) * 2.6 : 0;
-  // Refrozen leftovers after a long dry spell.
-  const stalenessPenalty = clamp(daysSinceStorm * 3.5, 0, 22);
-  // Groomers get scraped off as the day goes on.
-  const scrapePenalty = crowding * 14;
+  // Refrozen leftovers after a long dry spell — which is exactly what a cat
+  // track fixes, so a mountain that grooms hard suffers far less from it.
+  const stalenessPenalty = clamp(daysSinceStorm * 3.5, 0, 22) * (1 - 0.55 * groomedShare);
+  // Groomers get scraped off as the day goes on; more corduroy takes longer.
+  const scrapePenalty = crowding * 14 * (1 - 0.4 * groomedShare);
 
-  return clamp(tempScore - solarPenalty - stalenessPenalty - scrapePenalty, 5, 100);
+  return clamp(
+    tempScore + groomedShare * 7 - solarPenalty - stalenessPenalty - scrapePenalty,
+    5,
+    100,
+  );
 }
 
 function windScore(weather: HourlyWeather | null, windHoldRisk: number): number {
@@ -210,12 +231,15 @@ export function buildSnowClock(inputs: DayInputs, options: SnowClockOptions = {}
     const hour = weatherAt(weather.hourly, minute);
     const crowding = clamp01(sampleCurve(crowdCurve, minute));
 
+    // Roughly: 1" is a dusting, 4" is a good morning, 10" is why you set the
+    // alarm. Deep enough to discriminate, quick enough that a few inches
+    // already reads as a real day.
     const freshness = clamp(
       100 * saturate(untracked * densityBonus * prefs.powderPreference, 3.2),
       0,
       100,
     );
-    const surface = surfaceScore(hour, weather.daysSinceStorm, crowding);
+    const surface = surfaceScore(hour, weather.daysSinceStorm, crowding, ops.groomedShare);
     const wind = windScore(hour, ops.windHoldRisk);
     const visibility = hour ? clamp(hour.visibility * 100, 0, 100) : 60;
     // Crowd pain, softened by how much the rider actually minds a lift line.
@@ -226,9 +250,11 @@ export function buildSnowClock(inputs: DayInputs, options: SnowClockOptions = {}
     );
     const access = accessScore(minute, ops, inputs.mountain.terrain.aboveTreelineShare);
 
-    // When there is powder, powder is the day. When there isn't, it's the groomers.
+    // When there is powder, powder is the day. When there isn't, it's the
+    // groomers — which are capped below what fresh snow can deliver.
     const powderShare = saturate(untracked, 2);
-    const snowComponent = freshness * powderShare + surface * (1 - powderShare);
+    const snowComponent =
+      freshness * powderShare + surface * GROOMER_CEILING * (1 - powderShare);
 
     const closed = minute < open || minute > close;
     const quality = clamp(

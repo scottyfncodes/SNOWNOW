@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import type { Recommendation, SkiDayPlan } from '@/domain/plan';
 import type { MinuteOfDay } from '@/domain/time';
 import { planSummary } from '@/engine/explain';
@@ -24,6 +24,16 @@ export interface PlanViewProps {
 export function PlanView({ recommendation, now, projected = false }: PlanViewProps) {
   const [selectedId, setSelectedId] = useState(recommendation.best.mountain.id);
   const [showFactors, setShowFactors] = useState(false);
+  const alternativesRef = useRef<HTMLElement | null>(null);
+
+  const scrollToAlternatives = useCallback(() => {
+    const node = alternativesRef.current;
+    if (!node) return;
+    node.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // Move focus too, so the jump works for keyboard and screen-reader users
+    // rather than only for people who can watch the page slide.
+    node.focus({ preventScroll: true });
+  }, []);
 
   const plan: SkiDayPlan =
     recommendation.all.find((candidate) => candidate.mountain.id === selectedId) ??
@@ -36,7 +46,16 @@ export function PlanView({ recommendation, now, projected = false }: PlanViewPro
         {planSummary(plan)}
       </p>
 
-      <RecommendationCard plan={plan} projected={projected} />
+      <RecommendationCard
+        plan={plan}
+        projected={projected}
+        why={
+          plan.mountain.id === recommendation.best.mountain.id
+            ? recommendation.comparison
+            : `${recommendation.best.mountain.shortName} is still the better overall day.`
+        }
+        onCompare={others.length > 0 ? scrollToAlternatives : undefined}
+      />
 
       <SnowClockPanel
         clock={plan.snowClock}
@@ -52,10 +71,11 @@ export function PlanView({ recommendation, now, projected = false }: PlanViewPro
       <ReturnPlanner plan={plan} now={now} />
 
       <AlternativeList
+        ref={alternativesRef}
         alternatives={others}
         comparison={
           plan.mountain.id === recommendation.best.mountain.id
-            ? recommendation.comparison
+            ? `Every mountain within reach, ranked. Tap one to see its whole day.`
             : `Showing ${plan.mountain.shortName}. ${recommendation.best.mountain.shortName} is still the better overall day.`
         }
         selectedId={selectedId}

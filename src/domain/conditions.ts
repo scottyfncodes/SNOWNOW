@@ -44,6 +44,12 @@ export interface OperationsReport {
   liftsTotal: number;
   /** 0..1 share of terrain expected open. */
   terrainOpenShare: number;
+  /**
+   * 0..1 share of open terrain groomed overnight. Snow reports publish this,
+   * and it is what makes a low-snow day at a grooming-focused mountain better
+   * than a low-snow day anywhere else.
+   */
+  groomedShare: number;
   /** 0..1 probability that wind puts key lifts on hold during the day. */
   windHoldRisk: number;
   /** Upper-mountain / avalanche-control delay in minutes past scheduled open. */

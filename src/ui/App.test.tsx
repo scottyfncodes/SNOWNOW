@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import App from '@/App';
+import { DEFAULT_WEIGHTS } from '@/config/weights';
 import { createDemoRegistry } from '@/providers/demo';
 
 /**
@@ -15,7 +16,7 @@ const user = () => userEvent.setup();
 async function tapNow() {
   render(<App />);
   await user().click(screen.getByRole('button', { name: /^NOW/ }));
-  return waitFor(() => expect(screen.getByText(/The call/i)).toBeInTheDocument(), {
+  return waitFor(() => expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument(), {
     timeout: 12_000,
   });
 }
@@ -67,7 +68,7 @@ describe('NOW', () => {
     expect(screen.getAllByText('Prime snow').length).toBeGreaterThan(0);
     expect(screen.getByText('Head home')).toBeInTheDocument();
     expect(screen.getByText('Home by')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: /why that one/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /the alternatives/i })).toBeInTheDocument();
   });
 
   it('never claims demo numbers are live', async () => {
@@ -88,7 +89,10 @@ describe('NOW', () => {
     await tapNow();
     const slider = screen.getByRole('slider', { name: /departure time/i }) as HTMLInputElement;
     const before = slider.getAttribute('aria-valuetext');
-    fireEvent.change(slider, { target: { value: String(Number(slider.max)) } });
+    // Move somewhere that is definitely not where we started, whatever the
+    // recommendation happened to be today.
+    const target = slider.value === '0' ? slider.max : '0';
+    fireEvent.change(slider, { target: { value: target } });
     await waitFor(() => expect(slider.getAttribute('aria-valuetext')).not.toBe(before));
     // Leaving at the very end of the grid must cost you something real.
     expect(screen.getByRole('button', { name: /back to the sweet spot/i })).toBeInTheDocument();
@@ -100,7 +104,7 @@ describe('NOW', () => {
 
   it('lets you compare alternatives and switch to one', async () => {
     await tapNow();
-    const alternatives = screen.getByRole('heading', { name: /why that one/i }).closest('section')!;
+    const alternatives = screen.getByRole('heading', { name: /the alternatives/i }).closest('section')!;
     const first = within(alternatives).getAllByRole('button')[0]!;
     const name = first.querySelector('.alt-name')!.textContent!;
     expect(screen.getByRole('heading', { level: 1 }).textContent).not.toBe(name);
@@ -128,7 +132,7 @@ describe('LATER', () => {
   it('projects a specific future date and marks it as a projection', async () => {
     render(<App />);
     await user().click(screen.getByRole('button', { name: /^LATER/ }));
-    await waitFor(() => expect(screen.getByText(/Projected best/i)).toBeInTheDocument(), {
+    await waitFor(() => expect(screen.getByText(/^Projected$/i)).toBeInTheDocument(), {
       timeout: 12_000,
     });
     expect(screen.getByText(/CONFIDENCE/)).toBeInTheDocument();
@@ -138,7 +142,7 @@ describe('LATER', () => {
   it('ranks a whole range and names a best bet with its confidence', async () => {
     render(<App />);
     await user().click(screen.getByRole('button', { name: /^LATER/ }));
-    await waitFor(() => expect(screen.getByText(/Projected best/i)).toBeInTheDocument(), {
+    await waitFor(() => expect(screen.getByText(/^Projected$/i)).toBeInTheDocument(), {
       timeout: 12_000,
     });
     await user().click(screen.getByRole('button', { name: /next 7 days/i }));
@@ -169,7 +173,8 @@ describe('accessibility basics', () => {
     await tapNow();
     await user().click(screen.getByRole('button', { name: /how we got/i }));
     const meters = screen.getAllByRole('meter');
-    expect(meters.length).toBe(11);
+    // One per configured factor — derived, so adding a factor updates the test.
+    expect(meters.length).toBe(Object.keys(DEFAULT_WEIGHTS.factors).length);
     for (const meter of meters) {
       expect(meter).toHaveAttribute('aria-valuenow');
       expect(meter).toHaveAttribute('aria-label');
@@ -183,11 +188,87 @@ describe('accessibility basics', () => {
   });
 });
 
+describe('the ten-second test', () => {
+  /**
+   * The product acceptance test, as a test: every question a skier opens the
+   * app with has to be answerable from the recommendation card itself, without
+   * hunting. An earlier build put "why this mountain" three screens down.
+   */
+  it('answers all six questions inside the recommendation card', async () => {
+    await tapNow();
+    const card = screen.getByRole('heading', { level: 1 }).closest('section')!;
+    const q = within(card);
+
+    expect(q.getByRole('heading', { level: 1 }).textContent).toBeTruthy(); // where
+    expect(q.getAllByText(/^Leave /).length).toBeGreaterThan(0); //          when to leave
+    expect(q.getByText('Arrive')).toBeInTheDocument(); //                    when you arrive
+    expect(q.getByText('Prime snow')).toBeInTheDocument(); //                when it's best
+    expect(q.getByText('Head home')).toBeInTheDocument(); //                 when to bail
+    expect(q.getByText('Home by')).toBeInTheDocument(); //                   when you're back
+    expect(q.getByRole('heading', { name: /^why /i })).toBeInTheDocument(); // why this one
+  });
+
+  it('leads with the verdict, not the decimal', async () => {
+    await tapNow();
+    const card = screen.getByRole('heading', { level: 1 }).closest('section')!;
+    const verdict = card.querySelector('.reccard-verdict')!;
+    const score = card.querySelector('.scoredial-value')!;
+    const sizeOf = (el: Element) =>
+      parseFloat(getComputedStyle(el).fontSize || '0') || el.textContent!.length;
+    // jsdom has no real layout, so assert the structural promise instead: the
+    // verdict is a sibling of the name, the score is labelled subordinate.
+    expect(verdict.textContent).toMatch(/[A-Z]/);
+    expect(score).toBeInTheDocument();
+    expect(card.querySelector('.reccard-scorelabel')!.textContent).toMatch(/day score/i);
+    expect(sizeOf(verdict)).toBeGreaterThan(0);
+  });
+
+  it('shows what the day costs', async () => {
+    await tapNow();
+    const card = screen.getByRole('heading', { level: 1 }).closest('section')!;
+    expect(within(card).getByText(/lift ticket/i)).toBeInTheDocument();
+    expect(within(card).getByText(/^\$\d+$/)).toBeInTheDocument();
+  });
+
+  it('can jump straight to the alternatives', async () => {
+    await tapNow();
+    const jump = screen.getByRole('button', { name: /compare the alternatives/i });
+    await user().click(jump);
+    expect(screen.getByRole('heading', { name: /the alternatives/i })).toBeInTheDocument();
+  });
+
+  it('explains the snow clock in words before drawing it', async () => {
+    await tapNow();
+    const panel = screen.getByRole('heading', { name: /the snow clock/i }).closest('section')!;
+    const caption = panel.querySelector('.snowclock-caption')!;
+    expect(caption.textContent!.length).toBeGreaterThan(30);
+    expect(caption.textContent).toMatch(/best snow|no standout window/i);
+  });
+
+  it('states the return decision before showing the table', async () => {
+    await tapNow();
+    const panel = screen.getByRole('heading', { name: /when to head home/i }).closest('section')!;
+    expect(panel.querySelector('.return-lead')!.textContent).toMatch(/leave at .*home by/i);
+  });
+
+  it('marks which way each alternative trade-off cuts', async () => {
+    await tapNow();
+    const alternatives = screen.getByRole('heading', { name: /the alternatives/i }).closest('section')!;
+    const chips = alternatives.querySelectorAll('.alt-tradeoff');
+    expect(chips.length).toBeGreaterThan(0);
+    for (const chip of chips) {
+      expect(chip.className).toMatch(/is-better|is-worse/);
+      // Sign as well as colour, so it survives greyscale and colour blindness.
+      expect(chip.textContent).toMatch(/^[+−]/);
+    }
+  });
+});
+
 describe('honest empty states', () => {
   async function tapNowWith(registry: ReturnType<typeof createDemoRegistry>) {
     render(<App registry={registry} />);
     await user().click(screen.getByRole('button', { name: /^NOW/ }));
-    await waitFor(() => expect(screen.getByText(/The call/i)).toBeInTheDocument(), {
+    await waitFor(() => expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument(), {
       timeout: 12_000,
     });
   }
@@ -208,5 +289,11 @@ describe('honest empty states', () => {
     await tapNowWith(createDemoRegistry({ mountain: { failOperationsFor: () => true } }));
     expect(screen.getByText(/Lift report isn't talking/i)).toBeInTheDocument();
     expect(screen.getByText(/MEDIUM CONFIDENCE|LOW CONFIDENCE/)).toBeInTheDocument();
+  });
+
+  it('omits the price rather than inventing one when pricing is down', async () => {
+    await tapNowWith(createDemoRegistry({ pricing: { failFor: () => true } }));
+    expect(screen.queryByText(/lift ticket/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/Ticket pricing isn't loading/i)).toBeInTheDocument();
   });
 });

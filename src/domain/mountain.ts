@@ -47,7 +47,7 @@ export interface WeatherLocation {
   /** Elevation the forecast is anchored to (mid-mountain). */
   forecastElevationFt: number;
   /** Which side of the divide — used by demo storm modelling. */
-  aspect: 'west-facing' | 'east-facing' | 'divide';
+  aspect: 'west-facing' | 'east-facing' | 'south-facing' | 'divide';
 }
 
 /** A drivable corridor shared by several mountains (e.g. I-70 west of Denver). */
@@ -79,7 +79,15 @@ export interface Mountain {
   name: string;
   /** What we call it in copy: "BRECK", "VAIL". */
   shortName: string;
+  /** Display region, e.g. "San Juans". */
   region: string;
+  /**
+   * Which weather region the mountain sits in. Storms do not arrive everywhere
+   * at once: the I-70 corridor and the San Juans run on different tracks, and
+   * modelling that is what lets a dry Front Range weekend still have a good
+   * answer somewhere.
+   */
+  snowRegion: string;
   state: string;
   country: string;
   coordinates: GeoPoint;

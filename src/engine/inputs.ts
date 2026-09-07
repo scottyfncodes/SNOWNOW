@@ -2,6 +2,7 @@ import type { CrowdCurve, MountainWeather, OperationsReport, TravelCurve } from 
 import type { DateKey } from '@/domain/dates';
 import { daysBetween } from '@/domain/dates';
 import { type AccessRoute, type Mountain, type Origin, routesFrom } from '@/domain/mountain';
+import type { TicketPrice } from '@/domain/pricing';
 import { type Availability, unavailable } from '@/domain/provenance';
 import type { MinuteOfDay } from '@/domain/time';
 import type { ProviderContext, ProviderRegistry } from '@/providers/types';
@@ -21,6 +22,7 @@ export interface DayInputs {
   weather: Availability<MountainWeather>;
   operations: Availability<OperationsReport>;
   crowds: Availability<CrowdCurve>;
+  ticket: Availability<TicketPrice>;
   outbound: Availability<TravelCurve>;
   inbound: Availability<TravelCurve>;
   /** Every route considered, so the UI can talk about alternatives. */
@@ -55,10 +57,11 @@ export async function loadDayInputs(
 ): Promise<DayInputs> {
   const routes = routesFrom(mountain, origin.id);
 
-  const [weather, operations, crowds, outboundResults, inboundResults] = await Promise.all([
+  const [weather, operations, crowds, ticket, outboundResults, inboundResults] = await Promise.all([
     attempt(registry.weather.id, () => registry.weather.getMountainWeather(mountain, context)),
     attempt(registry.mountain.id, () => registry.mountain.getOperations(mountain, context)),
     attempt(registry.mountain.id, () => registry.mountain.getCrowdForecast(mountain, context)),
+    attempt(registry.pricing.id, () => registry.pricing.getTicketPrice(mountain, context)),
     Promise.all(
       routes.map((route) =>
         attempt(registry.traffic.id, () => registry.traffic.getTravelCurve(route, 'outbound', context)),
@@ -99,6 +102,7 @@ export async function loadDayInputs(
     weather,
     operations,
     crowds,
+    ticket,
     outbound: pickBest(outboundOptions, outboundResults),
     inbound: pickBest(inboundOptions, inboundResults),
     outboundOptions,

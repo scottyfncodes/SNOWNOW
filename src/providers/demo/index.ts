@@ -1,16 +1,24 @@
 import type { ProviderRegistry } from '@/providers/types';
 import { DemoMountainProvider, type DemoMountainOptions } from './mountain';
 import { DemoPlacesProvider } from './places';
+import { DemoPricingProvider, type DemoPricingOptions } from './pricing';
 import { DemoTrafficProvider, type DemoTrafficOptions } from './traffic';
 import { DemoWeatherProvider, type DemoWeatherOptions } from './weather';
 
 export * from './scenario';
-export { DemoMountainProvider, DemoPlacesProvider, DemoTrafficProvider, DemoWeatherProvider };
+export {
+  DemoMountainProvider,
+  DemoPlacesProvider,
+  DemoPricingProvider,
+  DemoTrafficProvider,
+  DemoWeatherProvider,
+};
 
 export interface DemoRegistryOptions {
   weather?: DemoWeatherOptions;
   traffic?: DemoTrafficOptions;
   mountain?: DemoMountainOptions;
+  pricing?: DemoPricingOptions;
 }
 
 /**
@@ -22,6 +30,7 @@ export function createDemoRegistry(options: DemoRegistryOptions = {}): ProviderR
     weather: new DemoWeatherProvider(options.weather),
     traffic: new DemoTrafficProvider(options.traffic),
     mountain: new DemoMountainProvider(options.mountain),
+    pricing: new DemoPricingProvider(options.pricing),
     places: new DemoPlacesProvider(),
     usingDemoData: true,
     label: 'Demo data',

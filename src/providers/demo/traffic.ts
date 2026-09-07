@@ -9,7 +9,7 @@ import {
 } from '@/domain/provenance';
 import { at, clamp, clamp01, minuteRange } from '@/domain/time';
 import { type ControlPoint, sampleCurve } from '@/lib/curve';
-import { CORRIDOR_SEVERITY, corridorFor } from '@/data/corridors';
+import { CORRIDOR_REGION, CORRIDOR_SEVERITY, corridorFor } from '@/data/corridors';
 import { createRng, hashSeed } from '@/lib/random';
 import type { ProviderContext, TrafficProvider } from '@/providers/types';
 import { regionalPattern } from './scenario';
@@ -76,7 +76,11 @@ export class DemoTrafficProvider implements TrafficProvider {
       return unavailable(this.id, 'No route data returned for this corridor.');
     }
 
-    const pattern = regionalPattern(context.date, context.horizonDays);
+    const pattern = regionalPattern(
+      context.date,
+      context.horizonDays,
+      CORRIDOR_REGION[route.corridorId] ?? 'i70-corridor',
+    );
     const severity = CORRIDOR_SEVERITY[route.corridorId] ?? 0.5;
     const corridor = corridorFor(route.corridorId);
     const rng = createRng(hashSeed('demo-traffic', context.date, route.id, direction));
@@ -90,21 +94,27 @@ export class DemoTrafficProvider implements TrafficProvider {
     const window = direction === 'outbound' ? OUTBOUND_WINDOW : RETURN_WINDOW;
 
     const samples: TravelSample[] = minuteRange(window.start, window.end, STEP).map((departure) => {
-      // Congestion keeps the *shape* of the day (so valleys stay visible);
-      // demand scales how much delay that shape actually costs you.
-      const congestion = clamp01(sampleCurve(shape, departure));
+      /*
+       * Two different numbers, on purpose. `shape` is where this departure
+       * sits on the day's congestion curve, and it drives the delay so that
+       * the valleys stay visible whatever the demand. `congestion` is what a
+       * traffic feed would actually report — how jammed it is right now —
+       * which is shape scaled by how many people are on the road. A Tuesday
+       * at the top of the curve is genuinely not a Saturday at the top of it.
+       */
+      const shapeAt = clamp01(sampleCurve(shape, departure));
       const incidentDelay = incidents.reduce(
         (total, incident) => total + incidentDelayAt(incident, departure),
         0,
       );
       const duration =
         (route.freeFlowMinutes + stormMinutes) *
-          (1 + congestion * severity * pattern.demandFactor) +
+          (1 + shapeAt * severity * pattern.demandFactor) +
         incidentDelay;
       return {
         departure,
         durationMinutes: Math.round(duration),
-        congestion: Math.round(congestion * 100) / 100,
+        congestion: Math.round(clamp01(shapeAt * pattern.demandFactor) * 100) / 100,
       };
     });
 

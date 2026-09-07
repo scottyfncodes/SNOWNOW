@@ -6,6 +6,7 @@ import type {
   TravelCurve,
 } from '@/domain/conditions';
 import type { AccessRoute, Mountain, Origin } from '@/domain/mountain';
+import type { TicketPrice } from '@/domain/pricing';
 import type { Availability } from '@/domain/provenance';
 import type { MinuteOfDay } from '@/domain/time';
 
@@ -58,6 +59,20 @@ export interface MountainProvider {
   ): Promise<Availability<CrowdCurve>>;
 }
 
+/**
+ * Ticket pricing is its own upstream: a resort's commerce system has nothing
+ * to do with its lift-status feed, and one will go live long before the other.
+ * Keeping it behind its own interface means a real pricing integration lands
+ * without touching the UI or the optimiser.
+ */
+export interface PricingProvider {
+  readonly id: string;
+  getTicketPrice(
+    mountain: Mountain,
+    context: ProviderContext,
+  ): Promise<Availability<TicketPrice>>;
+}
+
 export type PlaceKind =
   | 'coffee'
   | 'breakfast'
@@ -95,6 +110,7 @@ export interface ProviderRegistry {
   weather: WeatherProvider;
   traffic: TrafficProvider;
   mountain: MountainProvider;
+  pricing: PricingProvider;
   places: PlacesProvider;
   /** True when any provider in the bundle is serving demo data. */
   usingDemoData: boolean;

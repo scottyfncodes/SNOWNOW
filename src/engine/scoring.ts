@@ -10,6 +10,7 @@ import type {
   SnowClock,
 } from '@/domain/plan';
 import { type ConfidenceLevel, weakestConfidence } from '@/domain/provenance';
+import { formatPrice, savingsVsWindow } from '@/domain/pricing';
 import { clamp, formatDuration, type MinuteOfDay } from '@/domain/time';
 import { sampleCurve, saturate, scoreBetween } from '@/lib/curve';
 import type { DayInputs } from './inputs';
@@ -79,6 +80,7 @@ export function scoreDay(input: ScoreInput): DayScore {
     roads: roadsFactor(inputs),
     crowds: crowdsFactor(crowds, skiWindow, preferences),
     usableTime: usableTimeFactor(departure, ret),
+    ticket: ticketFactor(inputs),
   };
 
   const factors: ScoreFactor[] = (Object.keys(raw) as ScoreFactorKey[]).map((key) => {
@@ -134,7 +136,13 @@ export function scoreDay(input: ScoreInput): DayScore {
 
 function confidenceFor(inputs: DayInputs, factors: ScoreFactor[]): ConfidenceLevel {
   const levels: ConfidenceLevel[] = [];
-  for (const availability of [inputs.weather, inputs.operations, inputs.crowds, inputs.outbound, inputs.inbound]) {
+  for (const availability of [
+    inputs.weather,
+    inputs.operations,
+    inputs.crowds,
+    inputs.outbound,
+    inputs.inbound,
+  ]) {
     if (availability.status === 'ok') levels.push(availability.provenance.confidence);
   }
   const base = weakestConfidence(levels.length > 0 ? levels : ['low']);
@@ -160,8 +168,14 @@ function snowFactor(
   const atArrival = clock.points.find((point) => point.minute >= skiStart)?.untrackedIn ?? 0;
 
   // What matters is not what fell, but what is still there when you click in.
-  const fallenScore = 100 * saturate(total, 5);
-  const untrackedScore = 100 * saturate(atArrival, 2.6);
+  /*
+   * Calibrated so the whole range gets used: a couple of inches is a 30, a
+   * good morning is a 60, and a genuine storm reaches the 90s. Saturating any
+   * faster and the engine cannot tell a good day from a great one; any slower
+   * and no day ever scores like the day it actually was.
+   */
+  const fallenScore = 100 * saturate(total, 6);
+  const untrackedScore = 100 * saturate(atArrival, 3.4);
   const value = total < 1 ? scoreBetween(weather.daysSinceStorm, 8, 0) * 0.55 + 22 : fallenScore * 0.45 + untrackedScore * 0.55;
 
   const note =
@@ -295,8 +309,14 @@ function travelFactor(
     Math.max(0, ALARM_REFERENCE - departure.departure) * (1 - preferences.sleepVsSend);
   const overLimit = Math.max(0, departure.driveMinutes - preferences.maxDriveMinutes);
 
+  /*
+   * Anchored to what a real ski day costs, not to an imaginary perfect one.
+   * A ~3h round trip is a normal Front Range Saturday and should not read as a
+   * failing grade; the scale is tuned so the spread that actually exists —
+   * roughly 3 to 9 hours door to door — uses most of the range.
+   */
   const burden = roundTrip + idleMinutes * 0.8 + alarmMinutes;
-  const value = scoreBetween(burden, 620, 100) - overLimit * 0.8;
+  const value = scoreBetween(burden, 520, 170) - overLimit * 0.8;
 
   const idleNote = idleMinutes > 25 ? ` ${formatDuration(idleMinutes)} of standing around.` : '';
   return {
@@ -309,9 +329,11 @@ function trafficFactor(departure: DepartureOption | null, ret: ReturnOption | nu
   if (!departure || !ret) {
     return { value: NEUTRAL, note: 'No traffic data.', imputed: true };
   }
+  // This measures how well the plan dodges traffic — and dodging it is the
+  // whole job, so a well-timed day is allowed to score like one.
   const worst = Math.max(departure.congestion, ret.congestion);
   const mean = (departure.congestion + ret.congestion) / 2;
-  const value = clamp(100 - mean * 78 - worst * 22, 0, 100);
+  const value = clamp(100 - mean * 66 - worst * 24, 0, 100);
   return {
     value,
     note:
@@ -364,6 +386,31 @@ function crowdsFactor(
             ? 'Busy through the middle of the day.'
             : 'Properly crowded.',
   };
+}
+
+/**
+ * Ticket price as decision context.
+ *
+ * The anchors span the actual market: a peak window rate at a destination
+ * resort against a same-day independent. The *weight* (config/weights.ts) is
+ * what keeps this honest — this factor exists so the user can see the cost and
+ * so a cheap ticket can break a tie, not so it can win an argument against
+ * fresh snow.
+ */
+const EXPENSIVE_TICKET = 320;
+const CHEAP_TICKET = 80;
+
+function ticketFactor(inputs: DayInputs): RawFactor {
+  if (inputs.ticket.status !== 'ok') {
+    return { value: NEUTRAL, note: 'No ticket pricing available.', imputed: true };
+  }
+  const ticket = inputs.ticket.data;
+  const saved = savingsVsWindow(ticket);
+  const note =
+    saved > 8
+      ? `${formatPrice(ticket.adultDay, ticket.currency)} — ${formatPrice(saved, ticket.currency)} under the window rate.`
+      : `${formatPrice(ticket.adultDay, ticket.currency)}. ${ticket.note}`;
+  return { value: scoreBetween(ticket.adultDay, EXPENSIVE_TICKET, CHEAP_TICKET), note };
 }
 
 function usableTimeFactor(departure: DepartureOption | null, ret: ReturnOption | null): RawFactor {
