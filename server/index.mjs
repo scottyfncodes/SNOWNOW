@@ -208,6 +208,40 @@ const server = createServer(async (req, res) => {
     return;
   }
 
+  /*
+   * Browser-friendly GET version of /api/travel-curve, for manually
+   * eyeballing that a real deploy is actually returning live Google Routes
+   * data (no POST client needed — just open the URL). Defaults to a fixed
+   * Denver -> Copper Mountain outbound sample if no query params are given.
+   * Not used by the app itself.
+   */
+  if (req.method === 'GET' && req.url?.startsWith('/api/test-drive')) {
+    const params = new URL(req.url, `http://${req.headers.host}`).searchParams;
+    const origin = {
+      lat: Number(params.get('originLat') ?? 39.7392),
+      lon: Number(params.get('originLon') ?? -104.9903),
+    };
+    const destination = {
+      lat: Number(params.get('destLat') ?? 39.4817),
+      lon: Number(params.get('destLon') ?? -106.1614),
+    };
+    const direction = params.get('direction') === 'return' ? 'return' : 'outbound';
+    const date = params.get('date') ?? new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+
+    if (!API_KEY) {
+      sendJson(res, 503, { error: 'GOOGLE_ROUTES_API_KEY is not configured on this server.' });
+      return;
+    }
+
+    const curve = await buildTravelCurve(origin, destination, direction, date);
+    if (!curve) {
+      sendJson(res, 502, { error: 'No route data returned by Google Routes for any sampled departure time.' });
+      return;
+    }
+    sendJson(res, 200, { origin, destination, direction, date, ...curve });
+    return;
+  }
+
   if (req.method === 'POST' && req.url === '/api/travel-curve') {
     if (!API_KEY) {
       sendJson(res, 503, {
