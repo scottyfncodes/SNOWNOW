@@ -1,5 +1,5 @@
 import { useId } from 'react';
-import type { SnowClock } from '@/domain/plan';
+import type { SnowClock, SnowState } from '@/domain/plan';
 import { clamp, formatClock, formatClockShort, type MinuteOfDay } from '@/domain/time';
 import { linearScale, smoothPath } from './chart';
 
@@ -9,6 +9,8 @@ const PAD = { top: 30, right: 14, bottom: 26, left: 14 };
 
 export interface SnowClockChartProps {
   clock: SnowClock;
+  /** Honest, absolute snow-quality state — only `'prime'` may draw the "PRIME SNOW" label. */
+  snowState: SnowState;
   /** Where the rider actually clicks in. */
   firstTurn?: MinuteOfDay | null;
   /** When they head for the car. */
@@ -30,10 +32,11 @@ export interface SnowClockChartProps {
  * version used a pale grey overlay, which every reader interpreted as "this
  * part is disabled" — precisely backwards.
  */
-export function SnowClockChart({ clock, firstTurn, leaveAt, now }: SnowClockChartProps) {
+export function SnowClockChart({ clock, snowState, firstTurn, leaveAt, now }: SnowClockChartProps) {
   const gradientId = useId();
   const primeId = useId();
   const points = clock.points;
+  const isPrime = snowState === 'prime';
   if (points.length === 0) return null;
 
   const start = points[0]!.minute;
@@ -57,7 +60,7 @@ export function SnowClockChart({ clock, firstTurn, leaveAt, now }: SnowClockChar
   for (let minute = Math.ceil(start / 60) * 60; minute <= end; minute += 120) hourMarks.push(minute);
 
   const summary = prime
-    ? `Ski quality through the day. Best window ${formatClock(prime.start)} to ${formatClock(prime.end)}, peaking around ${formatClock(prime.peakMinute)}.`
+    ? `Ski quality through the day. ${isPrime ? 'Prime' : 'Best'} window ${formatClock(prime.start)} to ${formatClock(prime.end)}, peaking around ${formatClock(prime.peakMinute)}.`
     : 'Ski quality through the day.';
 
   return (
@@ -117,10 +120,14 @@ export function SnowClockChart({ clock, firstTurn, leaveAt, now }: SnowClockChar
               fill={`url(#${primeId})`}
               className="snowclock-prime"
             />
-            <path d={line} className="snowclock-line is-prime" clipPath={`url(#${primeId}-clip)`} />
+            <path
+              d={line}
+              className={`snowclock-line${isPrime ? ' is-prime' : ''}`}
+              clipPath={`url(#${primeId}-clip)`}
+            />
             <g className="snowclock-primelabel">
               <text x={(x(prime.start) + x(prime.end)) / 2} y={PAD.top - 14} textAnchor="middle">
-                PRIME SNOW
+                {isPrime ? 'PRIME SNOW' : 'BEST WINDOW'}
               </text>
             </g>
           </>

@@ -1,4 +1,5 @@
-import type { SnowClock } from '@/domain/plan';
+import type { SnowClock, SnowState } from '@/domain/plan';
+import { SNOW_STATE_LABEL } from '@/engine/snowState';
 import {
   formatClock,
   formatClockShort,
@@ -20,6 +21,8 @@ const HEAT = (quality: number): string => {
 
 export interface SnowClockPanelProps {
   clock: SnowClock;
+  /** Honest, absolute snow-quality state — see `engine/snowState.ts`. Only when this is `'prime'` may the panel say so. */
+  snowState: SnowState;
   firstTurn?: MinuteOfDay | null;
   leaveAt?: MinuteOfDay | null;
   now?: MinuteOfDay | null;
@@ -30,11 +33,12 @@ export interface SnowClockPanelProps {
  * A chart that needs to be studied has failed at 5am, so the headline finding
  * is written out in words and the picture backs it up.
  */
-export function SnowClockPanel({ clock, firstTurn, leaveAt, now }: SnowClockPanelProps) {
+export function SnowClockPanel({ clock, snowState, firstTurn, leaveAt, now }: SnowClockPanelProps) {
   // Skip the dead hours before the lifts turn; one is enough for context.
   const hours = clock.points.filter(
     (point) => point.minute % 60 === 0 && point.minute >= clock.open - 60,
   );
+  const isPrime = snowState === 'prime';
 
   return (
     <section className="panel" aria-labelledby="snowclock-heading">
@@ -44,21 +48,22 @@ export function SnowClockPanel({ clock, firstTurn, leaveAt, now }: SnowClockPane
         </h2>
         {clock.prime && (
           <p className="panel-head-note">
-            Prime <strong>{formatWindowLabel(clock.prime.start, clock.prime.end)}</strong>
+            {isPrime ? 'Prime' : 'Best window'}{' '}
+            <strong>{formatWindowLabel(clock.prime.start, clock.prime.end)}</strong>
           </p>
         )}
       </header>
 
-      <p className="snowclock-caption">{captionFor(clock, firstTurn, leaveAt)}</p>
+      <p className="snowclock-caption">{captionFor(clock, snowState, firstTurn, leaveAt)}</p>
 
-      <SnowClockChart clock={clock} firstTurn={firstTurn} leaveAt={leaveAt} now={now} />
+      <SnowClockChart clock={clock} snowState={snowState} firstTurn={firstTurn} leaveAt={leaveAt} now={now} />
 
       <ol className="hourstrip scroll-x" aria-label="Hour by hour">
         {hours.map((point) => (
           <li
             key={point.minute}
             className={`hourstrip-item${point.closed ? ' is-closed' : ''}${
-              clock.prime && point.minute >= clock.prime.start && point.minute < clock.prime.end
+              isPrime && clock.prime && point.minute >= clock.prime.start && point.minute < clock.prime.end
                 ? ' is-prime'
                 : ''
             }`}
@@ -78,6 +83,7 @@ export function SnowClockPanel({ clock, firstTurn, leaveAt, now }: SnowClockPane
 /** The finding, in a sentence, before anyone has to read the picture. */
 function captionFor(
   clock: SnowClock,
+  snowState: SnowState,
   firstTurn?: MinuteOfDay | null,
   leaveAt?: MinuteOfDay | null,
 ): string {
@@ -91,8 +97,12 @@ function captionFor(
         ? 'It gets better as the day goes on'
         : 'It peaks in the middle of the day';
 
+  // Only claim "best snow" when the day's actual snow state backs it up —
+  // otherwise this is describing the best *timing*, not the snow itself.
+  const snowLabel = snowState === 'prime' ? 'Best snow' : SNOW_STATE_LABEL[snowState];
+
   if (firstTurn == null || leaveAt == null) {
-    return `${shape}. Best snow ${formatWindowLabel(prime.start, prime.end)}.`;
+    return `${shape}. ${snowLabel} ${formatWindowLabel(prime.start, prime.end)}.`;
   }
 
   const caught = overlapMinutes(firstTurn, leaveAt, prime.start, prime.end);
@@ -104,5 +114,5 @@ function captionFor(
         ? `and this plan misses it`
         : `and you catch ${formatDuration(caught)} of it`;
 
-  return `${shape}. Best snow ${formatWindowLabel(prime.start, prime.end)} — you're on the hill from ${formatClock(firstTurn)}, ${catchNote}.`;
+  return `${shape}. ${snowLabel} ${formatWindowLabel(prime.start, prime.end)} — you're on the hill from ${formatClock(firstTurn)}, ${catchNote}.`;
 }

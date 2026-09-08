@@ -69,6 +69,7 @@ export function PlanView({ recommendation, now, projected = false }: PlanViewPro
 
       <SnowClockPanel
         clock={plan.snowClock}
+        snowState={plan.snowState}
         firstTurn={plan.departure?.firstTurn ?? null}
         leaveAt={plan.return?.departure ?? null}
         now={plan.isToday ? now : null}

@@ -56,12 +56,37 @@ export interface SnowWindow {
 
 export interface SnowClock {
   points: SnowClockPoint[];
-  /** The best contiguous stretch of the day. */
+  /**
+   * The best contiguous stretch of the day, relative to the day's own peak.
+   * This is a *timing* signal — "when is it best to be here" — and is named
+   * even on a mediocre day so the optimiser and the "when to leave" UI always
+   * have a window to aim for. It does NOT by itself mean the snow is good in
+   * an absolute sense; see `SnowState` / `snowState` on `SkiDayPlan` for the
+   * honest, absolute read on conditions. Never label this "PRIME SNOW" in the
+   * UI without checking that absolute state first.
+   */
   prime: SnowWindow | null;
   open: MinuteOfDay;
   close: MinuteOfDay;
   stepMinutes: Minutes;
 }
+
+/**
+ * The honest, absolute read on snow conditions — distinct from `SnowClock.prime`,
+ * which only ever describes the day's *best relative window* and is named even
+ * on a bone-dry day. `SnowState` is what may actually be shown to a user as a
+ * claim about the snow itself:
+ *
+ * - `prime`: real evidence supports genuinely strong ski-quality conditions.
+ * - `building`: snow is falling now or meaningfully forecast, but not yet on
+ *   the ground in a way that clears the bar for `prime`.
+ * - `limited`: some snow is present (recent or currently on the ground) but
+ *   coverage/quality falls short of `prime`.
+ * - `none`: no meaningful current, recent, or incoming snow.
+ * - `unavailable`: the weather feed itself is down — there isn't enough
+ *   trustworthy data to make any snow-quality claim at all.
+ */
+export type SnowState = 'prime' | 'building' | 'limited' | 'none' | 'unavailable';
 
 /** ---- Scoring ----------------------------------------------------------- */
 
@@ -175,6 +200,8 @@ export interface SkiDayPlan {
   isToday: boolean;
   score: DayScore;
   snowClock: SnowClock;
+  /** The honest, absolute snow-quality claim for this plan — see `SnowState`. */
+  snowState: SnowState;
   /** Base-elevation conditions, when the weather feed succeeded. Never a guess. */
   baseConditions: ElevationConditions | null;
   /** Summit conditions. `null` whenever the provider couldn't resolve one — never copied from base. */

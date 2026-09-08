@@ -1,4 +1,5 @@
 import type { SkiDayPlan } from '@/domain/plan';
+import { SNOW_STATE_LABEL } from '@/engine/snowState';
 import { formatPrice, savingsVsWindow } from '@/domain/pricing';
 import { formatClock, formatDuration, formatWindowLabel } from '@/domain/time';
 import { BasePeakConditions } from './BasePeakConditions';
@@ -109,15 +110,15 @@ export function RecommendationCard({ plan, why, projected = false, onCompare }: 
             <dd className="numeral">{formatClock(departure.arrival)}</dd>
             <p className="faint">First turn {formatClock(departure.firstTurn)}</p>
           </div>
-          <div className="reccard-time is-prime is-wide">
-            <dt>Prime snow</dt>
+          <div className={`reccard-time is-wide${plan.snowState === 'prime' ? ' is-prime' : ''}`}>
+            <dt>{SNOW_STATE_LABEL[plan.snowState]}</dt>
             <dd className="numeral">
               {snowClock.prime ? formatWindowLabel(snowClock.prime.start, snowClock.prime.end) : '—'}
             </dd>
             <p className="faint">
               {departure.primeCaptured > 0
-                ? `${formatDuration(departure.primeCaptured)} of it is yours`
-                : 'You miss it at this departure'}
+                ? `${formatDuration(departure.primeCaptured)} of the best window is yours`
+                : 'You miss the best window at this departure'}
             </p>
           </div>
           <div className="reccard-time">

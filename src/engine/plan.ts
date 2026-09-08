@@ -34,6 +34,7 @@ import { optimizeDay } from './optimize';
 import { resolveAccessRoutes } from './routing';
 import { scoreDay } from './scoring';
 import { buildSnowClock, resolveOperations, resolveWeather } from './snowClock';
+import { classifySnowState } from './snowState';
 
 export interface PlanOptions {
   preferences?: RiderPreferences;
@@ -68,6 +69,7 @@ export function buildPlan(inputs: DayInputs, options: PlanOptions = {}): SkiDayP
 
   const weather = resolveWeather(inputs);
   const hasSnow = weather.overnightSnowIn >= 1.5;
+  const snowState = classifySnowState(inputs, snowClock);
   const caveats = collectCaveats(inputs, optimized.unavailableReason);
 
   const { state: operationalState, reason: operationalReason } = classifyOperationalState(inputs);
@@ -88,6 +90,7 @@ export function buildPlan(inputs: DayInputs, options: PlanOptions = {}): SkiDayP
     isToday: inputs.isToday,
     score,
     snowClock,
+    snowState,
     baseConditions: inputs.weather.status === 'ok' ? inputs.weather.data.base : null,
     peakConditions: inputs.weather.status === 'ok' ? inputs.weather.data.peak : null,
     snowHistory: inputs.weather.status === 'ok' ? inputs.weather.data.snowHistory : null,
@@ -101,7 +104,7 @@ export function buildPlan(inputs: DayInputs, options: PlanOptions = {}): SkiDayP
     departureOptions: optimized.departureOptions,
     return: optimized.ret,
     returnOptions: optimized.returnOptions,
-    timeline: buildTimeline(inputs, snowClock, optimized.departure, optimized.ret),
+    timeline: buildTimeline(inputs, snowClock, snowState, optimized.departure, optimized.ret),
     headline: headlineFor(inputs, snowClock, score),
     verdict: verdictFor(score.score, hasSnow),
     reasons: reasonsFor(inputs, snowClock, score),
@@ -189,6 +192,7 @@ function collectCaveats(inputs: DayInputs, timingReason: string | null): string[
 function buildTimeline(
   inputs: DayInputs,
   snowClock: SkiDayPlan['snowClock'],
+  snowState: SkiDayPlan['snowState'],
   departure: SkiDayPlan['departure'],
   ret: SkiDayPlan['return'],
 ): TimelineEvent[] {
@@ -221,12 +225,15 @@ function buildTimeline(
   }
 
   if (snowClock.prime) {
+    // The window is always named (it's the day's best relative stretch), but
+    // it only gets called "PRIME SNOW" when snowState agrees the snow itself
+    // is genuinely good — see engine/snowState.ts.
     events.push({
       minute: snowClock.prime.start,
       icon: '❄️',
-      label: 'PRIME SNOW',
+      label: snowState === 'prime' ? 'PRIME SNOW' : 'BEST WINDOW',
       detail: `through ${formatClock(snowClock.prime.end)}`,
-      emphasis: true,
+      emphasis: snowState === 'prime',
     });
     const fade = snowClock.points.find(
       (point) =>
