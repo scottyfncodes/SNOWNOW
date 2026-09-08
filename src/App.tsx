@@ -1,5 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { DEFAULT_PREFERENCES } from '@/config/weights';
+import { resolveEnvironment } from '@/config/env';
+import { warmUpTrafficService } from '@/lib/warmup';
 import { createProviderRegistry } from '@/providers';
 import type { ProviderRegistry } from '@/providers/types';
 import { useClock } from '@/ui/hooks/useClock';
@@ -27,6 +29,13 @@ export default function App({ registry: injected }: AppProps = {}) {
   const clock = useClock();
   const [mode, setMode] = useState<Mode>('home');
   const [originId, setOriginId] = useState(DEFAULT_PREFERENCES.originId);
+
+  // Give the traffic proxy's free-tier cold start a head start against the
+  // user's own dwell time on the homepage, rather than against the 15s
+  // timeout on the real request. See lib/warmup.ts.
+  useEffect(() => {
+    warmUpTrafficService(resolveEnvironment().trafficApiBaseUrl);
+  }, []);
 
   const preferences = useMemo(
     () => ({ ...DEFAULT_PREFERENCES, originId }),

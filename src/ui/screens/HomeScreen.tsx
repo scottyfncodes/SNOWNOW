@@ -50,13 +50,18 @@ export function HomeScreen({
 
         <footer className="home-foot">
           <OriginPicker value={originId} onChange={onOriginChange} />
-          {usingDemoData && (
+          {usingDemoData ? (
             <p className="home-demo">
               <span className="chip chip-demo">DEMO DATA</span>
               <span>
                 No live weather, traffic or lift feeds are connected. Every number below is
                 simulated — and labelled as such.
               </span>
+            </p>
+          ) : (
+            <p className="home-note">
+              First traffic check in a while? It can take up to 15 seconds to wake up — that's
+              normal, not a bug. Give it a moment or check again if it says unavailable.
             </p>
           )}
         </footer>
