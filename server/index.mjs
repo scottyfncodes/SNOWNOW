@@ -177,6 +177,51 @@ async function buildTravelCurve(origin, destination, direction, date) {
   };
 }
 
+/**
+ * A single "right now" reading — one Google Routes call, no departure grid.
+ * Exists for the mountain map, which only ever needs one point-in-time
+ * duration/distance for whichever mountain the user actually tapped, never a
+ * whole day's curve. Reusing `/api/travel-curve` for that would mean up to 9
+ * extra Google calls per tap for numbers the UI throws away.
+ */
+async function fetchRoutePreview(origin, destination) {
+  try {
+    const response = await fetchWithTimeout(
+      ROUTES_ENDPOINT,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Goog-Api-Key': API_KEY,
+          'X-Goog-FieldMask': 'routes.duration,routes.distanceMeters',
+        },
+        body: JSON.stringify({
+          origin: { location: { latLng: { latitude: origin.lat, longitude: origin.lon } } },
+          destination: { location: { latLng: { latitude: destination.lat, longitude: destination.lon } } },
+          travelMode: 'DRIVE',
+          routingPreference: 'TRAFFIC_AWARE',
+          // No departureTime: Google reads that as "now", which is exactly
+          // what a map preview means by traffic-aware.
+        }),
+      },
+      REQUEST_TIMEOUT_MS,
+    );
+    if (!response.ok) return null;
+    const data = await response.json();
+    const route = data.routes?.[0];
+    if (!route?.duration) return null;
+    const seconds = Number(String(route.duration).replace('s', ''));
+    if (!Number.isFinite(seconds)) return null;
+    const distanceMeters = Number(route.distanceMeters);
+    return {
+      durationMinutes: Math.round(seconds / 60),
+      distanceMiles: Number.isFinite(distanceMeters) ? Math.round((distanceMeters / 1609.344) * 10) / 10 : null,
+    };
+  } catch {
+    return null;
+  }
+}
+
 function sendJson(res, status, body) {
   const payload = JSON.stringify(body);
   res.writeHead(status, {
@@ -250,6 +295,53 @@ const server = createServer(async (req, res) => {
       return;
     }
     sendJson(res, 200, { origin, destination, direction, date, ...curve });
+    return;
+  }
+
+  if (req.method === 'POST' && req.url === '/api/route-preview') {
+    if (!API_KEY) {
+      sendJson(res, 503, {
+        error: 'GOOGLE_ROUTES_API_KEY is not configured on this server. Set it and restart.',
+      });
+      return;
+    }
+
+    let body;
+    try {
+      body = JSON.parse(await readBody(req));
+    } catch {
+      sendJson(res, 400, { error: 'Malformed JSON body.' });
+      return;
+    }
+
+    const { origin, destination } = body ?? {};
+    if (!isPoint(origin) || !isPoint(destination)) {
+      sendJson(res, 400, { error: 'origin and destination must each be { lat, lon }.' });
+      return;
+    }
+
+    const cacheKey = [
+      'preview',
+      origin.lat.toFixed(3),
+      origin.lon.toFixed(3),
+      destination.lat.toFixed(3),
+      destination.lon.toFixed(3),
+    ].join(':');
+
+    const cached = cacheGet(cacheKey);
+    if (cached) {
+      sendJson(res, 200, cached);
+      return;
+    }
+
+    const preview = await fetchRoutePreview(origin, destination);
+    if (!preview) {
+      sendJson(res, 502, { error: 'No route returned by Google Routes.' });
+      return;
+    }
+
+    cacheSet(cacheKey, preview);
+    sendJson(res, 200, preview);
     return;
   }
 

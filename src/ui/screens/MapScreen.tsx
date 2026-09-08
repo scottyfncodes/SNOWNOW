@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { resolveEnvironment } from '@/config/env';
 import { MOUNTAINS, findMountain } from '@/data/mountains';
 import { mountainProfileFor } from '@/data/mountainProfiles';
 import type { Origin } from '@/domain/mountain';
@@ -6,12 +7,17 @@ import { formatDuration } from '@/domain/time';
 import { makeContext } from '@/engine/inputs';
 import { resolveAccessRoutes } from '@/engine/routing';
 import { travelAt } from '@/engine/travel';
+import { describeRoutePreviewFailure, fetchRoutePreview } from '@/providers/live/routePreview';
 import type { ProviderRegistry } from '@/providers/types';
 import type { ClockState } from '@/ui/hooks/useClock';
 import { useAsync } from '@/ui/hooks/useRecommendation';
 import { ScreenHeader } from '@/ui/components/ScreenHeader';
 import { MountainMap, type MapRoutePreview } from '@/ui/components/MountainMap';
 import { MountainProfilePanel } from '@/ui/components/MountainProfilePanel';
+
+type RouteResult =
+  | { kind: 'ok'; preview: MapRoutePreview }
+  | { kind: 'unavailable'; message: string; likelySlowWake: boolean };
 
 export interface MapScreenProps {
   registry: ProviderRegistry;
@@ -31,27 +37,52 @@ export interface MapScreenProps {
 export function MapScreen({ registry, clock, origin, onBack }: MapScreenProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selectedMountain = selectedId ? (findMountain(selectedId) ?? null) : null;
+  const apiBaseUrl = resolveEnvironment().trafficApiBaseUrl;
+  // Only the dedicated single-call preview endpoint gets used in real live
+  // mode — reusing the full day-curve pipeline here would cost up to 9 extra
+  // Google Routes calls per tap for samples the map never shows. Demo mode
+  // (and live mode with no traffic server configured) falls back to the
+  // registry, which already handles both honestly and for free.
+  const useLivePreview = !registry.usingDemoData && Boolean(apiBaseUrl);
 
   const routeState = useAsync(
-    async () => {
+    async (): Promise<RouteResult | null> => {
       if (!selectedMountain) return null;
-      const context = makeContext(clock.today, clock.today, clock.now);
       const [route] = resolveAccessRoutes(selectedMountain, origin);
-      if (!route) return { kind: 'unavailable' as const, reason: 'No route known from this origin.' };
+      if (!route) {
+        return { kind: 'unavailable', message: 'No route known from this origin.', likelySlowWake: false };
+      }
+
+      if (useLivePreview) {
+        try {
+          const preview = await fetchRoutePreview(route.originPoint, route.destinationPoint, apiBaseUrl);
+          return {
+            kind: 'ok',
+            preview: { durationMinutes: preview.durationMinutes, distanceMiles: preview.distanceMiles, trafficAware: true },
+          };
+        } catch (error) {
+          const { message, likelySlowWake } = describeRoutePreviewFailure(error);
+          return { kind: 'unavailable', message, likelySlowWake };
+        }
+      }
+
+      const context = makeContext(clock.today, clock.today, clock.now);
       const availability = await registry.traffic.getTravelCurve(route, 'outbound', context);
       if (availability.status !== 'ok') {
-        return { kind: 'unavailable' as const, reason: availability.reason };
+        return { kind: 'unavailable', message: "Couldn't reach the route service.", likelySlowWake: false };
       }
       const curve = availability.data;
       const estimate = travelAt(curve, clock.now);
-      const preview: MapRoutePreview = {
-        durationMinutes: Math.round(estimate.durationMinutes),
-        distanceMiles: curve.distanceMiles ?? route.distanceMiles ?? null,
-        trafficAware: !registry.usingDemoData,
+      return {
+        kind: 'ok',
+        preview: {
+          durationMinutes: Math.round(estimate.durationMinutes),
+          distanceMiles: curve.distanceMiles ?? route.distanceMiles ?? null,
+          trafficAware: false,
+        },
       };
-      return { kind: 'ok' as const, preview };
     },
-    [selectedMountain?.id, origin.id, origin.coordinates.lat, origin.coordinates.lon, clock.today, clock.now],
+    [selectedMountain?.id, origin.id, origin.coordinates.lat, origin.coordinates.lon, clock.today, clock.now, useLivePreview],
     { enabled: selectedMountain !== null },
   );
 
@@ -63,11 +94,13 @@ export function MapScreen({ registry, clock, origin, onBack }: MapScreenProps) {
     return routeState.data.kind === 'ok' ? routeState.data.preview : 'error';
   }, [selectedMountain, routeState]);
 
-  const failureReason =
+  // A friendly, honest reason — never a raw HTTP status or provider string,
+  // matching how NOW/LATER already talk about a dead traffic feed.
+  const failure =
     routeState.status === 'ready' && routeState.data?.kind === 'unavailable'
-      ? routeState.data.reason
+      ? routeState.data
       : routeState.status === 'error'
-        ? routeState.message
+        ? { message: "Couldn't reach the route service.", likelySlowWake: false }
         : null;
 
   return (
@@ -94,8 +127,8 @@ export function MapScreen({ registry, clock, origin, onBack }: MapScreenProps) {
             {mapRoute === 'loading' && <p className="faint">Checking the route…</p>}
             {mapRoute === 'error' && (
               <p className="mapscreen-route-error">
-                Couldn't get a route right now{failureReason ? ` — ${failureReason}` : '.'} We won't guess at a
-                time or distance.
+                Couldn't get a route right now. {failure?.message} We won't guess at a time or distance.
+                {failure?.likelySlowWake && ' Give it a moment and try again.'}
               </p>
             )}
             {mapRoute && mapRoute !== 'loading' && mapRoute !== 'error' && (
