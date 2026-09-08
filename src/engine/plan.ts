@@ -8,6 +8,7 @@ import {
 import type { DateKey } from '@/domain/dates';
 import { resortSourceFor } from '@/data/resortSources';
 import type { Mountain, Origin } from '@/domain/mountain';
+import { NON_SKIABLE_STATES } from '@/domain/mountainStatus';
 import type {
   DataSourceStatus,
   Recommendation,
@@ -27,6 +28,8 @@ import { formatClock, formatDuration, type MinuteOfDay } from '@/domain/time';
 import type { ProviderContext, ProviderRegistry } from '@/providers/types';
 import { comparisonFor, headlineFor, reasonsFor, tradeoffsAgainst, verdictFor } from './explain';
 import { type DayInputs, loadDayInputs, makeContext } from './inputs';
+import { buildOffSeasonMessage } from './offSeasonMessages';
+import { classifyOperationalState } from './operationalState';
 import { optimizeDay } from './optimize';
 import { scoreDay } from './scoring';
 import { buildSnowClock, resolveOperations, resolveWeather } from './snowClock';
@@ -66,6 +69,17 @@ export function buildPlan(inputs: DayInputs, options: PlanOptions = {}): SkiDayP
   const hasSnow = weather.overnightSnowIn >= 1.5;
   const caveats = collectCaveats(inputs, optimized.unavailableReason);
 
+  const { state: operationalState, reason: operationalReason } = classifyOperationalState(inputs);
+  const offSeasonMessage = NON_SKIABLE_STATES.has(operationalState)
+    ? buildOffSeasonMessage(
+        operationalState,
+        operationalReason,
+        inputs.mountain,
+        inputs.date,
+        inputs.weather.status === 'ok' ? inputs.weather.data : null,
+      )
+    : null;
+
   return {
     mountain: inputs.mountain,
     origin: inputs.origin,
@@ -73,6 +87,11 @@ export function buildPlan(inputs: DayInputs, options: PlanOptions = {}): SkiDayP
     isToday: inputs.isToday,
     score,
     snowClock,
+    baseConditions: inputs.weather.status === 'ok' ? inputs.weather.data.base : null,
+    peakConditions: inputs.weather.status === 'ok' ? inputs.weather.data.peak : null,
+    snowHistory: inputs.weather.status === 'ok' ? inputs.weather.data.snowHistory : null,
+    operationalState,
+    offSeasonMessage,
     ticket: inputs.ticket.status === 'ok' ? inputs.ticket.data : null,
     ticketPurchaseUrl: resortSourceFor(inputs.mountain.id).officialPurchaseUrl,
     alerts: inputs.alerts.status === 'ok' ? inputs.alerts.data : [],

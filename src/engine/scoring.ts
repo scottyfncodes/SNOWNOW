@@ -70,6 +70,7 @@ export function scoreDay(input: ScoreInput): DayScore {
 
   const raw: Record<ScoreFactorKey, RawFactor> = {
     snow: snowFactor(inputs, clock, skiStart, weather),
+    snowCycle: snowCycleFactor(inputs, weather),
     snowTiming: snowTimingFactor(clock, departure, ret),
     weather: weatherFactor(inputs, skiWindow),
     wind: windFactor(inputs, skiWindow, ops.windHoldRisk),
@@ -185,6 +186,37 @@ function snowFactor(
   return { value, note };
 }
 
+/**
+ * The five-day snow cycle: how loaded is this mountain right now, and how
+ * loaded is it about to get. `snowFactor` above already answers "what's
+ * still there when you click in today" from the overnight/intraday numbers;
+ * this is the complementary, slower signal — a mountain that just banked a
+ * foot this week and one that's been dry for a week can otherwise present
+ * an identical "today" and get scored identically, which is exactly the gap
+ * SNOWNOW's audit called out. Incoming snow gets a much smaller credit than
+ * the same amount already on the ground: it isn't skiable yet, and how much
+ * of it actually lands is genuinely less certain.
+ */
+function snowCycleFactor(inputs: DayInputs, weather: ReturnType<typeof resolveWeather>): RawFactor {
+  if (inputs.weather.status !== 'ok' || !weather.snowHistory) {
+    return { value: NEUTRAL, note: 'No 5-day snow history available.', imputed: true };
+  }
+  const { pastTotalIn: past, futureTotalIn: future } = weather.snowHistory;
+  const pastScore = 100 * saturate(past, 26);
+  const incomingCredit = clamp(saturate(future, 20) * 18, 0, 18);
+  const value = clamp(pastScore * 0.82 + incomingCredit, 0, 100);
+  return { value, note: describeSnowCycle(past, future) };
+}
+
+function describeSnowCycle(past: number, future: number): string {
+  const p = past.toFixed(past < 10 ? 1 : 0);
+  const f = future.toFixed(future < 10 ? 1 : 0);
+  if (past < 1 && future < 1) return 'Dry stretch — nothing in the last 5 days, nothing incoming.';
+  if (past < 1) return `Dry the last 5 days, but ${f}" projected over the next 5.`;
+  if (future < 1) return `${p}" over the last 5 days, nothing new incoming.`;
+  return `${p}" over the last 5 days, ${f}" more projected over the next 5.`;
+}
+
 function snowTimingFactor(
   clock: SnowClock,
   departure: DepartureOption | null,
@@ -232,6 +264,36 @@ function weatherFactor(inputs: DayInputs, window: [MinuteOfDay, MinuteOfDay]): R
   };
 }
 
+/**
+ * Peak wind tiers. Ordinary mountain wind at the summit is not a problem —
+ * penalizing it would mean docking every mountain, every day, since the top
+ * is windier than the base by definition. The tiers exist so *unusual* wind
+ * up high — the kind that actually threatens lift access and comfort — is
+ * the only kind that costs anything, and so a mountain reporting real
+ * operational trouble (`windHoldRisk`) is trusted over wind speed alone.
+ */
+const PEAK_WIND_NORMAL_MPH = 25;
+const PEAK_WIND_SEVERE_MPH = 45;
+
+function peakWindPenalty(peak: ReturnType<typeof resolveWeather>['peak']): {
+  penalty: number;
+  note: string | null;
+} {
+  if (!peak) return { penalty: 0, note: null };
+  const mph = peak.windMph;
+  if (mph < PEAK_WIND_NORMAL_MPH) return { penalty: 0, note: null };
+  if (mph < PEAK_WIND_SEVERE_MPH) {
+    return {
+      penalty: (mph - PEAK_WIND_NORMAL_MPH) * 0.6,
+      note: `Peak wind running ${Math.round(mph)} mph — some upper-mountain impact likely.`,
+    };
+  }
+  return {
+    penalty: (PEAK_WIND_SEVERE_MPH - PEAK_WIND_NORMAL_MPH) * 0.6 + (mph - PEAK_WIND_SEVERE_MPH) * 0.9,
+    note: `Severe peak wind, gusting to ${Math.round(mph)} mph — expect upper-mountain holds.`,
+  };
+}
+
 function windFactor(
   inputs: DayInputs,
   window: [MinuteOfDay, MinuteOfDay],
@@ -240,21 +302,23 @@ function windFactor(
   if (inputs.weather.status !== 'ok') {
     return { value: NEUTRAL, note: 'No wind forecast.', imputed: true };
   }
-  const hourly = inputs.weather.data.hourly;
-  const gusts = sampleWindow(window, (minute) => weatherAt(hourly, minute)).map((s) =>
+  const weather = inputs.weather.data;
+  const gusts = sampleWindow(window, (minute) => weatherAt(weather.hourly, minute)).map((s) =>
     s ? s.windGustMph : 20,
   );
   if (gusts.length === 0) return { value: NEUTRAL, note: 'No wind forecast.', imputed: true };
-  const peak = Math.max(...gusts);
-  const value = scoreBetween(peak, 65, 12) * (1 - windHoldRisk * 0.4);
+  const peakGust = Math.max(...gusts);
+  const { penalty, note: peakNote } = peakWindPenalty(weather.peak);
+  const value = clamp(scoreBetween(peakGust, 65, 12) * (1 - windHoldRisk * 0.4) - penalty, 0, 100);
   return {
     value,
     note:
-      peak < 20
+      peakNote ??
+      (peakGust < 20
         ? 'Barely any wind.'
-        : peak < 38
-          ? `Gusts around ${Math.round(peak)} mph.`
-          : `Gusting ${Math.round(peak)} mph — expect lift holds up high.`,
+        : peakGust < 38
+          ? `Gusts around ${Math.round(peakGust)} mph.`
+          : `Gusting ${Math.round(peakGust)} mph — expect lift holds up high.`),
   };
 }
 

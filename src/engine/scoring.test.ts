@@ -275,6 +275,87 @@ describe('ticket price', () => {
   });
 });
 
+describe('snow cycle', () => {
+  it('scores a mountain loaded up over the last 5 days above an identical one that stayed dry', () => {
+    const loaded = scoreFor(
+      testInputs({ weather: testWeather({ overnightSnowIn: 0, daysSinceStorm: 4, past5TotalIn: 18 }) }),
+    ).score;
+    const dry = scoreFor(
+      testInputs({ weather: testWeather({ overnightSnowIn: 0, daysSinceStorm: 4, past5TotalIn: 0 }) }),
+    ).score;
+    expect(factor(loaded, 'snowCycle').value).toBeGreaterThan(factor(dry, 'snowCycle').value);
+    expect(loaded.score).toBeGreaterThan(dry.score);
+  });
+
+  it('does not let two mountains with the same base and today look identical when their 5-day cycles differ', () => {
+    // The exact scenario from the audit: 42" base, same overnight, one just
+    // banked a foot and a half, the other has been bone dry both ways.
+    const active = scoreFor(
+      testInputs({
+        weather: testWeather({ overnightSnowIn: 1, baseSnowDepthIn: 42, past5TotalIn: 18, future5TotalIn: 14 }),
+      }),
+    ).score;
+    const stagnant = scoreFor(
+      testInputs({
+        weather: testWeather({ overnightSnowIn: 1, baseSnowDepthIn: 42, past5TotalIn: 0, future5TotalIn: 0 }),
+      }),
+    ).score;
+    expect(active.score).not.toBe(stagnant.score);
+    expect(active.score).toBeGreaterThan(stagnant.score);
+  });
+
+  it('gives a smaller credit to incoming snow than to the same amount already on the ground', () => {
+    const alreadyFell = scoreFor(
+      testInputs({ weather: testWeather({ past5TotalIn: 15, future5TotalIn: 0 }) }),
+    ).score;
+    const stillIncoming = scoreFor(
+      testInputs({ weather: testWeather({ past5TotalIn: 0, future5TotalIn: 15 }) }),
+    ).score;
+    expect(factor(alreadyFell, 'snowCycle').value).toBeGreaterThan(factor(stillIncoming, 'snowCycle').value);
+  });
+
+  it('imputes a neutral value and says so when there is no 5-day history', () => {
+    const { score } = scoreFor(testInputs({ weather: testWeather({ snowHistoryUnavailable: true }) }));
+    expect(factor(score, 'snowCycle').imputed).toBe(true);
+  });
+
+  it('describes a dry stretch with nothing incoming honestly', () => {
+    const { score } = scoreFor(
+      testInputs({ weather: testWeather({ past5TotalIn: 0, future5TotalIn: 0 }) }),
+    );
+    expect(factor(score, 'snowCycle').note).toMatch(/dry stretch/i);
+  });
+});
+
+describe('peak wind', () => {
+  it('does not penalize ordinary summit wind', () => {
+    const calm = scoreFor(testInputs({ weather: testWeather({ peakWindMph: 15 }) })).score;
+    const alsoCalm = scoreFor(testInputs({ weather: testWeather({ peakWindMph: 22 }) })).score;
+    expect(factor(alsoCalm, 'wind').value).toBeCloseTo(factor(calm, 'wind').value, 0);
+  });
+
+  it('docks concerning summit wind and docks severe summit wind harder', () => {
+    const normal = scoreFor(testInputs({ weather: testWeather({ windMph: 8, peakWindMph: 15 }) })).score;
+    const concerning = scoreFor(testInputs({ weather: testWeather({ windMph: 8, peakWindMph: 35 }) })).score;
+    const severe = scoreFor(testInputs({ weather: testWeather({ windMph: 8, peakWindMph: 60 }) })).score;
+    expect(factor(normal, 'wind').value).toBeGreaterThan(factor(concerning, 'wind').value);
+    expect(factor(concerning, 'wind').value).toBeGreaterThan(factor(severe, 'wind').value);
+    expect(factor(severe, 'wind').note).toMatch(/peak wind/i);
+  });
+
+  it('never copies a penalty from base wind onto a mountain with no reliable peak reading', () => {
+    const noPeak = scoreFor(
+      testInputs({ weather: testWeather({ windMph: 55, peakUnavailable: true }) }),
+    ).score;
+    const withCalmPeak = scoreFor(
+      testInputs({ weather: testWeather({ windMph: 55, peakWindMph: 10 }) }),
+    ).score;
+    // Missing peak data should fall back to the ordinary gust-based read, not
+    // silently invent a peak-wind penalty from the base reading.
+    expect(factor(noPeak, 'wind').value).toBeLessThanOrEqual(factor(withCalmPeak, 'wind').value + 1);
+  });
+});
+
 describe('grooming', () => {
   it('rescues a dry day and barely matters on a powder day', () => {
     const dry = (groomedShare: number) =>

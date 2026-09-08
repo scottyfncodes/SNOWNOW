@@ -136,7 +136,7 @@ describe('LATER', () => {
       timeout: 12_000,
     });
     expect(screen.getByText(/CONFIDENCE/)).toBeInTheDocument();
-    expect(screen.getByText('FORECAST')).toBeInTheDocument();
+    expect(screen.getAllByText('FORECAST').length).toBeGreaterThan(0);
   });
 
   it('ranks a whole range and names a best bet with its confidence', async () => {

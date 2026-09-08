@@ -585,6 +585,188 @@
   opacity: 0.7;
 }
 
+/* ============================================================ base/peak */
+
+.basepeak {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  margin: 16px -18px 0;
+  padding: 1px 0;
+  background: var(--line);
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.basepeak-col {
+  background: #080d15;
+  padding: 12px 18px;
+}
+
+.basepeak-label {
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.basepeak-temp {
+  margin-top: 5px;
+  font-size: clamp(18px, 5.2vw, 22px);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.basepeak-sub {
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--ink-faint);
+}
+
+.basepeak-unavailable {
+  margin-top: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink-faint);
+}
+
+/* ======================================================== snow timeline */
+
+.snowtimeline {
+  margin-top: 16px;
+}
+
+.snowtimeline-totals {
+  display: flex;
+  gap: 22px;
+}
+
+.snowtimeline-total-label {
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.snowtimeline-total-value {
+  margin-top: 3px;
+  font-size: 19px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.snowtimeline-total.is-future .snowtimeline-total-value {
+  color: var(--ice);
+}
+
+.snowtimeline-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  margin-top: 12px;
+  padding-bottom: 2px;
+}
+
+.snowtimeline-bar {
+  flex: none;
+  width: 34px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.snowtimeline-bar-track {
+  width: 100%;
+  height: 44px;
+  display: flex;
+  align-items: flex-end;
+  border-radius: 6px;
+  background: var(--surface);
+}
+
+.snowtimeline-bar-fill {
+  width: 100%;
+  min-height: 3px;
+  border-radius: 6px;
+  background: var(--ink-ghost);
+}
+
+.snowtimeline-bar.is-observed .snowtimeline-bar-fill {
+  background: var(--go);
+  opacity: 0.85;
+}
+
+.snowtimeline-bar.is-forecast .snowtimeline-bar-fill {
+  background: var(--ice);
+  opacity: 0.7;
+}
+
+.snowtimeline-bar-value {
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.snowtimeline-bar-day {
+  font-size: 9.5px;
+  color: var(--ink-faint);
+  white-space: nowrap;
+}
+
+.snowtimeline-today {
+  flex: none;
+  align-self: stretch;
+  display: flex;
+  align-items: flex-end;
+  padding-bottom: 16px;
+}
+
+.snowtimeline-today span {
+  writing-mode: vertical-rl;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: var(--ink-faint);
+  border-left: 1px dashed var(--line-strong);
+  padding-left: 6px;
+}
+
+.snowtimeline-legend {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.snowtimeline-chip {
+  font-size: 9px;
+  padding: 3px 7px;
+}
+
+/* ============================================================ off-season */
+
+.offseason {
+  margin-top: 16px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 194, 74, 0.3);
+  background: rgba(255, 194, 74, 0.06);
+}
+
+.offseason-line {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.offseason-detail {
+  margin-top: 6px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink-dim);
+}
+
 /* ============================================================ score dial */
 
 .scoredial {

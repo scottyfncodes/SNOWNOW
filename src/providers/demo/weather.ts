@@ -1,4 +1,5 @@
-import type { HourlyWeather, MountainWeather } from '@/domain/conditions';
+import type { DailySnowfall, ElevationConditions, HourlyWeather, MountainWeather, SnowHistory } from '@/domain/conditions';
+import { addDays } from '@/domain/dates';
 import type { Mountain } from '@/domain/mountain';
 import {
   type Availability,
@@ -78,6 +79,26 @@ export class DemoWeatherProvider implements WeatherProvider {
       horizonDays: context.horizonDays,
     };
 
+    const fetchedAt = new Date(0).toISOString();
+    const baseWindMph = Math.round(windMph);
+    const peakWindMph = Math.round(exposedWind(pattern.windBaseMph, profile.wind) * 1.35);
+    const base: ElevationConditions = {
+      temperatureF: Math.round(mix(pattern.baseTempF, 20, blend)),
+      windMph: baseWindMph,
+      windGustMph: Math.round(baseWindMph * 1.5),
+      snowDepthIn: Math.round(40 * profile.snow * oro),
+      timestamp: fetchedAt,
+      source: this.id,
+    };
+    const peak: ElevationConditions = {
+      temperatureF: Math.round(mix(pattern.baseTempF, 20, blend) - 9),
+      windMph: peakWindMph,
+      windGustMph: Math.round(peakWindMph * 1.5),
+      snowDepthIn: Math.round(46 * profile.snow * oro),
+      timestamp: fetchedAt,
+      source: this.id,
+    };
+
     return ok(
       {
         overnightSnowIn: round1(overnightIn),
@@ -85,10 +106,42 @@ export class DemoWeatherProvider implements WeatherProvider {
         daysSinceStorm: pattern.daysSinceStorm,
         hourly,
         summary: pattern.summary,
+        base,
+        peak,
+        snowHistory: buildSnowHistory(context, pattern.daysSinceStorm, snowMultiplier, rng),
       },
       provenance,
     );
   }
+}
+
+/** Synthetic 5-day-back / 5-day-forward snowfall, matching the same storm pattern used for the hourly model. */
+function buildSnowHistory(
+  context: ProviderContext,
+  daysSinceStorm: number,
+  snowMultiplier: number,
+  rng: ReturnType<typeof mountainRng>,
+): SnowHistory {
+  const past: DailySnowfall[] = [];
+  let pastTotalIn = 0;
+  for (let i = 5; i >= 1; i -= 1) {
+    const date = addDays(context.today, -i);
+    const isStormDay = i === Math.max(1, Math.round(daysSinceStorm));
+    const snowfallIn = isStormDay ? round1(6 * snowMultiplier * rng.range(0.7, 1.3)) : round1(rng.range(0, 0.6));
+    pastTotalIn += snowfallIn;
+    past.push({ date, snowfallIn, kind: 'observed' });
+  }
+
+  const future: DailySnowfall[] = [];
+  let futureTotalIn = 0;
+  for (let i = 1; i <= 5; i += 1) {
+    const date = addDays(context.today, i);
+    const snowfallIn = round1(Math.max(0, rng.range(-0.3, 2.2) * snowMultiplier));
+    futureTotalIn += snowfallIn;
+    future.push({ date, snowfallIn, kind: 'forecast' });
+  }
+
+  return { past, pastTotalIn: round1(pastTotalIn), future, futureTotalIn: round1(futureTotalIn) };
 }
 
 interface HourInputs {

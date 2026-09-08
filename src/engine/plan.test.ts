@@ -4,7 +4,7 @@ import { MOUNTAINS } from '@/data/mountains';
 import { findOrigin } from '@/data/origins';
 import { at } from '@/domain/time';
 import { createDemoRegistry } from '@/providers/demo';
-import { testInputs, testTravel, testWeather } from '@/test/fixtures';
+import { testInputs, testOperations, testTravel, testWeather } from '@/test/fixtures';
 import { sampleCurve } from '@/lib/curve';
 import { buildPlan, recommend, stayOrGo, stayOrGoLadder } from './plan';
 
@@ -220,5 +220,48 @@ describe('stay or go', () => {
     const last = subject.returnOptions[subject.returnOptions.length - 1]!;
     expect(ladder[0]!.departure).toBe(first.departure);
     expect(ladder[ladder.length - 1]!.departure).toBe(last.departure);
+  });
+});
+
+describe('base/peak conditions and off-season handling on the plan', () => {
+  it('carries base, peak and the 5-day snow history through to the plan, honestly, when the weather feed succeeded', () => {
+    const built = buildPlan(
+      testInputs({ weather: testWeather({ baseSnowDepthIn: 55, peakUnavailable: true, past5TotalIn: 12 }) }),
+    );
+    expect(built.baseConditions).not.toBeNull();
+    expect(built.baseConditions!.snowDepthIn).toBe(55);
+    // Peak was unavailable on the source — never backfilled from base.
+    expect(built.peakConditions).toBeNull();
+    expect(built.snowHistory!.pastTotalIn).toBe(12);
+  });
+
+  it('reports no base/peak/history at all when the whole weather feed is down, rather than a fabricated fallback', () => {
+    const built = buildPlan(testInputs({ weather: 'unavailable' }));
+    expect(built.baseConditions).toBeNull();
+    expect(built.peakConditions).toBeNull();
+    expect(built.snowHistory).toBeNull();
+  });
+
+  it('gives a normal recommendation (no off-season message) on an ordinary open day', () => {
+    const built = buildPlan(testInputs());
+    expect(built.operationalState).toBe('OPEN');
+    expect(built.offSeasonMessage).toBeNull();
+  });
+
+  it('replaces the normal call with an off-season message when the mountain is genuinely closed', () => {
+    const built = buildPlan(testInputs({ operations: testOperations({ status: 'closed' }) }));
+    expect(built.operationalState).toBe('CLOSED');
+    expect(built.offSeasonMessage).not.toBeNull();
+    expect(built.offSeasonMessage!.line.length).toBeGreaterThan(0);
+  });
+
+  it('never turns a routine dead lift-status feed into an off-season takeover', () => {
+    // This is the exact shape of several existing "honest empty state" tests:
+    // the lift report is down but everything else is fine. That should stay
+    // a normal, lower-confidence recommendation, not a wall.
+    const built = buildPlan(testInputs({ operations: 'unavailable' }));
+    expect(built.operationalState).toBe('UNKNOWN');
+    expect(built.offSeasonMessage).toBeNull();
+    expect(built.departure).not.toBeNull();
   });
 });

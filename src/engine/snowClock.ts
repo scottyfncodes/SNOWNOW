@@ -63,12 +63,21 @@ const FALLBACK_OPS = (inputs: DayInputs): OperationsReport => {
   };
 };
 
+/**
+ * A day we can still describe when the weather feed is down. Base/peak
+ * conditions and the snow history are honestly absent here — a fallback
+ * exists so the clock can still run, not so the UI can show numbers nobody
+ * measured.
+ */
 const FALLBACK_WEATHER: MountainWeather = {
   overnightSnowIn: 0,
   recentSnow72hIn: 0,
   daysSinceStorm: 3,
   hourly: [],
   summary: 'No forecast available.',
+  base: null,
+  peak: null,
+  snowHistory: null,
 };
 
 export function resolveOperations(inputs: DayInputs): OperationsReport {

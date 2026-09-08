@@ -200,6 +200,9 @@ describe('mixed live and demo inputs', () => {
               daysSinceStorm: 0,
               hourly: [],
               summary: 'Fixture live weather.',
+              base: null,
+              peak: null,
+              snowHistory: null,
             },
             {
               source: 'live',
