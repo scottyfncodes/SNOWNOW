@@ -3,7 +3,6 @@ import { formatPrice, savingsVsWindow } from '@/domain/pricing';
 import { formatClock, formatDuration, formatWindowLabel } from '@/domain/time';
 import { BasePeakConditions } from './BasePeakConditions';
 import { ConfidencePill, DataBadge } from './DataBadge';
-import { OffSeasonNotice } from './OffSeasonNotice';
 import { ScoreDial } from './ScoreDial';
 import { SnowTimeline } from './SnowTimeline';
 
@@ -70,7 +69,9 @@ export function RecommendationCard({ plan, why, projected = false, onCompare }: 
               {plan.mountain.name} · {plan.mountain.region}
             </p>
           )}
-          <p className="reccard-verdict">{offSeason ? offSeason.line : plan.verdict}</p>
+          <p className="reccard-verdict" role={offSeason ? 'status' : undefined}>
+            {offSeason ? offSeason.line : plan.verdict}
+          </p>
         </div>
         {!offSeason && (
           <div className="reccard-scorewrap">
@@ -95,8 +96,6 @@ export function RecommendationCard({ plan, why, projected = false, onCompare }: 
 
       <BasePeakConditions base={plan.baseConditions} peak={plan.peakConditions} />
       <SnowTimeline history={plan.snowHistory} />
-
-      {offSeason && <OffSeasonNotice message={offSeason} />}
 
       {offSeason ? null : departure && ret ? (
         <dl className="reccard-times">

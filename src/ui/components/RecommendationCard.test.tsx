@@ -38,11 +38,14 @@ describe('RecommendationCard — base/peak and snow timeline', () => {
     expect(screen.getAllByText('FORECAST').length).toBeGreaterThan(0);
   });
 
-  it('replaces the normal verdict and timing with an off-season message when the mountain is closed', () => {
+  it('replaces the normal verdict and timing with an off-season message when the mountain is closed, shown exactly once', () => {
     const plan = buildPlan(testInputs({ operations: testOperations({ status: 'closed' }) }));
     render(<RecommendationCard plan={plan} />);
 
     expect(screen.getByRole('status')).toBeInTheDocument();
+    // The line and detail each appear exactly once — no duplicate box repeating them lower on the card.
+    expect(screen.getAllByText(plan.offSeasonMessage!.line).length).toBe(1);
+    expect(screen.getAllByText(plan.offSeasonMessage!.detail).length).toBe(1);
     expect(screen.queryByText('Head home')).not.toBeInTheDocument();
     expect(screen.queryByText('Prime snow')).not.toBeInTheDocument();
     // Base/peak and the snow cycle are still shown — the point is an honest
