@@ -70,8 +70,11 @@ export const RESORT_SOURCES: Record<string, ResortSource> = {
     liftieSlug: 'copper',
   },
   purgatory: {
-    officialOpsUrl: 'https://www.purgatoryresort.com/mountain/mountain-report/',
-    officialPurchaseUrl: 'https://www.purgatoryresort.com/lift-tickets/',
+    // Official domain confirmed as purgatory.ski (not purgatoryresort.com —
+    // that was a prior sandbox's unverified guess; see mountainProfiles.ts's
+    // note on the same resort for the correction).
+    officialOpsUrl: 'https://www.purgatory.ski/mountain/weather-conditions-webcams/',
+    officialPurchaseUrl: 'https://store.purgatory.ski/Calendar.aspx?Department=TICKET%3AWIN&Category=VARIABLE&Item=1DAY&Link=Lift+Tickets',
     // Purgatory's small-independent status makes Liftie coverage genuinely
     // uncertain — left unset rather than guessed. See "Tier 3" in the module
     // docblock: this resort is expected to land on `unavailable` today.

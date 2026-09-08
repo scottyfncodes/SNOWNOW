@@ -7,6 +7,7 @@ import type {
   TravelCurve,
 } from '@/domain/conditions';
 import type { AccessRoute, Mountain, Origin } from '@/domain/mountain';
+import type { ParkingInfo } from '@/domain/parking';
 import type { TicketPrice } from '@/domain/pricing';
 import type { Availability } from '@/domain/provenance';
 import type { RoadStatus } from '@/domain/road';
@@ -98,6 +99,19 @@ export interface PricingProvider {
   ): Promise<Availability<TicketPrice>>;
 }
 
+/**
+ * Parking is its own upstream, same reasoning as `PricingProvider`: a
+ * resort's lot/reservation system has nothing to do with its lift-status
+ * feed. No live per-lot occupancy source exists for any resort in this
+ * dataset today (see `data/parkingInfo.ts`) — a real implementation of this
+ * interface is free to return genuine live occupancy the moment one exists;
+ * nothing upstream has to change.
+ */
+export interface ParkingProvider {
+  readonly id: string;
+  getParkingInfo(mountain: Mountain, context: ProviderContext): Promise<Availability<ParkingInfo>>;
+}
+
 export type PlaceKind =
   | 'coffee'
   | 'breakfast'
@@ -139,6 +153,7 @@ export interface ProviderRegistry {
   places: PlacesProvider;
   alerts: AlertsProvider;
   roads: RoadConditionProvider;
+  parking: ParkingProvider;
   /**
    * True when any provider *slot* in this bundle is a demo implementation —
    * a configuration-time fact, decided when the registry was assembled. It is

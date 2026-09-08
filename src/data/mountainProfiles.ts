@@ -103,18 +103,24 @@ export const MOUNTAIN_PROFILES: Record<string, MountainProfile> = {
       'Resort’s own materials describe 2026-27 opening as "as soon as possible" with no fixed date — recorded as TBD rather than turning that into an invented date. Not fetch-verified.',
   },
   purgatory: {
-    officialWebsite: 'https://www.purgatoryresort.com',
-    snowReportUrl: 'https://www.purgatoryresort.com/mountain/mountain-report/',
-    webcamUrl: null,
-    trailMapUrl: null,
-    ticketUrl: 'https://www.purgatoryresort.com/lift-tickets/',
-    passInfoUrl: null,
-    phone: null,
+    // CORRECTED: the official Purgatory Ski Resort (Durango, CO) source is
+    // purgatory.ski — confirmed via web search (multiple independent
+    // results, including the resort's own trail-map PDFs and season-pass
+    // page, resolve under this domain). A prior session had flagged
+    // purgatoryresort.com as unconfirmed and kept it as a placeholder; that
+    // domain is not this resort's current site and has been replaced.
+    officialWebsite: 'https://www.purgatory.ski',
+    snowReportUrl: 'https://www.purgatory.ski/mountain/weather-conditions-webcams/',
+    webcamUrl: 'https://www.purgatory.ski/mountain/weather-conditions-webcams/',
+    trailMapUrl: 'https://www.purgatory.ski/wp-content/uploads/sites/2/2025/12/Purgatory_Winter25-26_TrailMap_Website.pdf',
+    ticketUrl: 'https://store.purgatory.ski/Calendar.aspx?Department=TICKET%3AWIN&Category=VARIABLE&Item=1DAY&Link=Lift+Tickets',
+    passInfoUrl: 'https://www.purgatory.ski/mountain/season-passes/',
+    phone: '970-247-9000',
     address: '#1 Skier Place, Durango, CO 81301',
     openingDate: TBD_DATE,
     closingDate: TBD_DATE,
     notes:
-      'FLAG FOR HUMAN REVIEW: current web search results for Purgatory resolve almost entirely to purgatory.ski rather than purgatoryresort.com (a possible rebrand/redirect). This could not be confirmed without working fetch access, so the previously-established purgatoryresort.com domain is kept here rather than switching on an unverified signal — a human with normal browser access should check which domain is now canonical. Webcam/trail-map/pass URLs and phone left null rather than guessed. No 2026-27 opening date found.',
+      'Researched via web search against purgatory.ski (this sandbox still cannot fetch-verify directly — see the module note). The trail-map PDF is dated for the 2025-26 season; check purgatory.ski for the current season’s map once posted. No 2026-27 opening date announced yet — the 2025-26 season ran Nov 28, 2025 to Mar 29, 2026, shown here only as prior-season context, never as this season’s date.',
   },
   copper: {
     officialWebsite: 'https://www.coppercolorado.com',

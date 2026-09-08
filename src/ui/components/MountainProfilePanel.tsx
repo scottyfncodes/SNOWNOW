@@ -17,10 +17,7 @@ export interface MountainProfilePanelProps {
 export function MountainProfilePanel({ mountain, profile }: MountainProfilePanelProps) {
   if (!profile) {
     return (
-      <section className="panel profile-panel" aria-labelledby="profile-heading">
-        <h2 id="profile-heading" className="section-title">
-          {mountain.name}
-        </h2>
+      <section className="panel profile-panel" aria-label={`${mountain.name} reference information`}>
         <p className="profile-unavailable">
           We don't have a researched profile for this mountain yet — not currently available.
         </p>
@@ -29,11 +26,9 @@ export function MountainProfilePanel({ mountain, profile }: MountainProfilePanel
   }
 
   return (
-    <section className="panel profile-panel" aria-labelledby="profile-heading">
+    <section className="panel profile-panel" aria-label={`${mountain.name} reference information`}>
       <header className="panel-head">
-        <h2 id="profile-heading" className="section-title">
-          {mountain.name}
-        </h2>
+        <span className="section-title">Reference &amp; links</span>
         <a className="profile-website" href={profile.officialWebsite} target="_blank" rel="noreferrer">
           Official site ↗
         </a>

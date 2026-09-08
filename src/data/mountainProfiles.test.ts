@@ -63,6 +63,14 @@ describe('mountain profiles — data integrity', () => {
     }
   });
 
+  it('uses the official Purgatory Ski Resort domain (purgatory.ski), never a look-alike or unrelated resort', () => {
+    const profile = mountainProfileFor('purgatory')!;
+    expect(profile.officialWebsite).toBe('https://www.purgatory.ski');
+    for (const url of [profile.snowReportUrl, profile.webcamUrl, profile.trailMapUrl, profile.ticketUrl, profile.passInfoUrl]) {
+      if (url) expect(new URL(url).hostname).toMatch(/(^|\.)purgatory\.ski$/);
+    }
+  });
+
   it('never claims a confirmed opening/closing date this early in the 2026-27 season research pass', () => {
     // Every date recorded as of this research pass is, at best, a resort's own
     // published "target" — never treat that as `confirmed`.

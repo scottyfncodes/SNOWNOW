@@ -7,12 +7,11 @@ import { warmUpTrafficService } from '@/lib/warmup';
 import { createProviderRegistry } from '@/providers';
 import type { ProviderRegistry } from '@/providers/types';
 import { useClock } from '@/ui/hooks/useClock';
-import { HomeScreen } from '@/ui/screens/HomeScreen';
 import { LaterScreen } from '@/ui/screens/LaterScreen';
 import { MapScreen } from '@/ui/screens/MapScreen';
 import { NowScreen } from '@/ui/screens/NowScreen';
 
-type Mode = 'home' | 'now' | 'later' | 'map';
+type Mode = 'map' | 'now' | 'later';
 
 /**
  * SNOWNOW.
@@ -21,6 +20,11 @@ type Mode = 'home' | 'now' | 'later' | 'map';
  * know they are talking to *a* weather/traffic/mountain provider, never which
  * one. Swapping the demo bundle for live integrations happens on this line and
  * nowhere else.
+ *
+ * MAP is the landing screen — where should I go, answered spatially, before
+ * anything else. NOW and LATER stay one tap away for the "just tell me"
+ * path; both are reachable from MAP's own header, and "back" from either
+ * returns to the map, not to a separate homepage.
  */
 export interface AppProps {
   /** Injectable so tests (and, later, a live bundle) can supply their own providers. */
@@ -30,12 +34,12 @@ export interface AppProps {
 export default function App({ registry: injected }: AppProps = {}) {
   const registry = useMemo(() => injected ?? createProviderRegistry(), [injected]);
   const clock = useClock();
-  const [mode, setMode] = useState<Mode>('home');
+  const [mode, setMode] = useState<Mode>('map');
   const [origin, setOrigin] = useState<Origin>(() => findOrigin(DEFAULT_PREFERENCES.originId));
 
   // Give the traffic proxy's free-tier cold start a head start against the
-  // user's own dwell time on the homepage, rather than against the 15s
-  // timeout on the real request. See lib/warmup.ts.
+  // user's own dwell time on the map, rather than against the 15s timeout on
+  // the real request. See lib/warmup.ts.
   useEffect(() => {
     warmUpTrafficService(resolveEnvironment().trafficApiBaseUrl);
   }, []);
@@ -52,7 +56,7 @@ export default function App({ registry: injected }: AppProps = {}) {
         clock={clock}
         origin={origin}
         preferences={preferences}
-        onBack={() => setMode('home')}
+        onBack={() => setMode('map')}
       />
     );
   }
@@ -64,23 +68,21 @@ export default function App({ registry: injected }: AppProps = {}) {
         clock={clock}
         origin={origin}
         preferences={preferences}
-        onBack={() => setMode('home')}
+        onBack={() => setMode('map')}
       />
     );
   }
 
-  if (mode === 'map') {
-    return <MapScreen registry={registry} clock={clock} origin={origin} onBack={() => setMode('home')} />;
-  }
-
   return (
-    <HomeScreen
+    <MapScreen
+      registry={registry}
+      clock={clock}
       origin={origin}
       onOriginChange={setOrigin}
+      preferences={preferences}
       onNow={() => setMode('now')}
       onLater={() => setMode('later')}
-      onMap={() => setMode('map')}
-      usingDemoData={registry.usingDemoData}
+      onBack={() => setMode('map')}
     />
   );
 }
