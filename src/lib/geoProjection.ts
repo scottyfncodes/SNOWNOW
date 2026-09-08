@@ -62,3 +62,49 @@ export function buildProjector(
   project.bounds = { minLat, maxLat, minLon, maxLon };
   return project;
 }
+
+export interface Point2D {
+  x: number;
+  y: number;
+}
+
+/**
+ * Nudges projected points that land too close together apart, so their touch
+ * targets never fully overlap. This is purely a rendering concern for a
+ * schematic map — several Colorado resorts (Summit County above all) sit
+ * only a few real miles apart, close enough that their true projected
+ * positions can land on top of each other at phone-screen scale, silently
+ * eating the tap meant for whichever marker is on top. The geographic
+ * projection each point started from is never touched; only where the
+ * marker actually gets drawn moves, and only exactly as far as it has to.
+ */
+export function declutterPoints<T extends Point2D>(points: T[], minDistance: number, iterations = 24): T[] {
+  const result = points.map((point) => ({ ...point }));
+  for (let iteration = 0; iteration < iterations; iteration += 1) {
+    let moved = false;
+    for (let i = 0; i < result.length; i += 1) {
+      for (let j = i + 1; j < result.length; j += 1) {
+        const a = result[i]!;
+        const b = result[j]!;
+        const dx = b.x - a.x;
+        const dy = b.y - a.y;
+        const distance = Math.hypot(dx, dy);
+        if (distance >= minDistance) continue;
+        moved = true;
+        // Two points starting at the exact same spot have no direction to push
+        // apart along — pick a deterministic one (the golden angle keeps a
+        // whole cluster of coincident points from collapsing back together).
+        const angle = distance > 1e-6 ? Math.atan2(dy, dx) : (i * 137.5 * Math.PI) / 180;
+        const push = (minDistance - distance) / 2 + 0.05;
+        const ux = Math.cos(angle);
+        const uy = Math.sin(angle);
+        a.x -= ux * push;
+        a.y -= uy * push;
+        b.x += ux * push;
+        b.y += uy * push;
+      }
+    }
+    if (!moved) break;
+  }
+  return result;
+}

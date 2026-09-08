@@ -1,14 +1,3 @@
-/* ============================================================ atmosphere */
-
-.snowfall {
-  position: fixed;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  z-index: 0;
-}
-
 /* ============================================================== wordmark */
 
 .wordmark {
@@ -34,113 +23,28 @@
   letter-spacing: -0.03em;
 }
 
-/* ================================================================== home */
+/* =========================================================== map homepage */
 
-.home {
-  position: relative;
-  min-height: 100dvh;
-  display: flex;
-  z-index: 1;
-}
-
-.home-inner {
-  position: relative;
-  z-index: 1;
-  flex: 1;
+.maphome-head {
+  padding-top: max(20px, env(safe-area-inset-top));
+  padding-bottom: 16px;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  gap: 28px;
-  padding-top: max(48px, env(safe-area-inset-top));
-  padding-bottom: max(28px, env(safe-area-inset-bottom));
+  gap: 12px;
 }
 
-.home-head {
-  padding-top: 4vh;
-}
-
-.home-head h1 {
+.maphome-head h1 {
   margin: 0;
 }
 
 .home-tagline {
-  margin-top: 14px;
-  font-size: clamp(16px, 4.4vw, 20px);
+  font-size: clamp(15px, 4vw, 18px);
   color: var(--ink-dim);
   letter-spacing: -0.01em;
 }
 
-.home-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.bigbutton {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 6px;
-  width: 100%;
-  min-height: 132px;
-  padding: 22px 24px;
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--line-strong);
-  background: linear-gradient(160deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.02));
-  text-align: left;
-  transition:
-    transform 160ms var(--ease),
-    border-color 160ms var(--ease),
-    box-shadow 220ms var(--ease);
-  overflow: hidden;
-}
-
-.bigbutton::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(80% 120% at 100% 0%, var(--ice-glow), transparent 62%);
-  opacity: 0;
-  transition: opacity 220ms var(--ease);
-  pointer-events: none;
-}
-
-.bigbutton:hover::after,
-.bigbutton:focus-visible::after {
-  opacity: 1;
-}
-
-.bigbutton:active {
-  transform: scale(0.985);
-}
-
-.bigbutton-word {
-  font-size: clamp(44px, 13vw, 68px);
-  font-weight: 900;
-  letter-spacing: -0.05em;
-  line-height: 0.92;
-}
-
-.bigbutton-sub {
-  font-size: 15px;
-  color: var(--ink-dim);
-  max-width: 26ch;
-}
-
-.bigbutton-now {
-  border-color: rgba(124, 231, 255, 0.45);
-  box-shadow: 0 18px 60px -28px rgba(124, 231, 255, 0.65);
-}
-
-.bigbutton-now .bigbutton-word {
-  color: var(--ice);
-}
-
-.home-foot {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+.maphome-tagline {
+  margin: 0;
 }
 
 .home-demo {
@@ -160,6 +64,15 @@
   font-size: 12.5px;
   line-height: 1.45;
   color: var(--ink-faint);
+}
+
+.mapscreen-planloading {
+  margin-top: 14px;
+}
+
+.mapscreen-plan {
+  margin-top: 16px;
+  gap: 16px;
 }
 
 /* ========================================================= origin picker */
@@ -244,126 +157,7 @@
   pointer-events: none;
 }
 
-/* =============================================================== loading */
-
-.loading {
-  position: relative;
-  min-height: 60dvh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.loading-inner {
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 20px;
-}
-
-.loading-step {
-  font-size: clamp(18px, 5.6vw, 26px);
-  font-weight: 800;
-  letter-spacing: 0.02em;
-  color: var(--ink);
-  animation: loadingPulse 620ms var(--ease);
-}
-
-@keyframes loadingPulse {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
-.loading-track {
-  display: flex;
-  gap: 8px;
-}
-
-.loading-track li {
-  width: 26px;
-  height: 3px;
-  border-radius: 999px;
-  background: var(--line);
-  transition: background 240ms var(--ease);
-}
-
-.loading-track li.is-done {
-  background: var(--ice);
-}
-
-/* ================================================================ header */
-
-.screenhead {
-  position: sticky;
-  top: 0;
-  z-index: 5;
-  padding: max(10px, env(safe-area-inset-top)) 0 10px;
-  background: linear-gradient(180deg, rgba(4, 6, 10, 0.95), rgba(4, 6, 10, 0.72));
-  backdrop-filter: blur(14px);
-  border-bottom: 1px solid var(--line);
-}
-
-.screenhead-inner {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.backbutton {
-  width: 44px;
-  height: 44px;
-  margin-left: -10px;
-  border-radius: 50%;
-  font-size: 20px;
-  color: var(--ink-dim);
-  display: grid;
-  place-items: center;
-}
-
-.backbutton:hover {
-  color: var(--ink);
-  background: var(--surface);
-}
-
-.screenhead-title {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-}
-
-.screenhead-mode {
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.18em;
-  color: var(--ink-faint);
-}
-
-.screenhead-date {
-  flex: none;
-  white-space: nowrap;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--ink-faint);
-}
-
-/* ============================================================== planview */
-
-.planview {
-  gap: 16px;
-  padding-top: 18px;
-}
+/* ================================================================= panel */
 
 .panel {
   background: var(--surface);
@@ -1779,72 +1573,13 @@
   color: var(--ink-faint);
 }
 
-/* ================================================================= error */
-
-.errorscreen {
-  min-height: 100dvh;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 14px;
-}
-
-.errorscreen-head {
-  font-size: clamp(30px, 9vw, 44px);
-  font-weight: 900;
-  letter-spacing: -0.04em;
-  line-height: 1;
-}
-
-.errorscreen-body {
-  color: var(--ink-dim);
-  font-size: 15px;
-  line-height: 1.5;
-}
-
-.errorscreen-actions {
-  display: flex;
-  gap: 10px;
-  margin-top: 8px;
-}
-
-.button {
-  min-height: 48px;
-  padding: 0 22px;
-  border-radius: 999px;
-  background: var(--ice);
-  color: #04060a;
-  font-weight: 800;
-  font-size: 15px;
-}
-
-.button-quiet {
-  background: var(--surface-2);
-  color: var(--ink);
-  border: 1px solid var(--line);
-}
-
 /* ============================================================== desktop */
-
-@media (max-width: 359px) {
-  .screenhead-mode {
-    display: none;
-  }
-}
 
 @media (min-width: 720px) {
   .reccard-times {
     margin-inline: 0;
     border-radius: var(--radius);
     overflow: hidden;
-  }
-
-  .home-actions {
-    flex-direction: row;
-  }
-
-  .bigbutton {
-    min-height: 180px;
   }
 }
 
@@ -1875,22 +1610,7 @@
   color: var(--ink-dim);
 }
 
-/* =============================================================== map link */
-
-.home-map-link {
-  display: block;
-  margin: 4px auto 0;
-  text-align: center;
-}
-
 /* ================================================================== map */
-
-.mapscreen-intro {
-  margin: 4px 0 16px;
-  font-size: 14px;
-  line-height: 1.5;
-  color: var(--ink-dim);
-}
 
 .mapscreen-route {
   margin-top: 14px;
@@ -1938,6 +1658,20 @@
 
 .mountainmap-bg {
   fill: var(--bg-raise);
+}
+
+.mountainmap-state {
+  fill: rgba(124, 231, 255, 0.045);
+  stroke: var(--line-strong);
+  stroke-width: 1.5;
+}
+
+.mountainmap-statelabel {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  fill: var(--ink-ghost);
+  pointer-events: none;
 }
 
 .mountainmap-route {
@@ -2081,6 +1815,19 @@
   margin: 4px 0 0;
   font-size: 13.5px;
   line-height: 1.4;
+}
+
+.profile-parking {
+  margin-bottom: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.profile-parking-note {
+  margin: 4px 0;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--ink-dim);
 }
 
 .profile-links {

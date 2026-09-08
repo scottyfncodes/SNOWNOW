@@ -23,6 +23,23 @@ export interface SeasonDate {
 
 export const TBD_DATE: SeasonDate = { date: null, status: 'tbd' };
 
+/**
+ * What we actually know about parking, kept separate from live conditions
+ * because none of it comes from a real-time feed — it is reference
+ * information a human could confirm by visiting the page themselves.
+ * Every field is `null` rather than guessed when it hasn't been confirmed
+ * from the resort's own pages: a blank parking section is honest, a made-up
+ * "spots available" count is not.
+ */
+export interface ParkingInfo {
+  /** The resort's own parking/arrival-guidance page, when distinct from `officialWebsite`. */
+  infoUrl: string | null;
+  /** Whether the resort is known to require a paid or reserved space. `null` when not confirmed. */
+  reservationRequired: boolean | null;
+  /** Short, sourced note — fees, shuttle, restrictions. Never invented to fill space. */
+  note: string | null;
+}
+
 export interface MountainProfile {
   officialWebsite: string;
   /** `null` when no official snow-report page could be confirmed distinct from `officialWebsite`. */
@@ -36,6 +53,8 @@ export interface MountainProfile {
   address: string | null;
   openingDate: SeasonDate;
   closingDate: SeasonDate;
+  /** Absent when parking specifics haven't been confirmed for this resort — render as "not currently available", never fabricated. */
+  parking?: ParkingInfo;
   /** Provenance/uncertainty notes — never shown as fact, only as a caveat for whoever maintains this data. */
   notes?: string;
 }

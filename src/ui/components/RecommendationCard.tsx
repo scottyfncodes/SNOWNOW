@@ -60,9 +60,9 @@ export function RecommendationCard({ plan, why, projected = false, onCompare }: 
       <div className="reccard-top">
         <div className="reccard-identity">
           {projected && <p className="eyebrow">Projected</p>}
-          <h1 id="reccard-name" className="reccard-name">
+          <h2 id="reccard-name" className="reccard-name">
             {plan.mountain.shortName}
-          </h1>
+          </h2>
           {/* "BECK" needs no gloss; "WP" does. Only spell it out when the
               short name isn't already the mountain's name. */}
           {plan.mountain.name.toUpperCase() !== plan.mountain.shortName.toUpperCase() && (

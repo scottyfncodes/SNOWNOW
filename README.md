@@ -22,15 +22,25 @@ Head home 2:42 PM · Home 4:28 PM
 
 ---
 
-## The two modes
+## The map
 
-| | Means | Answers |
-|---|---|---|
-| **NOW** | Decision mode. Today. | "I want to ski today — where, and when do I leave?" |
-| **LATER** | Planning mode. A future date or range. | "What would my ski day look like on Saturday?" |
+SNOWNOW opens straight onto a Colorado map — the map *is* the homepage and the
+mountain selector, not a screen reached from some other choice. Every
+supported mountain is a tappable marker, positioned from the same real
+coordinates the engine routes to; tapping one opens that mountain's profile in
+place: the day's verdict and score, snow and weather, the drive from wherever
+you're starting (GPS or a manual city), traffic, parking, the trail map, lift
+tickets, and any active alerts. There is no NOW/LATER choice standing between
+opening the app and getting an answer.
 
-Both ask the same question and share the same engine. LATER differs only in how
-much certainty it is willing to claim.
+The engine underneath still separates "today" from "a future date" —
+`buildPlan`/`planForMountain` for today, `future.ts`'s range projection for
+later, with the same honesty budget either way — but that split is an
+implementation detail the engine cares about, not something the UI makes you
+choose. Selecting a mountain always asks for today's plan; the underlying
+`recommend()`/`projectRange()` machinery that ranks *every* reachable mountain
+still exists (and is still tested) for whatever wants that comparison, it just
+isn't what the map calls.
 
 ---
 
@@ -39,7 +49,7 @@ much certainty it is willing to claim.
 ```bash
 npm install
 npm run dev        # http://localhost:5173 — demo mode, zero setup
-npm test           # 289 tests
+npm test           # see the test output for the current count
 npm run build      # type-check + production bundle
 npm run preview    # serve the built app
 npm run server     # the traffic proxy (server/index.mjs) — only needed for live traffic
@@ -304,7 +314,7 @@ src/
     optimize.ts   Joint (leave home × leave mountain) optimisation
     scoring.ts    The number on the card, and why
     explain.ts    Plain-language reasoning
-    plan.ts       buildPlan · recommend · stayOrGo
+    plan.ts       buildPlan · planForMountain · recommend · stayOrGo
     future.ts     LATER: range projection with confidence discounting
 
   ui/           React. Renders plans; contains no business logic.
@@ -432,7 +442,7 @@ end of the state while the other gets scraps.
 ## Tests
 
 ```
-npm test      # 289 tests, 24 files
+npm test      # see the test output for the current count
 ```
 
 The core optimisation logic is tested without rendering any UI, against
@@ -483,7 +493,8 @@ a phone held in one hand, in a dark room, at 4:47 in the morning, by someone who
 has not had coffee yet. That rules out light backgrounds, small type, dense
 tables and anything that needs to be studied.
 
-- mobile-first, one-handed, 44px+ tap targets, minimal typing
+- mobile-first, one-handed, 44px+ tap targets, minimal typing — except the
+  Colorado map's own markers (see "Known limitations")
 - huge numerals, strong hierarchy, generous space
 - motion is decoration and switches itself off for `prefers-reduced-motion`
 - charts are hand-rolled SVG (no charting library) and expose their data as
@@ -528,39 +539,43 @@ preserve that contract, not invent it.
   them rather than one call per page load, which this build does not yet do
   (see "Known limitations").
 
-**API calls for one NOW request** (one mountain, one origin, cache cold):
+**API calls for opening one mountain's profile** (one mountain, one origin,
+cache cold):
 
 | Call | Count | Notes |
 |---|---|---|
+| Route preview (map tap) | 1 | `/api/route-preview` — one Google Routes call for the "right now" drive time shown immediately, see `providers/live/routePreview.ts` |
 | Open-Meteo forecast | 1 | One HTTP request, all hourly fields |
 | NWS alerts | 1 | One HTTP request |
-| Google Routes (server) | up to 20 | 9 outbound + 11 return departure-time samples — see `server/index.mjs`'s `OUTBOUND_MINUTES`/`RETURN_MINUTES` |
+| Google Routes travel curve (server) | up to 20 per route | 9 outbound + 11 return departure-time samples — see `server/index.mjs`'s `OUTBOUND_MINUTES`/`RETURN_MINUTES`. A manual city with several hand-authored routes to that mountain pays this once per route; a GPS origin always synthesizes exactly one route (`engine/routing.ts`), so it's a flat ~20 calls regardless of how many routes a city origin would have used |
 | CDOT (if enabled) | 1 per unique corridor | Unverified integration, off by default |
 
-A full NOW screen (the recommendation plus every reachable alternative — 5-8
-mountains from Denver) multiplies the Google Routes count by the number of
-mountains on a cold cache, since each mountain's route is a different
-corridor. **Estimated cost at low personal-use volume:** Open-Meteo and NWS
-are free with no meaningful limit at this scale. Google Routes' `computeRoutes`
-is billed per call past its free tier; at roughly 20 calls per cold-cache
-mountain and a 15-minute shared cache, a single person checking SNOWNOW a
+This is the whole cost of the map's primary flow: tapping a mountain never
+prices out the other twelve just to show the one the user actually picked.
+That is a real reduction from the old NOW screen, which ran this same pipeline
+for every reachable mountain from the origin (5-8 mountains from Denver) to
+rank them — that code path (`recommend()`) still exists and is still tested,
+it just isn't what opens a profile.
+
+**Estimated cost at low personal-use volume:** Open-Meteo and NWS are free
+with no meaningful limit at this scale. Google Routes' `computeRoutes` is
+billed per call past its free tier; at roughly 20 calls per cold-cache route
+and a 15-minute shared cache, a single person tapping around SNOWNOW a
 handful of times a day sits comfortably inside typical free-tier allowances —
 the cache is what keeps a small friend group well within it too, since they'd
 mostly be hitting warm cache. This has not been measured against a real
 Google Cloud billing account; treat it as an informed estimate, not a quote.
 
-**GPS mode changes this math.** The table above assumes an origin the cache
-can pool across visitors — true for the six manual cities, not true for a
-GPS fix, which lands on a different cache key for nearly every user. A GPS
-NOW request should be estimated as a fully cold cache every time: up to 20
-Google Routes calls per mountain, times every reachable mountain (now all
-thirteen, not just the ones with a manual route from the chosen city), per
-direction. This is a real, expected increase in Google Routes call volume
-versus city-only routing — not a defect — and is the direct cost of routing
-from someone's actual location. At low personal-use volume it should still
-sit inside Google's free tier; a public multi-user deployment should budget
-for it explicitly rather than assuming the six-city cache-sharing math still
-applies.
+**GPS mode changes this math for city-pooling, not for volume.** The table
+above assumes an origin the server-side cache can pool across visitors — true
+for the six manual cities, not true for a GPS fix, which lands on a different
+cache key for nearly every user. A GPS tap should be estimated as a fully cold
+cache every time. It does **not** multiply by mountain count the way the old
+all-mountain NOW sweep did, though: a GPS origin always resolves to exactly
+one route per mountain (`engine/routing.ts`), and the map only ever prices the
+one mountain tapped — so per-tap cost is the same flat ~20 calls whether the
+origin is a manual city or GPS, it's the cache-sharing across *visitors* that
+GPS loses, not the cost of any single tap.
 
 ## Live data matrix
 
@@ -647,6 +662,23 @@ unavailable" above.
   `data/resortSources.ts` leaves their `liftieSlug` unset rather than
   guessing one — both report `unavailable` for operations until a real
   slug is confirmed and added to the registry.
+- **Map markers are smaller than the ideal 44px touch target in the densest
+  cluster (Summit County).** `lib/geoProjection.ts#declutterPoints` guarantees
+  every marker's hit circle clears a minimum separation from every other one —
+  so no tap is ever swallowed by the wrong mountain — but 13 real ski areas at
+  Colorado's actual relative spacing, on a fixed, non-zoomable schematic map
+  sized to a phone screen, don't all fit at 44px without either distorting
+  their real positions well beyond what "real coordinates, nudged just enough"
+  should mean, or adding pinch-zoom/pan (not built). Every marker is
+  individually and reliably tappable; the two closest are not each a full
+  44px wide.
+- **Parking is reference information, not a live feed, for every resort.**
+  No resort in `data/mountainProfiles.ts` has a confirmed live occupancy
+  source, so every mountain's profile says so honestly and links to the
+  resort's own site rather than showing a fabricated "spots available"
+  number. `domain/mountainProfile.ts#ParkingInfo` exists so a real source
+  (a resort's own live count, a parking-reservation API) can be plugged in
+  per mountain without changing any component.
 
 ## What's intentionally still demo, and what's not built at all
 

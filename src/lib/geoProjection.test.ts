@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildProjector } from './geoProjection';
+import { buildProjector, declutterPoints } from './geoProjection';
 
 describe('buildProjector', () => {
   const points = [
@@ -41,5 +41,51 @@ describe('buildProjector', () => {
     const { x, y } = project({ lat: 39.5, lon: -106 });
     expect(Number.isFinite(x)).toBe(true);
     expect(Number.isFinite(y)).toBe(true);
+  });
+});
+
+describe('declutterPoints', () => {
+  it('leaves points alone when they are already far enough apart', () => {
+    const points = [{ x: 0, y: 0 }, { x: 100, y: 0 }];
+    const result = declutterPoints(points, 20);
+    expect(result).toEqual(points);
+  });
+
+  it('pushes overlapping points apart until they clear the minimum distance', () => {
+    const points = [{ id: 'a', x: 50, y: 50 }, { id: 'b', x: 52, y: 51 }];
+    const [a, b] = declutterPoints(points, 30);
+    expect(Math.hypot(b!.x - a!.x, b!.y - a!.y)).toBeGreaterThanOrEqual(29.9);
+  });
+
+  it('separates every pair in a tight cluster, not just the closest one', () => {
+    const points = [
+      { id: 'summit-1', x: 100, y: 100 },
+      { id: 'summit-2', x: 102, y: 99 },
+      { id: 'summit-3', x: 99, y: 103 },
+      { id: 'summit-4', x: 101, y: 101 },
+    ];
+    const result = declutterPoints(points, 24);
+    for (let i = 0; i < result.length; i += 1) {
+      for (let j = i + 1; j < result.length; j += 1) {
+        const dx = result[j]!.x - result[i]!.x;
+        const dy = result[j]!.y - result[i]!.y;
+        expect(Math.hypot(dx, dy)).toBeGreaterThanOrEqual(23.9);
+      }
+    }
+  });
+
+  it('handles two points at the exact same spot without producing NaN', () => {
+    const points = [{ x: 10, y: 10 }, { x: 10, y: 10 }];
+    const [a, b] = declutterPoints(points, 20);
+    expect(Number.isFinite(a!.x)).toBe(true);
+    expect(Number.isFinite(b!.x)).toBe(true);
+    expect(Math.hypot(b!.x - a!.x, b!.y - a!.y)).toBeGreaterThanOrEqual(19.9);
+  });
+
+  it('never mutates the input points', () => {
+    const points = [{ x: 0, y: 0 }, { x: 1, y: 1 }];
+    const snapshot = points.map((p) => ({ ...p }));
+    declutterPoints(points, 30);
+    expect(points).toEqual(snapshot);
   });
 });

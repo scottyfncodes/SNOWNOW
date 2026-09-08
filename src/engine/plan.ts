@@ -318,6 +318,32 @@ export async function recommend(
   };
 }
 
+/** ---- Single-mountain plan ------------------------------------------------ */
+
+export interface PlanForMountainOptions extends PlanOptions {
+  mountain: Mountain;
+  origin: Origin;
+  date: DateKey;
+  today: DateKey;
+  now: MinuteOfDay;
+}
+
+/**
+ * The whole-day answer for exactly one mountain — the mountain the user
+ * actually tapped on the map, never the other twelve. This is what powers
+ * the mountain profile: it costs the same one mountain's worth of provider
+ * calls as `recommend()` spends on its single winner, without paying for
+ * every candidate's calls just to throw the losers away.
+ */
+export async function planForMountain(
+  registry: ProviderRegistry,
+  options: PlanForMountainOptions,
+): Promise<SkiDayPlan> {
+  const context = makeContext(options.date, options.today, options.now);
+  const inputs = await loadDayInputs(registry, options.mountain, options.origin, context);
+  return buildPlan(inputs, options);
+}
+
 /** ---- Stay or go --------------------------------------------------------- */
 
 /**

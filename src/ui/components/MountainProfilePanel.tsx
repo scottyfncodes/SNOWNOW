@@ -55,6 +55,37 @@ export function MountainProfilePanel({ mountain, profile }: MountainProfilePanel
         />
       </dl>
 
+      <section className="profile-parking" aria-labelledby="profile-parking-heading">
+        <h3 id="profile-parking-heading" className="eyebrow">
+          Parking
+        </h3>
+        {profile.parking?.note || profile.parking?.infoUrl ? (
+          <>
+            {profile.parking.note && <p className="profile-parking-note">{profile.parking.note}</p>}
+            {profile.parking.reservationRequired != null && (
+              <p className="profile-parking-note">
+                {profile.parking.reservationRequired
+                  ? 'A paid or reserved space is required.'
+                  : 'No reservation is required.'}
+              </p>
+            )}
+            {profile.parking.infoUrl && (
+              <a href={profile.parking.infoUrl} target="_blank" rel="noreferrer">
+                Parking details ↗
+              </a>
+            )}
+          </>
+        ) : (
+          <p className="profile-parking-note">
+            Live parking availability isn't currently available. Check{' '}
+            <a href={profile.officialWebsite} target="_blank" rel="noreferrer">
+              the mountain's own site
+            </a>{' '}
+            before you go — we won't guess at open spots.
+          </p>
+        )}
+      </section>
+
       <ul className="profile-links">
         <ProfileLink label="Snow report" href={profile.snowReportUrl} />
         <ProfileLink label="Webcams" href={profile.webcamUrl} />

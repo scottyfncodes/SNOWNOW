@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { DEFAULT_PREFERENCES } from '@/config/weights';
 import { MOUNTAINS } from '@/data/mountains';
 import { findOrigin, gpsOrigin } from '@/data/origins';
 import { at } from '@/domain/time';
@@ -12,6 +13,23 @@ import { MapScreen } from './MapScreen';
 
 const user = () => userEvent.setup();
 const clock = { today: toDateKey(new Date('2026-01-17')), now: at(7, 0) };
+const preferences = { ...DEFAULT_PREFERENCES };
+
+function renderMap(
+  props: Partial<React.ComponentProps<typeof MapScreen>> = {},
+) {
+  return render(
+    <MapScreen
+      registry={createDemoRegistry()}
+      clock={clock}
+      origin={findOrigin('denver')}
+      onOriginChange={() => {}}
+      preferences={preferences}
+      usingDemoData={true}
+      {...props}
+    />,
+  );
+}
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -19,19 +37,22 @@ afterEach(() => {
 });
 
 describe('MapScreen', () => {
-  it('shows every supported mountain as a selectable marker', () => {
-    render(
-      <MapScreen registry={createDemoRegistry()} clock={clock} origin={findOrigin('denver')} onBack={() => {}} />,
-    );
+  it('is the homepage: the Colorado map is there immediately, with no NOW/LATER choice', () => {
+    renderMap();
+    expect(screen.getByText('DEMO DATA')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^NOW$/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^LATER$/i })).not.toBeInTheDocument();
+  });
+
+  it('shows every supported mountain as a selectable marker, each exactly once', () => {
+    renderMap();
     for (const mountain of MOUNTAINS) {
       expect(screen.getByRole('button', { name: new RegExp(`select ${mountain.name}`, 'i') })).toBeInTheDocument();
     }
   });
 
-  it('resolves a route, shows drive time and distance, and opens the profile when a mountain is selected', async () => {
-    render(
-      <MapScreen registry={createDemoRegistry()} clock={clock} origin={findOrigin('denver')} onBack={() => {}} />,
-    );
+  it('opens the mountain profile in place when a mountain is selected, with drive time, distance and traffic', async () => {
+    renderMap();
     const vail = MOUNTAINS.find((m) => m.id === 'vail')!;
     await user().click(screen.getByRole('button', { name: new RegExp(`select ${vail.name}`, 'i') }));
 
@@ -44,30 +65,47 @@ describe('MapScreen', () => {
     expect(screen.getByText('Official site ↗')).toBeInTheDocument();
   });
 
-  it('in real live mode, resolves a route with exactly one network call — never the whole day-curve grid', async () => {
+  it('answers the whole question for the selected mountain: snow, weather, recommendation, tickets, parking and alerts', async () => {
+    renderMap();
+    const keystone = MOUNTAINS.find((m) => m.id === 'keystone')!;
+    await user().click(screen.getByRole('button', { name: new RegExp(`select ${keystone.name}`, 'i') }));
+
+    await waitFor(() => expect(screen.getByText('Base')).toBeInTheDocument(), { timeout: 12_000 });
+    expect(screen.getByText('Peak')).toBeInTheDocument();
+    expect(screen.getAllByText(/out of 10/i).length).toBeGreaterThan(0);
+    expect(screen.getByRole('heading', { name: /the snow clock/i })).toBeInTheDocument();
+    expect(screen.getByText('Parking')).toBeInTheDocument();
+  });
+
+  it('in real live mode, resolves the quick route preview with exactly one network call — never the whole day-curve grid', async () => {
     vi.stubEnv('VITE_DATA_MODE', 'live');
     vi.stubEnv('VITE_API_BASE_URL', 'https://proxy.example.test');
     const fetchSpy = vi.fn(
-      async (_url: string, _init?: RequestInit) =>
-        new Response(JSON.stringify({ durationMinutes: 121, distanceMiles: 99.4 }), { status: 200 }),
+      async (url: string, _init?: RequestInit) => {
+        if (url === 'https://proxy.example.test/api/route-preview') {
+          return new Response(JSON.stringify({ durationMinutes: 121, distanceMiles: 99.4 }), { status: 200 });
+        }
+        return new Response(JSON.stringify({ samples: [{ departure: 360, durationMinutes: 121, congestion: 0.2 }] }), {
+          status: 200,
+        });
+      },
     );
     vi.stubGlobal('fetch', fetchSpy);
 
     const liveRegistry = createLiveRegistry({ trafficApiBaseUrl: 'https://proxy.example.test' });
-    render(<MapScreen registry={liveRegistry} clock={clock} origin={findOrigin('denver')} onBack={() => {}} />);
+    renderMap({ registry: liveRegistry, usingDemoData: false });
     const vail = MOUNTAINS.find((m) => m.id === 'vail')!;
     await user().click(screen.getByRole('button', { name: new RegExp(`select ${vail.name}`, 'i') }));
 
     await waitFor(() => expect(screen.getByText('2h01')).toBeInTheDocument());
     expect(screen.getByText('99 mi')).toBeInTheDocument();
     expect(screen.getByText('Traffic-aware')).toBeInTheDocument();
-    expect(fetchSpy).toHaveBeenCalledTimes(1);
-    expect(fetchSpy.mock.calls[0]![0]).toBe('https://proxy.example.test/api/route-preview');
+    expect(fetchSpy.mock.calls.filter((call) => call[0] === 'https://proxy.example.test/api/route-preview')).toHaveLength(1);
   });
 
   it('works the same way for a GPS origin as for a manual city', async () => {
     const origin = gpsOrigin(39.7, -105.2);
-    render(<MapScreen registry={createDemoRegistry()} clock={clock} origin={origin} onBack={() => {}} />);
+    renderMap({ origin });
     const breck = MOUNTAINS.find((m) => m.id === 'breckenridge')!;
     await user().click(screen.getByRole('button', { name: new RegExp(`select ${breck.name}`, 'i') }));
     await waitFor(() => expect(screen.getByText('Drive time')).toBeInTheDocument());
@@ -83,7 +121,7 @@ describe('MapScreen', () => {
       },
     };
 
-    render(<MapScreen registry={failingRegistry} clock={clock} origin={findOrigin('denver')} onBack={() => {}} />);
+    renderMap({ registry: failingRegistry });
     const keystone = MOUNTAINS.find((m) => m.id === 'keystone')!;
     await user().click(screen.getByRole('button', { name: new RegExp(`select ${keystone.name}`, 'i') }));
 
@@ -92,5 +130,21 @@ describe('MapScreen', () => {
     // reason (which could be a bare HTTP status code like "502").
     expect(screen.queryByText(/502/)).not.toBeInTheDocument();
     expect(screen.queryByText('Drive time')).not.toBeInTheDocument();
+  });
+
+  it('lets you close a profile and return to the map, then open a different mountain', async () => {
+    renderMap();
+    const vail = MOUNTAINS.find((m) => m.id === 'vail')!;
+    const breck = MOUNTAINS.find((m) => m.id === 'breckenridge')!;
+
+    await user().click(screen.getByRole('button', { name: new RegExp(`select ${vail.name}`, 'i') }));
+    await waitFor(() => expect(screen.getByRole('heading', { name: vail.name })).toBeInTheDocument());
+
+    await user().click(screen.getByRole('button', { name: /^close$/i }));
+    expect(screen.queryByRole('heading', { name: vail.name })).not.toBeInTheDocument();
+
+    await user().click(screen.getByRole('button', { name: new RegExp(`select ${breck.name}`, 'i') }));
+    await waitFor(() => expect(screen.getByRole('heading', { name: breck.name })).toBeInTheDocument());
+    expect(screen.queryByRole('heading', { name: vail.name })).not.toBeInTheDocument();
   });
 });
