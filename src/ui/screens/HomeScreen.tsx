@@ -8,6 +8,7 @@ export interface HomeScreenProps {
   onOriginChange: (origin: Origin) => void;
   onNow: () => void;
   onLater: () => void;
+  onMap: () => void;
   usingDemoData: boolean;
 }
 
@@ -24,6 +25,7 @@ export function HomeScreen({
   onOriginChange,
   onNow,
   onLater,
+  onMap,
   usingDemoData,
 }: HomeScreenProps) {
   return (
@@ -48,6 +50,10 @@ export function HomeScreen({
             <span className="bigbutton-sub">What would my ski day look like on another date?</span>
           </button>
         </div>
+
+        <button type="button" className="linkbutton home-map-link" onClick={onMap}>
+          Explore the map ↓
+        </button>
 
         <footer className="home-foot">
           <OriginPicker origin={origin} onChange={onOriginChange} />

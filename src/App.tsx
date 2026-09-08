@@ -9,9 +9,10 @@ import type { ProviderRegistry } from '@/providers/types';
 import { useClock } from '@/ui/hooks/useClock';
 import { HomeScreen } from '@/ui/screens/HomeScreen';
 import { LaterScreen } from '@/ui/screens/LaterScreen';
+import { MapScreen } from '@/ui/screens/MapScreen';
 import { NowScreen } from '@/ui/screens/NowScreen';
 
-type Mode = 'home' | 'now' | 'later';
+type Mode = 'home' | 'now' | 'later' | 'map';
 
 /**
  * SNOWNOW.
@@ -68,12 +69,17 @@ export default function App({ registry: injected }: AppProps = {}) {
     );
   }
 
+  if (mode === 'map') {
+    return <MapScreen registry={registry} clock={clock} origin={origin} onBack={() => setMode('home')} />;
+  }
+
   return (
     <HomeScreen
       origin={origin}
       onOriginChange={setOrigin}
       onNow={() => setMode('now')}
       onLater={() => setMode('later')}
+      onMap={() => setMode('map')}
       usingDemoData={registry.usingDemoData}
     />
   );

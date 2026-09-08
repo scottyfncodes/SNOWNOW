@@ -42,6 +42,17 @@ describe('the homepage', () => {
     await user().selectOptions(select, 'boulder');
     expect((select as HTMLSelectElement).value).toBe('boulder');
   });
+
+  it('offers a third path to the map, without it crowding the two main choices', async () => {
+    render(<App />);
+    const mapLink = screen.getByRole('button', { name: /explore the map/i });
+    expect(mapLink).toBeInTheDocument();
+    await user().click(mapLink);
+    expect(screen.getByText('MAP')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /select vail/i })).toBeInTheDocument();
+    await user().click(screen.getByRole('button', { name: /back to start/i }));
+    expect(screen.getByText('Find your best mountain day.')).toBeInTheDocument();
+  });
 });
 
 describe('GPS location flow', () => {

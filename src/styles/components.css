@@ -1874,3 +1874,241 @@
   line-height: 1.5;
   color: var(--ink-dim);
 }
+
+/* =============================================================== map link */
+
+.home-map-link {
+  display: block;
+  margin: 4px auto 0;
+  text-align: center;
+}
+
+/* ================================================================== map */
+
+.mapscreen-intro {
+  margin: 4px 0 16px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink-dim);
+}
+
+.mapscreen-route {
+  margin-top: 14px;
+}
+
+.mapscreen-route-error {
+  color: var(--wait);
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+.mapscreen-route-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.mapscreen-route-stats dt {
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.mapscreen-route-stats dd {
+  margin: 4px 0 0;
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.mountainmap {
+  margin: 0 0 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: 8px 8px 10px;
+}
+
+.mountainmap-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.mountainmap-bg {
+  fill: var(--bg-raise);
+}
+
+.mountainmap-route {
+  fill: none;
+  stroke: var(--ice);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  opacity: 0.85;
+}
+
+.mountainmap-route.is-pending {
+  stroke-dasharray: 5 6;
+  opacity: 0.35;
+}
+
+.mountainmap-marker {
+  cursor: pointer;
+}
+
+.mountainmap-hit {
+  fill: transparent;
+}
+
+.mountainmap-dot {
+  fill: var(--ink-ghost);
+  stroke: var(--bg-raise);
+  stroke-width: 1.5;
+  transition: fill 0.15s var(--ease), r 0.15s var(--ease);
+}
+
+.mountainmap-marker:hover .mountainmap-dot,
+.mountainmap-marker:focus-visible .mountainmap-dot {
+  fill: var(--ice);
+}
+
+.mountainmap-marker.is-selected .mountainmap-dot {
+  fill: var(--ice);
+  stroke: var(--ink);
+}
+
+.mountainmap-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  fill: var(--ink-faint);
+  pointer-events: none;
+}
+
+.mountainmap-marker.is-selected .mountainmap-label {
+  fill: var(--ink);
+  font-weight: 800;
+}
+
+.mountainmap-origin-dot {
+  fill: var(--go);
+  stroke: var(--bg-raise);
+  stroke-width: 2;
+}
+
+.mountainmap-origin-dot.is-gps {
+  fill: var(--wait);
+}
+
+.mountainmap-origin-ring {
+  fill: none;
+  stroke: var(--go);
+  stroke-width: 1;
+  opacity: 0.35;
+}
+
+.mountainmap-origin-label {
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  fill: var(--ink);
+}
+
+.mountainmap-legend {
+  display: flex;
+  gap: 14px;
+  margin-top: 6px;
+  padding: 0 6px;
+  font-size: 11.5px;
+  color: var(--ink-faint);
+}
+
+.mountainmap-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.mountainmap-swatch {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.mountainmap-swatch.is-origin {
+  background: var(--go);
+}
+
+.mountainmap-swatch.is-mountain {
+  background: var(--ink-ghost);
+}
+
+/* ============================================================ profile panel */
+
+.profile-panel {
+  margin-top: 16px;
+}
+
+.profile-website {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--ice);
+}
+
+.profile-unavailable {
+  color: var(--ink-faint);
+  font-size: 14px;
+}
+
+.profile-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 16px;
+  margin-bottom: 14px;
+}
+
+.profile-row dt {
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.profile-row dd {
+  margin: 4px 0 0;
+  font-size: 13.5px;
+  line-height: 1.4;
+}
+
+.profile-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  list-style: none;
+  padding: 0;
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+
+.profile-links a {
+  color: var(--ice);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.profile-links .is-unavailable {
+  color: var(--ink-ghost);
+  font-size: 13px;
+}
+
+.profile-note {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ink-faint);
+}
