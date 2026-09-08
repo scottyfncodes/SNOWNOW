@@ -1,4 +1,5 @@
-import type { Origin } from '@/domain/mountain';
+import type { GeoPoint, Origin } from '@/domain/mountain';
+import { nearest } from '@/lib/geo';
 
 /**
  * Starting points. SNOWNOW optimises HOME → MOUNTAIN → SNOW → MOUNTAIN → HOME,
@@ -47,3 +48,12 @@ export const DEFAULT_ORIGIN_ID = 'denver';
 
 export const findOrigin = (id: string): Origin =>
   ORIGINS.find((origin) => origin.id === id) ?? (ORIGINS[0] as Origin);
+
+/**
+ * There is no drive-time/traffic model for an arbitrary point — every
+ * mountain's access routes are hand-authored per known origin (see
+ * `data/mountains.ts`). "Use my location" therefore means "which of our
+ * supported starting cities is actually closest to you", not routing from an
+ * exact address — an honest approximation, not a guess dressed up as one.
+ */
+export const nearestOrigin = (point: GeoPoint): Origin => nearest(point, ORIGINS);

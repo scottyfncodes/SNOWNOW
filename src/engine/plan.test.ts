@@ -255,6 +255,19 @@ describe('base/peak conditions and off-season handling on the plan', () => {
     expect(built.offSeasonMessage!.line.length).toBeGreaterThan(0);
   });
 
+  it('explains a slow traffic-service wake-up in the caveat, and stays generic for other traffic failures', () => {
+    const waking = buildPlan(
+      testInputs({ outbound: 'unavailable', outboundReason: 'The traffic service took too long to answer.' }),
+    );
+    expect(waking.caveats.some((c) => /wake up/i.test(c))).toBe(true);
+
+    const genericFailure = buildPlan(
+      testInputs({ outbound: 'unavailable', outboundReason: 'Traffic service request failed.' }),
+    );
+    expect(genericFailure.caveats.some((c) => /not going to fake the drive/i.test(c))).toBe(true);
+    expect(genericFailure.caveats.some((c) => /wake up/i.test(c))).toBe(false);
+  });
+
   it('never turns a routine dead lift-status feed into an off-season takeover', () => {
     // This is the exact shape of several existing "honest empty state" tests:
     // the lift report is down but everything else is fine. That should stay

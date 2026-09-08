@@ -306,6 +306,9 @@ export interface InputsSpec {
   alerts?: WeatherAlert[] | 'unavailable';
   outbound?: TravelCurve | 'unavailable';
   inbound?: TravelCurve | 'unavailable';
+  /** Only used when `outbound`/`inbound` is 'unavailable' — lets a test model a specific failure reason (e.g. a timeout). */
+  outboundReason?: string;
+  inboundReason?: string;
   closedCorridors?: string[];
   primaryRoadStatus?: RoadStatus | 'unavailable' | null;
   date?: string;
@@ -332,8 +335,8 @@ export function testInputs(spec: InputsSpec = {}): DayInputs {
     crowds: wrap(spec.crowds ?? testCrowds(), 'No crowd data.'),
     ticket: wrap(spec.ticket ?? testTicket(), 'No ticket pricing.'),
     alerts: wrap(spec.alerts ?? [], 'No alert feed.'),
-    outbound: wrap(outbound, 'No route data.'),
-    inbound: wrap(inbound, 'No route data.'),
+    outbound: wrap(outbound, spec.outboundReason ?? 'No route data.'),
+    inbound: wrap(inbound, spec.inboundReason ?? 'No route data.'),
     outboundOptions: outbound === 'unavailable' ? [] : [outbound],
     inboundOptions: inbound === 'unavailable' ? [] : [inbound],
     routes: mountain.accessRoutes,

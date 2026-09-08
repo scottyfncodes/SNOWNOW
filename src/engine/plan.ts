@@ -170,7 +170,15 @@ function collectCaveats(inputs: DayInputs, timingReason: string | null): string[
     caveats.push(`${inputs.closedCorridors.join(', ')} closed. Routing around it wasn't possible from here today.`);
   }
   if (inputs.outbound.status === 'unavailable' || inputs.inbound.status === 'unavailable') {
-    caveats.push("Road intel is offline. We'll show the mountain, but we're not going to fake the drive.");
+    const timeoutPattern = /took too long|timed out/i;
+    const isSlowWake =
+      (inputs.outbound.status === 'unavailable' && timeoutPattern.test(inputs.outbound.reason)) ||
+      (inputs.inbound.status === 'unavailable' && timeoutPattern.test(inputs.inbound.reason));
+    caveats.push(
+      isSlowWake
+        ? "Road intel is offline. We'll show the mountain, but we're not going to fake the drive. (Our traffic service naps when it's quiet and can take ~15 seconds to wake up — try again in a moment.)"
+        : "Road intel is offline. We'll show the mountain, but we're not going to fake the drive.",
+    );
   } else if (timingReason) {
     caveats.push(timingReason);
   }
