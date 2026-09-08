@@ -1,5 +1,6 @@
 import type { SkiDayPlan } from '@/domain/plan';
 import type { MountainProfile as MountainReference } from '@/domain/mountainProfile';
+import { formatPrice, savingsVsWindow } from '@/domain/pricing';
 import { ConditionsPanel } from './ConditionsPanel';
 import { DataBadge } from './DataBadge';
 import { GetTherePanel } from './GetTherePanel';
@@ -7,6 +8,7 @@ import { MountainProfilePanel } from './MountainProfilePanel';
 import { ParkingPanel } from './ParkingPanel';
 import { ScoreDial } from './ScoreDial';
 import { SnowClockPanel } from './SnowClockPanel';
+import { TrailMapPanel } from './TrailMapPanel';
 
 export interface MountainProfileProps {
   plan: SkiDayPlan;
@@ -49,7 +51,11 @@ export function MountainProfile({ plan, reference, now }: MountainProfileProps) 
 
       <ParkingPanel parking={plan.parking} />
 
+      <TicketPanel plan={plan} />
+
       <GetTherePanel plan={plan} />
+
+      <TrailMapPanel mountain={plan.mountain} trailMap={reference?.trailMap ?? null} />
 
       {!offSeason && (
         <SnowClockPanel
@@ -79,5 +85,41 @@ export function MountainProfile({ plan, reference, now }: MountainProfileProps) 
         <MountainProfilePanel mountain={plan.mountain} profile={reference} />
       </details>
     </div>
+  );
+}
+
+/** Real price when the (rare) live source has one; otherwise an honest "unavailable" pointing at the resort's own purchase page — never a guessed number. */
+function TicketPanel({ plan }: { plan: SkiDayPlan }) {
+  const ticket = plan.ticket;
+  if (!ticket && !plan.ticketPurchaseUrl) return null;
+
+  return (
+    <section className="panel ticketpanel" aria-labelledby="ticket-heading">
+      <h2 id="ticket-heading" className="section-title">
+        Lift ticket
+      </h2>
+      {ticket ? (
+        <p className="ticketpanel-price">
+          <span className="ticketpanel-amount numeral">{formatPrice(ticket.adultDay, ticket.currency)}</span>
+          <span className="ticketpanel-note">
+            {savingsVsWindow(ticket) > 8
+              ? `${formatPrice(savingsVsWindow(ticket), ticket.currency)} under the window rate`
+              : ticket.note}
+          </span>
+        </p>
+      ) : (
+        <p className="ticketpanel-unavailable">
+          Current price unavailable
+          {plan.ticketPurchaseUrl && (
+            <>
+              {' — '}
+              <a href={plan.ticketPurchaseUrl} target="_blank" rel="noreferrer">
+                buy at the resort
+              </a>
+            </>
+          )}
+        </p>
+      )}
+    </section>
   );
 }

@@ -2531,3 +2531,225 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+/* ================================================================ ticket */
+
+.ticketpanel-price {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 0;
+}
+
+.ticketpanel-amount {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--ice);
+}
+
+.ticketpanel-note {
+  font-size: 12.5px;
+  color: var(--ink-faint);
+}
+
+.ticketpanel-unavailable {
+  font-size: 13.5px;
+  color: var(--ink-faint);
+  margin: 0;
+}
+
+.ticketpanel-unavailable a {
+  color: var(--ice);
+  font-weight: 700;
+}
+
+/* ============================================================= trail map */
+
+.trailmappanel-preview {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--bg-raise);
+  overflow: hidden;
+  cursor: pointer;
+  text-align: left;
+  margin-bottom: 12px;
+}
+
+.trailmappanel-preview-image {
+  display: block;
+  width: 100%;
+  max-height: 260px;
+  object-fit: cover;
+  object-position: top;
+}
+
+.trailmappanel-preview-pdf {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 32px 16px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.trailmappanel-preview-pdf-icon {
+  font-size: 40px;
+}
+
+.trailmappanel-preview-cta {
+  display: block;
+  padding: 10px 14px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--ice);
+  border-top: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.trailmappanel-unavailable {
+  color: var(--ink-faint);
+  font-size: 13.5px;
+  margin: 0 0 10px;
+}
+
+.trailmappanel-official {
+  display: inline-block;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--ice);
+}
+
+.trailmappanel-season {
+  color: var(--ice);
+  border-color: rgba(124, 231, 255, 0.3);
+}
+
+/* -------------------------------------------------- trail map full-screen */
+
+.trailmapviewer {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: var(--bg-deep);
+  display: flex;
+  flex-direction: column;
+  touch-action: none;
+}
+
+.trailmapviewer-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: max(14px, env(safe-area-inset-top)) 16px 12px;
+  border-bottom: 1px solid var(--line);
+  background: var(--bg);
+}
+
+.trailmapviewer-title {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.trailmapviewer-mountain {
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.trailmapviewer-season {
+  align-self: flex-start;
+  color: var(--ice);
+  border-color: rgba(124, 231, 255, 0.3);
+}
+
+.trailmapviewer-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-shrink: 0;
+}
+
+.trailmapviewer-official {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--ice);
+  white-space: nowrap;
+}
+
+.trailmapviewer-close {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.trailmapviewer-stage {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: none;
+  cursor: grab;
+  background: repeating-conic-gradient(var(--bg) 0% 25%, var(--bg-raise) 0% 50%) 0 0 / 24px 24px;
+}
+
+.trailmapviewer-image {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  user-select: none;
+  -webkit-user-drag: none;
+  transform-origin: center center;
+  transition: transform 0.05s linear;
+  will-change: transform;
+}
+
+.trailmapviewer-stage-pdf {
+  background: var(--bg);
+}
+
+.trailmapviewer-pdf {
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+.trailmapviewer-foot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  padding: 10px 16px max(10px, env(safe-area-inset-bottom));
+  border-top: 1px solid var(--line);
+  background: var(--bg);
+}
+
+.trailmapviewer-reset {
+  font-size: 12.5px;
+}
+
+.trailmapviewer-pdf-fallback {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--ice);
+}

@@ -50,10 +50,11 @@ export function MountainProfilePanel({ mountain, profile }: MountainProfilePanel
         />
       </dl>
 
+      {/* Trail map has its own dedicated, prominent section elsewhere in the
+          profile (see TrailMapPanel) — it isn't repeated in this reference list. */}
       <ul className="profile-links">
         <ProfileLink label="Snow report" href={profile.snowReportUrl} />
         <ProfileLink label="Webcams" href={profile.webcamUrl} />
-        <ProfileLink label="Trail map" href={profile.trailMapUrl} />
         <ProfileLink label="Lift tickets" href={profile.ticketUrl} />
         <ProfileLink label="Pass info" href={profile.passInfoUrl} />
       </ul>

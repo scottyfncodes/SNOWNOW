@@ -1,30 +1,82 @@
 import { describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { buildPlan } from '@/engine/plan';
+import type { TrailMap } from '@/domain/mountainProfile';
 import { testInputs, testOperations, testParking, testWeather } from '@/test/fixtures';
 import { MountainProfile } from './MountainProfile';
 
+const TRAIL_MAP: TrailMap = {
+  officialUrl: 'https://example.test/official-trail-map',
+  source: 'official',
+  imageUrl: 'https://example.test/trail-map.jpg',
+  pdfUrl: null,
+  season: '2025-26',
+};
+
 describe('MountainProfile — the map-to-decision hierarchy', () => {
-  it('leads with the verdict, then conditions, parking, route and timing — in that order', () => {
+  it('leads with the verdict, then conditions, parking, ticket, route, trail map and timing — in that order', () => {
     const plan = buildPlan(testInputs());
     render(<MountainProfile plan={plan} reference={null} />);
 
     const headings = screen.getAllByRole('heading').map((el) => el.textContent);
     const order = headings.filter((text) =>
-      [plan.mountain.name, 'Conditions', '🅿️ Parking', '🚗 Get there', 'The Snow Clock'].some((label) =>
-        text?.includes(label),
-      ),
+      [
+        plan.mountain.name,
+        'Conditions',
+        '🅿️ Parking',
+        'Lift ticket',
+        '🚗 Get there',
+        '🗺️ Trail map',
+        'The Snow Clock',
+      ].some((label) => text?.includes(label)),
     );
     expect(order[0]).toContain(plan.mountain.name);
     expect(order.findIndex((t) => t?.includes('Conditions'))).toBeLessThan(
       order.findIndex((t) => t?.includes('Parking')),
     );
     expect(order.findIndex((t) => t?.includes('Parking'))).toBeLessThan(
+      order.findIndex((t) => t?.includes('Lift ticket')),
+    );
+    expect(order.findIndex((t) => t?.includes('Lift ticket'))).toBeLessThan(
       order.findIndex((t) => t?.includes('Get there')),
     );
     expect(order.findIndex((t) => t?.includes('Get there'))).toBeLessThan(
+      order.findIndex((t) => t?.includes('Trail map')),
+    );
+    expect(order.findIndex((t) => t?.includes('Trail map'))).toBeLessThan(
       order.findIndex((t) => t?.includes('Snow Clock')),
     );
+  });
+
+  it('shows the real official trail map when the mountain reference has one, prominently, not behind a generic link', () => {
+    const plan = buildPlan(testInputs());
+    render(
+      <MountainProfile
+        plan={plan}
+        reference={{
+          officialWebsite: 'https://example.test',
+          snowReportUrl: null,
+          webcamUrl: null,
+          trailMap: TRAIL_MAP,
+          ticketUrl: null,
+          passInfoUrl: null,
+          phone: null,
+          address: null,
+          openingDate: { date: null, status: 'tbd' },
+          closingDate: { date: null, status: 'tbd' },
+        }}
+      />,
+    );
+    expect(screen.getByRole('img', { name: /trail map preview/i })).toHaveAttribute(
+      'src',
+      'https://example.test/trail-map.jpg',
+    );
+  });
+
+  it('shows the honest trail-map-unavailable state when there is no researched mountain reference at all', () => {
+    const plan = buildPlan(testInputs());
+    render(<MountainProfile plan={plan} reference={null} />);
+    expect(screen.getByText(/don't have researched trail-map information/i)).toBeInTheDocument();
   });
 
   it('uses the exact verdict the scoring engine produced — never a second, independent wording', () => {
