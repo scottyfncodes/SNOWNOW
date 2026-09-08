@@ -1,10 +1,11 @@
+import type { Origin } from '@/domain/mountain';
 import { Snowfall } from '@/ui/components/Snowfall';
 import { Wordmark } from '@/ui/components/Wordmark';
 import { OriginPicker } from '@/ui/components/OriginPicker';
 
 export interface HomeScreenProps {
-  originId: string;
-  onOriginChange: (originId: string) => void;
+  origin: Origin;
+  onOriginChange: (origin: Origin) => void;
   onNow: () => void;
   onLater: () => void;
   usingDemoData: boolean;
@@ -19,7 +20,7 @@ export interface HomeScreenProps {
  * question.
  */
 export function HomeScreen({
-  originId,
+  origin,
   onOriginChange,
   onNow,
   onLater,
@@ -49,7 +50,7 @@ export function HomeScreen({
         </div>
 
         <footer className="home-foot">
-          <OriginPicker value={originId} onChange={onOriginChange} />
+          <OriginPicker origin={origin} onChange={onOriginChange} />
           {usingDemoData ? (
             <p className="home-demo">
               <span className="chip chip-demo">DEMO DATA</span>

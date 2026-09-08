@@ -3,12 +3,13 @@ import type { WeatherAlert } from '@/domain/alerts';
 import type { CrowdCurve, MountainWeather, OperationsReport, TravelCurve } from '@/domain/conditions';
 import type { DateKey } from '@/domain/dates';
 import { daysBetween } from '@/domain/dates';
-import { type AccessRoute, type Mountain, type Origin, routesFrom } from '@/domain/mountain';
+import { type AccessRoute, type Mountain, type Origin } from '@/domain/mountain';
 import type { TicketPrice } from '@/domain/pricing';
 import { type Availability, unavailable } from '@/domain/provenance';
 import { isImpassable, type RoadStatus } from '@/domain/road';
 import type { MinuteOfDay } from '@/domain/time';
 import type { ProviderContext, ProviderRegistry } from '@/providers/types';
+import { resolveAccessRoutes } from './routing';
 import { bestCurve } from './travel';
 
 /**
@@ -73,7 +74,7 @@ export async function loadDayInputs(
   origin: Origin,
   context: ProviderContext,
 ): Promise<DayInputs> {
-  const routes = routesFrom(mountain, origin.id);
+  const routes = resolveAccessRoutes(mountain, origin);
   const corridorIds = [...new Set(routes.map((route) => route.corridorId))];
 
   const [weather, operations, crowds, ticket, alerts, roadStatusResults, outboundResults, inboundResults] =

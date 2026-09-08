@@ -74,6 +74,45 @@ describe('LiveTrafficProvider — talks to the server, never to Google', () => {
     expect(result.provenance.fetchedAt).toBeTruthy();
   });
 
+  it('prefers the server-reported real distance over the hand-authored fallback', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              samples: [{ departure: at(6), durationMinutes: 90, congestion: 0.1 }],
+              distanceMiles: 42.7,
+            }),
+            { status: 200 },
+          ),
+      ),
+    );
+    const provider = new LiveTrafficProvider({ apiBaseUrl: 'https://proxy.example.test' });
+    const result = await provider.getTravelCurve(route, 'outbound', context);
+    expect(result.status).toBe('ok');
+    if (result.status !== 'ok') return;
+    expect(result.data.distanceMiles).toBe(42.7);
+  });
+
+  it('falls back to the route\'s own distance when the server does not report one', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({ samples: [{ departure: at(6), durationMinutes: 90, congestion: 0.1 }] }),
+            { status: 200 },
+          ),
+      ),
+    );
+    const provider = new LiveTrafficProvider({ apiBaseUrl: 'https://proxy.example.test' });
+    const result = await provider.getTravelCurve(route, 'outbound', context);
+    expect(result.status).toBe('ok');
+    if (result.status !== 'ok') return;
+    expect(result.data.distanceMiles).toBe(route.distanceMiles);
+  });
+
   it('returns unavailable when the server has no key configured (503)', async () => {
     vi.stubGlobal(
       'fetch',

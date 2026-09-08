@@ -111,6 +111,31 @@ GitHub Pages cannot host it, since Pages serves static files only and has no
 way to hold a server-side secret). Every variable is documented in
 `.env.example`.
 
+### GPS-based routing
+
+"📍 Use my current location" sends the browser's exact `navigator.geolocation`
+coordinates to the same `/api/travel-curve` endpoint the six manual cities
+already use — `origin`/`destination` there were always plain `{ lat, lon }`,
+never a place name or an address, so **no new Google API and no geocoding
+service were added**. The Google Routes `computeRoutes` call this project
+already makes accepts an arbitrary coordinate as `origin.location.latLng` the
+same way it accepts one of the six cities'; that capability was already
+present in the existing `GOOGLE_ROUTES_API_KEY`; this feature only stopped
+throwing the GPS fix away before it reached that call
+(`ui/components/OriginPicker.tsx` used to look up the *nearest of the six
+cities* and route from there instead — see `engine/routing.ts` for the
+replacement). Geocoding (reverse or forward) was deliberately not added: the
+UI never needs to show a street address, only "Using your current location".
+
+One real cost implication: the server's travel-curve cache key is rounded to
+three decimal degrees (~300 ft) and shared across every visitor asking about
+the same (origin, destination, direction, date). Six fixed cities pool every
+visitor from that city onto the same cache entries; a GPS fix is different
+for nearly every visitor, so GPS requests mostly miss that shared cache and
+each pay their own Google Routes calls. This is an inherent cost of routing
+from someone's actual location rather than a bug — see "Caching and API
+cost" below for the numbers.
+
 ### The production data gate
 
 `createLiveRegistry()` (`providers/live/index.ts`) never returns a
@@ -250,7 +275,8 @@ src/
   data/         Content, not code
     mountains.ts  Thirteen Colorado mountains, four pass networks, two snow
                   regions; access routes per origin
-    origins.ts    Starting points
+    origins.ts    The six manually-selectable starting cities, plus
+                  `gpsOrigin()` for a live GPS fix
     corridors.ts  Shared traffic corridors, their severity and weather region
     pricing.ts    Demo lift-ticket rate cards
     resortSources.ts  Per-resort live-data registry: Liftie slug, official
@@ -270,6 +296,10 @@ src/
   engine/       The product's actual intelligence. Pure, testable, no React.
     inputs.ts     Fan-out to providers; per-feed availability; enforces that
                   a closed corridor removes a route, not just its score
+    routing.ts    resolveAccessRoutes() — the origin abstraction. A manual
+                  city gets its hand-authored routes; any other origin (a
+                  GPS fix, above all) gets one route synthesized straight
+                  from its own coordinates, never snapped to a city
     snowClock.ts  When is the mountain actually good?
     optimize.ts   Joint (leave home × leave mountain) optimisation
     scoring.ts    The number on the card, and why
@@ -518,6 +548,19 @@ handful of times a day sits comfortably inside typical free-tier allowances —
 the cache is what keeps a small friend group well within it too, since they'd
 mostly be hitting warm cache. This has not been measured against a real
 Google Cloud billing account; treat it as an informed estimate, not a quote.
+
+**GPS mode changes this math.** The table above assumes an origin the cache
+can pool across visitors — true for the six manual cities, not true for a
+GPS fix, which lands on a different cache key for nearly every user. A GPS
+NOW request should be estimated as a fully cold cache every time: up to 20
+Google Routes calls per mountain, times every reachable mountain (now all
+thirteen, not just the ones with a manual route from the chosen city), per
+direction. This is a real, expected increase in Google Routes call volume
+versus city-only routing — not a defect — and is the direct cost of routing
+from someone's actual location. At low personal-use volume it should still
+sit inside Google's free tier; a public multi-user deployment should budget
+for it explicitly rather than assuming the six-city cache-sharing math still
+applies.
 
 ## Live data matrix
 

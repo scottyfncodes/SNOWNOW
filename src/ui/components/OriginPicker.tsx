@@ -1,47 +1,70 @@
 import { useState } from 'react';
-import { ORIGINS, nearestOrigin } from '@/data/origins';
+import { GPS_ORIGIN_ID, ORIGINS, findOrigin, gpsOrigin } from '@/data/origins';
+import type { Origin } from '@/domain/mountain';
 
 export interface OriginPickerProps {
-  value: string;
-  onChange: (originId: string) => void;
+  origin: Origin;
+  onChange: (origin: Origin) => void;
 }
 
-type LocateState = { status: 'idle' } | { status: 'locating' } | { status: 'done'; label: string } | { status: 'error'; message: string };
+type LocateState =
+  | { status: 'idle' }
+  | { status: 'locating' }
+  | { status: 'found' }
+  | { status: 'denied'; message: string }
+  | { status: 'error'; message: string };
+
+const GEOLOCATION_OPTIONS: PositionOptions = {
+  // Driving-origin selection wants the best fix the device can give, not the
+  // battery-friendly default.
+  enableHighAccuracy: true,
+  timeout: 10_000,
+  maximumAge: 0,
+};
 
 /**
- * There's no drive-time model for an arbitrary point on the map — every
- * mountain's routes are hand-authored per known starting city (see
- * `data/mountains.ts`). So "use my location" is honest about what it
- * actually does: finds the closest of the cities SNOWNOW already knows how
- * to route from, rather than pretending to route from your exact address.
+ * The user's exact coordinates become the routing origin directly — SNOWNOW
+ * no longer snaps a GPS fix to whichever of the six manual cities is
+ * closest. Permission is only ever requested here, on tap; never on mount.
  */
-function useLocate(onChange: (originId: string) => void) {
+function useLocate(onChange: (origin: Origin) => void) {
   const [state, setState] = useState<LocateState>({ status: 'idle' });
 
   const locate = () => {
     if (!navigator.geolocation) {
-      setState({ status: 'error', message: "This browser can't share your location." });
+      setState({
+        status: 'error',
+        message: "This browser can't share your location. Choose a starting city instead.",
+      });
       return;
     }
     setState({ status: 'locating' });
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        const closest = nearestOrigin({
-          lat: position.coords.latitude,
-          lon: position.coords.longitude,
-        });
-        onChange(closest.id);
-        setState({ status: 'done', label: closest.name });
+        onChange(gpsOrigin(position.coords.latitude, position.coords.longitude));
+        setState({ status: 'found' });
       },
       (error) => {
+        if (error.code === error.PERMISSION_DENIED) {
+          setState({
+            status: 'denied',
+            message: 'Location access is off. Choose a starting city instead.',
+          });
+          return;
+        }
+        if (error.code === error.TIMEOUT) {
+          setState({
+            status: 'error',
+            message: "Location took too long to find. Choose a starting city instead.",
+          });
+          return;
+        }
         setState({
           status: 'error',
-          message: error.code === error.PERMISSION_DENIED
-            ? 'Location access was denied — pick a city instead.'
-            : "Couldn't get your location — pick a city instead.",
+          message: "Couldn't determine your location. Choose a starting city instead.",
         });
       },
-      { timeout: 10_000, maximumAge: 5 * 60_000 },
+      GEOLOCATION_OPTIONS,
     );
   };
 
@@ -49,8 +72,9 @@ function useLocate(onChange: (originId: string) => void) {
 }
 
 /** Minimal typing: where you're starting from is a tap, not a text field. */
-export function OriginPicker({ value, onChange }: OriginPickerProps) {
+export function OriginPicker({ origin, onChange }: OriginPickerProps) {
   const { state, locate } = useLocate(onChange);
+  const isGps = origin.id === GPS_ORIGIN_ID;
 
   return (
     <div className="originpicker">
@@ -61,12 +85,17 @@ export function OriginPicker({ value, onChange }: OriginPickerProps) {
         <div className="originpicker-control">
           <select
             id="origin-select"
-            value={value}
-            onChange={(event) => onChange(event.target.value)}
+            value={isGps ? '' : origin.id}
+            onChange={(event) => onChange(findOrigin(event.target.value))}
           >
-            {ORIGINS.map((origin) => (
-              <option key={origin.id} value={origin.id}>
-                {origin.name}
+            {isGps && (
+              <option value="" disabled>
+                Your current location
+              </option>
+            )}
+            {ORIGINS.map((city) => (
+              <option key={city.id} value={city.id}>
+                {city.name}
               </option>
             ))}
           </select>
@@ -80,14 +109,17 @@ export function OriginPicker({ value, onChange }: OriginPickerProps) {
         className="originpicker-locate"
         onClick={locate}
         disabled={state.status === 'locating'}
+        aria-busy={state.status === 'locating'}
       >
         <span aria-hidden="true">📍</span>
-        {state.status === 'locating' ? 'Finding you…' : 'Use my current location'}
+        {state.status === 'locating' ? 'Finding your location…' : 'Use my current location'}
       </button>
-      {state.status === 'done' && (
-        <p className="originpicker-locate-status">Closest starting city: {state.label}</p>
+      {state.status === 'found' && (
+        <p className="originpicker-locate-status">Using your current location</p>
       )}
-      {state.status === 'error' && <p className="originpicker-locate-status">{state.message}</p>}
+      {(state.status === 'denied' || state.status === 'error') && (
+        <p className="originpicker-locate-status">{state.message}</p>
+      )}
     </div>
   );
 }

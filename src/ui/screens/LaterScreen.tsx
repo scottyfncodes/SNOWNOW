@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { MOUNTAINS } from '@/data/mountains';
-import { findOrigin } from '@/data/origins';
 import type { RiderPreferences } from '@/config/weights';
+import type { Origin } from '@/domain/mountain';
 import {
   addDays,
   type DateKey,
@@ -27,6 +27,7 @@ import { PlanView } from './PlanView';
 export interface LaterScreenProps {
   registry: ProviderRegistry;
   clock: ClockState;
+  origin: Origin;
   preferences: RiderPreferences;
   onBack: () => void;
 }
@@ -52,12 +53,11 @@ function presetsFor(today: DateKey): Selection[] {
  * LATER always means a future date or range. Same engine, same question, with
  * forecast uncertainty carried all the way to the surface.
  */
-export function LaterScreen({ registry, clock, preferences, onBack }: LaterScreenProps) {
+export function LaterScreen({ registry, clock, origin, preferences, onBack }: LaterScreenProps) {
   const presets = useMemo(() => presetsFor(clock.today), [clock.today]);
   const [selection, setSelection] = useState<Selection>(presets[1] as Selection);
   const [openDate, setOpenDate] = useState<DateKey | null>(null);
 
-  const origin = useMemo(() => findOrigin(preferences.originId), [preferences.originId]);
   const dates = selection.kind === 'single' ? [selection.date] : selection.dates;
 
   const state = useAsync(
@@ -70,7 +70,7 @@ export function LaterScreen({ registry, clock, preferences, onBack }: LaterScree
         now: at(6, 0),
         preferences,
       }),
-    [origin.id, clock.today, dates.join(','), preferences],
+    [origin.id, origin.coordinates.lat, origin.coordinates.lon, clock.today, dates.join(','), preferences],
     { minimumMs: 1400 },
   );
 

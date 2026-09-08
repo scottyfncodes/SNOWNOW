@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { DEFAULT_PREFERENCES } from '@/config/weights';
 import { resolveEnvironment } from '@/config/env';
+import { findOrigin } from '@/data/origins';
+import type { Origin } from '@/domain/mountain';
 import { warmUpTrafficService } from '@/lib/warmup';
 import { createProviderRegistry } from '@/providers';
 import type { ProviderRegistry } from '@/providers/types';
@@ -28,7 +30,7 @@ export default function App({ registry: injected }: AppProps = {}) {
   const registry = useMemo(() => injected ?? createProviderRegistry(), [injected]);
   const clock = useClock();
   const [mode, setMode] = useState<Mode>('home');
-  const [originId, setOriginId] = useState(DEFAULT_PREFERENCES.originId);
+  const [origin, setOrigin] = useState<Origin>(() => findOrigin(DEFAULT_PREFERENCES.originId));
 
   // Give the traffic proxy's free-tier cold start a head start against the
   // user's own dwell time on the homepage, rather than against the 15s
@@ -38,8 +40,8 @@ export default function App({ registry: injected }: AppProps = {}) {
   }, []);
 
   const preferences = useMemo(
-    () => ({ ...DEFAULT_PREFERENCES, originId }),
-    [originId],
+    () => ({ ...DEFAULT_PREFERENCES, originId: origin.id }),
+    [origin.id],
   );
 
   if (mode === 'now') {
@@ -47,6 +49,7 @@ export default function App({ registry: injected }: AppProps = {}) {
       <NowScreen
         registry={registry}
         clock={clock}
+        origin={origin}
         preferences={preferences}
         onBack={() => setMode('home')}
       />
@@ -58,6 +61,7 @@ export default function App({ registry: injected }: AppProps = {}) {
       <LaterScreen
         registry={registry}
         clock={clock}
+        origin={origin}
         preferences={preferences}
         onBack={() => setMode('home')}
       />
@@ -66,8 +70,8 @@ export default function App({ registry: injected }: AppProps = {}) {
 
   return (
     <HomeScreen
-      originId={originId}
-      onOriginChange={setOriginId}
+      origin={origin}
+      onOriginChange={setOrigin}
       onNow={() => setMode('now')}
       onLater={() => setMode('later')}
       usingDemoData={registry.usingDemoData}

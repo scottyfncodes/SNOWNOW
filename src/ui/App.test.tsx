@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import App from '@/App';
@@ -41,6 +41,68 @@ describe('the homepage', () => {
     const select = screen.getByLabelText(/starting from/i);
     await user().selectOptions(select, 'boulder');
     expect((select as HTMLSelectElement).value).toBe('boulder');
+  });
+});
+
+describe('GPS location flow', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    // @ts-expect-error -- test cleanup of a jsdom global that has no type by default
+    delete navigator.geolocation;
+  });
+
+  it('routes NOW from the actual GPS fix once granted, and back to a manual city after switching', async () => {
+    const getCurrentPosition = vi.fn((success: PositionCallback) => {
+      success({
+        coords: { latitude: 39.7047, longitude: -105.0814, accuracy: 10 },
+      } as GeolocationPosition);
+    });
+    vi.stubGlobal('navigator', { ...navigator, geolocation: { getCurrentPosition } });
+
+    render(<App />);
+    await user().click(screen.getByRole('button', { name: /use my current location/i }));
+    await waitFor(() => expect(screen.getByText(/using your current location/i)).toBeInTheDocument());
+
+    await user().click(screen.getByRole('button', { name: /^NOW/ }));
+    await waitFor(() => expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument(), {
+      timeout: 12_000,
+    });
+    expect(screen.getAllByText(/Leave your location/i).length).toBeGreaterThan(0);
+
+    await user().click(screen.getByRole('button', { name: /back to start/i }));
+    const select = screen.getByLabelText(/starting from/i);
+    await user().selectOptions(select, 'denver');
+    await user().click(screen.getByRole('button', { name: /^NOW/ }));
+    await waitFor(() => expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument(), {
+      timeout: 12_000,
+    });
+    expect(screen.getAllByText(/Leave Denver/i).length).toBeGreaterThan(0);
+  });
+
+  it('stays fully usable with manual cities when location permission is denied', async () => {
+    const getCurrentPosition = vi.fn(
+      (_success: PositionCallback, error: PositionErrorCallback) => {
+        error({ code: 1, PERMISSION_DENIED: 1, message: 'denied' } as GeolocationPositionError);
+      },
+    );
+    vi.stubGlobal('navigator', { ...navigator, geolocation: { getCurrentPosition } });
+
+    render(<App />);
+    await user().click(screen.getByRole('button', { name: /use my current location/i }));
+    await waitFor(() =>
+      expect(screen.getByText(/location access is off.*choose a starting city instead/i)).toBeInTheDocument(),
+    );
+
+    // The city dropdown and NOW/LATER flows are untouched by the denial.
+    const select = screen.getByLabelText(/starting from/i);
+    await user().selectOptions(select, 'boulder');
+    expect((select as HTMLSelectElement).value).toBe('boulder');
+
+    await user().click(screen.getByRole('button', { name: /^NOW/ }));
+    await waitFor(() => expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument(), {
+      timeout: 12_000,
+    });
+    expect(screen.getAllByText(/Leave Boulder/i).length).toBeGreaterThan(0);
   });
 });
 

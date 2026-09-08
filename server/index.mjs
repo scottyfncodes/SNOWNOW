@@ -129,7 +129,14 @@ async function fetchOneSample(origin, destination, departureIso) {
     // Google returns duration as e.g. "1234s".
     const seconds = Number(String(route.duration).replace('s', ''));
     if (!Number.isFinite(seconds)) return null;
-    return Math.round(seconds / 60);
+    const distanceMeters = Number(route.distanceMeters);
+    return {
+      durationMinutes: Math.round(seconds / 60),
+      // Real distance from Google, not a hand-authored figure — this is what
+      // makes an arbitrary GPS-to-mountain route as accurate as a
+      // pre-authored city route, which never had this problem to begin with.
+      distanceMiles: Number.isFinite(distanceMeters) ? distanceMeters / 1609.344 : null,
+    };
   } catch {
     return null;
   }
@@ -137,32 +144,36 @@ async function fetchOneSample(origin, destination, departureIso) {
 
 async function buildTravelCurve(origin, destination, direction, date) {
   const minutes = direction === 'outbound' ? OUTBOUND_MINUTES : RETURN_MINUTES;
-  const durations = await Promise.all(
+  const samplesRaw = await Promise.all(
     minutes.map(async (minute) => {
       const iso = localToUtcIso(date, minute, TIME_ZONE);
-      const durationMinutes = await fetchOneSample(origin, destination, iso);
-      return { minute, durationMinutes };
+      const sample = await fetchOneSample(origin, destination, iso);
+      return { minute, sample };
     }),
   );
 
-  const resolved = durations.filter((d) => d.durationMinutes !== null);
+  const resolved = samplesRaw.filter((d) => d.sample !== null);
   if (resolved.length === 0) return null;
 
-  const floor = Math.min(...resolved.map((d) => d.durationMinutes));
-  const samples = resolved.map(({ minute, durationMinutes }) => ({
+  const floor = Math.min(...resolved.map((d) => d.sample.durationMinutes));
+  const samples = resolved.map(({ minute, sample }) => ({
     departure: minute,
-    durationMinutes,
+    durationMinutes: sample.durationMinutes,
     // Congestion isn't a field Google returns; it's derived here from how far
     // this sample's duration sits above the fastest sample seen across the
     // whole grid. A real, if approximate, read on relative traffic — not a
     // fabricated one.
-    congestion: Math.max(0, Math.min(1, Math.round(((durationMinutes - floor) / floor) * 100) / 100)),
+    congestion: Math.max(0, Math.min(1, Math.round(((sample.durationMinutes - floor) / floor) * 100) / 100)),
   }));
+
+  // Distance doesn't vary by departure time — one real reading from Google is enough.
+  const withDistance = resolved.find((d) => d.sample.distanceMiles !== null);
 
   return {
     samples,
     roadCondition: 'clear',
     incidents: [],
+    distanceMiles: withDistance ? Math.round(withDistance.sample.distanceMiles * 10) / 10 : null,
   };
 }
 

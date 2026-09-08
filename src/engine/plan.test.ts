@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_PREFERENCES } from '@/config/weights';
 import { MOUNTAINS } from '@/data/mountains';
-import { findOrigin } from '@/data/origins';
+import { findOrigin, gpsOrigin } from '@/data/origins';
 import { at } from '@/domain/time';
 import { createDemoRegistry } from '@/providers/demo';
 import { testInputs, testOperations, testTravel, testWeather } from '@/test/fixtures';
@@ -153,6 +153,67 @@ describe('recommend', () => {
         now: at(4, 47),
       }),
     ).rejects.toThrow(/reachable/i);
+  });
+});
+
+describe('recommend — GPS origin', () => {
+  // A real point in Lakewood, CO: close to Denver but not the same coordinate,
+  // and not the center of any of the six manual cities.
+  const gps = gpsOrigin(39.7047, -105.0814);
+
+  it('routes every mountain from the one GPS fix, not just the ones reachable from a manual city', async () => {
+    const result = await recommend(createDemoRegistry(), {
+      mountains: MOUNTAINS,
+      origin: gps,
+      date: TODAY,
+      today: TODAY,
+      now: at(4, 47),
+    });
+    // Purgatory has no manual route from Denver, but every mountain is
+    // reachable from a live GPS fix.
+    expect(result.all.some((plan) => plan.mountain.id === 'purgatory')).toBe(true);
+    expect(result.all.length).toBe(MOUNTAINS.length);
+    for (const plan of result.all) {
+      expect(plan.origin.coordinates).toEqual({ lat: 39.7047, lon: -105.0814 });
+    }
+  });
+
+  it('keeps the rest of the recommendation honest when routing fails for just one mountain', async () => {
+    const registry = createDemoRegistry({
+      traffic: { failFor: (route) => route.id.startsWith('vail:') },
+    });
+    const result = await recommend(registry, {
+      mountains: MOUNTAINS,
+      origin: gps,
+      date: TODAY,
+      today: TODAY,
+      now: at(4, 47),
+    });
+    const vailPlan = result.all.find((plan) => plan.mountain.id === 'vail')!;
+    expect(vailPlan.departure).toBeNull();
+    expect(vailPlan.caveats.some((c) => /not going to fake the drive/i.test(c))).toBe(true);
+    // Nearby mountains, unaffected by Vail's routing failure, still get a
+    // normal, timed plan — one failed route does not take down the others.
+    const copperPlan = result.all.find((plan) => plan.mountain.id === 'copper')!;
+    expect(copperPlan.departure).not.toBeNull();
+    expect(copperPlan.caveats.some((c) => /not going to fake the drive/i.test(c))).toBe(false);
+  });
+
+  it('never fabricates route data when routing fails for every mountain', async () => {
+    const registry = createDemoRegistry({ traffic: { failFor: () => true } });
+    const result = await recommend(registry, {
+      mountains: MOUNTAINS,
+      origin: gps,
+      date: TODAY,
+      today: TODAY,
+      now: at(4, 47),
+    });
+    expect(result.all.length).toBeGreaterThan(0);
+    for (const plan of result.all) {
+      expect(plan.departure).toBeNull();
+      expect(plan.return).toBeNull();
+      expect(plan.caveats.some((c) => /not going to fake the drive/i.test(c))).toBe(true);
+    }
   });
 });
 

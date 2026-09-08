@@ -1,7 +1,6 @@
-import { useMemo } from 'react';
 import { MOUNTAINS } from '@/data/mountains';
-import { findOrigin } from '@/data/origins';
 import type { RiderPreferences } from '@/config/weights';
+import type { Origin } from '@/domain/mountain';
 import { formatDateLabel } from '@/domain/dates';
 import { recommend } from '@/engine/plan';
 import type { ProviderRegistry } from '@/providers/types';
@@ -15,16 +14,19 @@ import { PlanView } from './PlanView';
 export interface NowScreenProps {
   registry: ProviderRegistry;
   clock: ClockState;
+  origin: Origin;
   preferences: RiderPreferences;
   onBack: () => void;
 }
 
 /**
  * NOW always means today. One tap, no configuration, an answer.
+ *
+ * `origin` is resolved once (a manual city, or a single GPS fix) and reused
+ * for every mountain's route in this recommendation — the browser is never
+ * asked for a fresh location per mountain.
  */
-export function NowScreen({ registry, clock, preferences, onBack }: NowScreenProps) {
-  const origin = useMemo(() => findOrigin(preferences.originId), [preferences.originId]);
-
+export function NowScreen({ registry, clock, origin, preferences, onBack }: NowScreenProps) {
   const state = useAsync(
     () =>
       recommend(registry, {
@@ -35,7 +37,7 @@ export function NowScreen({ registry, clock, preferences, onBack }: NowScreenPro
         now: clock.now,
         preferences,
       }),
-    [origin.id, clock.today, preferences],
+    [origin.id, origin.coordinates.lat, origin.coordinates.lon, clock.today, preferences],
     { minimumMs: 1900 },
   );
 

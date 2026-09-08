@@ -31,6 +31,7 @@ import { type DayInputs, loadDayInputs, makeContext } from './inputs';
 import { buildOffSeasonMessage } from './offSeasonMessages';
 import { classifyOperationalState } from './operationalState';
 import { optimizeDay } from './optimize';
+import { resolveAccessRoutes } from './routing';
 import { scoreDay } from './scoring';
 import { buildSnowClock, resolveOperations, resolveWeather } from './snowClock';
 
@@ -273,8 +274,8 @@ export async function recommend(
   options: RecommendOptions,
 ): Promise<Recommendation> {
   const context: ProviderContext = makeContext(options.date, options.today, options.now);
-  const candidates = options.mountains.filter((mountain) =>
-    mountain.accessRoutes.some((route) => route.originId === options.origin.id),
+  const candidates = options.mountains.filter(
+    (mountain) => resolveAccessRoutes(mountain, options.origin).length > 0,
   );
 
   const inputs = await Promise.all(

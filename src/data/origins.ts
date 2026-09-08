@@ -1,5 +1,4 @@
-import type { GeoPoint, Origin } from '@/domain/mountain';
-import { nearest } from '@/lib/geo';
+import type { Origin } from '@/domain/mountain';
 
 /**
  * Starting points. SNOWNOW optimises HOME → MOUNTAIN → SNOW → MOUNTAIN → HOME,
@@ -49,11 +48,21 @@ export const DEFAULT_ORIGIN_ID = 'denver';
 export const findOrigin = (id: string): Origin =>
   ORIGINS.find((origin) => origin.id === id) ?? (ORIGINS[0] as Origin);
 
+/** The stable id every GPS-based origin carries, regardless of the actual coordinate. */
+export const GPS_ORIGIN_ID = 'gps';
+
+export const isManualCityOrigin = (originId: string): boolean =>
+  ORIGINS.some((origin) => origin.id === originId);
+
 /**
- * There is no drive-time/traffic model for an arbitrary point — every
- * mountain's access routes are hand-authored per known origin (see
- * `data/mountains.ts`). "Use my location" therefore means "which of our
- * supported starting cities is actually closest to you", not routing from an
- * exact address — an honest approximation, not a guess dressed up as one.
+ * The user's exact GPS fix, used directly as the routing origin — never
+ * snapped to whichever of the six cities happens to be closest. Every
+ * mountain's live route to this point is computed by `engine/routing.ts`
+ * from these coordinates and handed to Google Routes as-is.
  */
-export const nearestOrigin = (point: GeoPoint): Origin => nearest(point, ORIGINS);
+export const gpsOrigin = (latitude: number, longitude: number): Origin => ({
+  id: GPS_ORIGIN_ID,
+  name: 'Your current location',
+  shortName: 'your location',
+  coordinates: { lat: latitude, lon: longitude },
+});

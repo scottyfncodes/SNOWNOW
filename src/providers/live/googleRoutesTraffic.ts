@@ -36,6 +36,8 @@ interface TravelCurveResponse {
   roadCondition?: TravelCurve['roadCondition'];
   incidents?: TravelCurve['incidents'];
   sourceTimestamp?: string;
+  /** The server's real Google-reported distance. Preferred over `route.distanceMiles`, which is only a hand-authored figure for the six manual cities and a straight-line estimate for any other origin. */
+  distanceMiles?: number | null;
 }
 
 export class LiveTrafficProvider implements TrafficProvider {
@@ -79,7 +81,8 @@ export class LiveTrafficProvider implements TrafficProvider {
         routeId: route.id,
         routeLabel: payload.routeLabel ?? route.label,
         corridorShorthand: payload.corridorShorthand ?? '',
-        distanceMiles: route.distanceMiles,
+        distanceMiles:
+          typeof payload.distanceMiles === 'number' ? payload.distanceMiles : route.distanceMiles,
         direction,
         samples: payload.samples,
         roadCondition: payload.roadCondition ?? 'clear',
