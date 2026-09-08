@@ -1,6 +1,7 @@
 import type { ProviderRegistry } from '@/providers/types';
 import { DemoAlertsProvider } from './alerts';
 import { DemoMountainProvider, type DemoMountainOptions } from './mountain';
+import { DemoParkingProvider, type DemoParkingOptions } from './parking';
 import { DemoPlacesProvider } from './places';
 import { DemoPricingProvider, type DemoPricingOptions } from './pricing';
 import { DemoRoadConditionProvider } from './road';
@@ -11,6 +12,7 @@ export * from './scenario';
 export {
   DemoAlertsProvider,
   DemoMountainProvider,
+  DemoParkingProvider,
   DemoPlacesProvider,
   DemoPricingProvider,
   DemoRoadConditionProvider,
@@ -23,6 +25,7 @@ export interface DemoRegistryOptions {
   traffic?: DemoTrafficOptions;
   mountain?: DemoMountainOptions;
   pricing?: DemoPricingOptions;
+  parking?: DemoParkingOptions;
 }
 
 /**
@@ -38,6 +41,7 @@ export function createDemoRegistry(options: DemoRegistryOptions = {}): ProviderR
     places: new DemoPlacesProvider(),
     alerts: new DemoAlertsProvider(),
     roads: new DemoRoadConditionProvider(),
+    parking: new DemoParkingProvider(options.parking),
     usingDemoData: true,
     label: 'Demo data',
   };

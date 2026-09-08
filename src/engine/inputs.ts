@@ -4,6 +4,7 @@ import type { CrowdCurve, MountainWeather, OperationsReport, TravelCurve } from 
 import type { DateKey } from '@/domain/dates';
 import { daysBetween } from '@/domain/dates';
 import { type AccessRoute, type Mountain, type Origin } from '@/domain/mountain';
+import type { ParkingInfo } from '@/domain/parking';
 import type { TicketPrice } from '@/domain/pricing';
 import { type Availability, unavailable } from '@/domain/provenance';
 import { isImpassable, type RoadStatus } from '@/domain/road';
@@ -29,6 +30,8 @@ export interface DayInputs {
   ticket: Availability<TicketPrice>;
   /** Official alerts (NWS in the US). Supplements the forecast; scoring never reads this. */
   alerts: Availability<WeatherAlert[]>;
+  /** Parking rules/status. Supplements the plan; scoring never reads this — see `domain/parking.ts`. */
+  parking: Availability<ParkingInfo>;
   outbound: Availability<TravelCurve>;
   inbound: Availability<TravelCurve>;
   /** Every route considered, so the UI can talk about alternatives. */
@@ -77,13 +80,14 @@ export async function loadDayInputs(
   const routes = resolveAccessRoutes(mountain, origin);
   const corridorIds = [...new Set(routes.map((route) => route.corridorId))];
 
-  const [weather, operations, crowds, ticket, alerts, roadStatusResults, outboundResults, inboundResults] =
+  const [weather, operations, crowds, ticket, alerts, parking, roadStatusResults, outboundResults, inboundResults] =
     await Promise.all([
       attempt(registry.weather.id, () => registry.weather.getMountainWeather(mountain, context)),
       attempt(registry.mountain.id, () => registry.mountain.getOperations(mountain, context)),
       attempt(registry.mountain.id, () => registry.mountain.getCrowdForecast(mountain, context)),
       attempt(registry.pricing.id, () => registry.pricing.getTicketPrice(mountain, context)),
       attempt(registry.alerts.id, () => registry.alerts.getAlerts(mountain, context)),
+      attempt(registry.parking.id, () => registry.parking.getParkingInfo(mountain, context)),
       Promise.all(
         corridorIds.map(
           async (corridorId) =>
@@ -178,6 +182,7 @@ export async function loadDayInputs(
     crowds,
     ticket,
     alerts,
+    parking,
     outbound: pickBest(outboundOptions, outboundResults),
     inbound: pickBest(inboundOptions, inboundResults),
     outboundOptions,

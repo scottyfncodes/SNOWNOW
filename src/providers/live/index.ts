@@ -4,6 +4,7 @@ import { LiveTrafficProvider } from './googleRoutesTraffic';
 import { LiveMountainProvider } from './mountainStatus';
 import { NwsAlertsProvider } from './nwsAlerts';
 import { OpenMeteoWeatherProvider } from './openMeteoWeather';
+import { LiveParkingProvider } from './parking';
 import { LivePricingProvider } from './pricing';
 import {
   UnavailablePlacesProvider,
@@ -14,6 +15,7 @@ import {
 export {
   CotripRoadProvider,
   LiveMountainProvider,
+  LiveParkingProvider,
   LivePricingProvider,
   LiveTrafficProvider,
   NwsAlertsProvider,
@@ -45,6 +47,7 @@ export interface LiveRegistryOptions {
  * | mountain (operations) | Liftie covers the resort | `unavailable` |
  * | mountain (crowds) | never — retired, see `mountainStatus.ts` | `unavailable` |
  * | pricing | never — no verifiable source, see `pricing.ts` | `unavailable` |
+ * | parking | always, for a researched mountain — see `parking.ts` | `unavailable` for an unresearched mountain |
  * | places | never — no live implementation | `unavailable` |
  *
  * `createProviderRegistry` (`providers/index.ts`) is the only caller; its
@@ -65,6 +68,7 @@ export function createLiveRegistry(options: LiveRegistryOptions = {}): ProviderR
     places: new UnavailablePlacesProvider(),
     alerts: new NwsAlertsProvider(),
     roads: roadConditionsEnabled ? new CotripRoadProvider() : new UnavailableRoadConditionProvider(),
+    parking: new LiveParkingProvider(),
     // No slot in this registry is ever a demo implementation — a config-time
     // gap reports `unavailable`, not demo data. See the module docblock.
     usingDemoData: false,
