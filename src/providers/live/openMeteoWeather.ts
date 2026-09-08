@@ -1,4 +1,11 @@
-import type { HourlyWeather, MountainWeather } from '@/domain/conditions';
+import type {
+  DailySnowfall,
+  ElevationConditions,
+  HourlyWeather,
+  MountainWeather,
+  SnowHistory,
+} from '@/domain/conditions';
+import type { DateKey } from '@/domain/dates';
 import type { Mountain } from '@/domain/mountain';
 import {
   type Availability,
@@ -22,10 +29,17 @@ const BASE_URL = 'https://api.open-meteo.com/v1/forecast';
 /** Open-Meteo will not forecast further out than this. Beyond it, we say so. */
 const MAX_FORECAST_DAYS = 16;
 
+/** Days of real, already-elapsed weather to pull back — enough for the 5-day-back snow history plus a little slack. */
+const PAST_DAYS = 5;
+
+/** Minimum forward window so "next 5 days" is always covered, even for a same-day NOW request. */
+const MIN_FORWARD_DAYS = 7;
+
 const HOURLY_FIELDS = [
   'temperature_2m',
   'precipitation',
   'snowfall',
+  'snow_depth',
   'precipitation_probability',
   'windspeed_10m',
   'windgusts_10m',
@@ -35,6 +49,8 @@ const HOURLY_FIELDS = [
   'freezinglevel_height',
 ] as const;
 
+const DAILY_FIELDS = ['snowfall_sum'] as const;
+
 /** The subset of the Open-Meteo response this provider actually reads. */
 interface OpenMeteoResponse {
   hourly?: {
@@ -42,6 +58,7 @@ interface OpenMeteoResponse {
     temperature_2m?: number[];
     precipitation?: number[];
     snowfall?: number[];
+    snow_depth?: number[];
     precipitation_probability?: number[];
     windspeed_10m?: number[];
     windgusts_10m?: number[];
@@ -49,6 +66,10 @@ interface OpenMeteoResponse {
     cloudcover?: number[];
     visibility?: number[];
     freezinglevel_height?: number[];
+  };
+  daily?: {
+    time?: string[];
+    snowfall_sum?: number[];
   };
 }
 
@@ -198,6 +219,14 @@ export class OpenMeteoWeatherProvider implements WeatherProvider {
       this.options.freshnessMinutes ?? (context.horizonDays === 0 ? 30 : 120);
     const validUntil = new Date(fetchedAt.getTime() + freshnessMinutes * 60 * 1000);
 
+    // Base and peak are independent, elevation-specific requests: one failing
+    // never takes the other down, and neither is allowed to borrow the
+    // other's numbers.
+    const [base, peak] = await Promise.all([
+      this.fetchElevationPoint(mountain, context, mountain.elevations.baseFt, fetchedAt),
+      this.fetchElevationPoint(mountain, context, mountain.elevations.summitFt, fetchedAt),
+    ]);
+
     return ok(
       {
         overnightSnowIn: round1(overnightSnowIn),
@@ -205,6 +234,9 @@ export class OpenMeteoWeatherProvider implements WeatherProvider {
         daysSinceStorm,
         hourly: targetHours,
         summary: summarize(targetHours, daysSinceStorm),
+        base,
+        peak,
+        snowHistory: buildSnowHistory(payload.daily, context.today),
       },
       {
         source: 'live',
@@ -222,15 +254,16 @@ export class OpenMeteoWeatherProvider implements WeatherProvider {
     const base = this.options.baseUrl ?? BASE_URL;
     const { lat, lon } = mountain.weatherLocation.point;
     const elevationM = Math.round(mountain.weatherLocation.forecastElevationFt / 3.28084);
-    const forecastDays = Math.min(MAX_FORECAST_DAYS, Math.max(2, context.horizonDays + 2));
+    const forecastDays = Math.min(MAX_FORECAST_DAYS, Math.max(MIN_FORWARD_DAYS, context.horizonDays + 2));
 
     const params = new URLSearchParams({
       latitude: lat.toFixed(4),
       longitude: lon.toFixed(4),
       elevation: String(elevationM),
       hourly: HOURLY_FIELDS.join(','),
+      daily: DAILY_FIELDS.join(','),
       forecast_days: String(forecastDays),
-      past_days: '3',
+      past_days: String(PAST_DAYS),
       timezone: 'auto',
       temperature_unit: 'celsius',
       windspeed_unit: 'kmh',
@@ -239,6 +272,106 @@ export class OpenMeteoWeatherProvider implements WeatherProvider {
 
     return `${base}?${params.toString()}`;
   }
+
+  /**
+   * A minimal, single-elevation request for one point on the mountain: the
+   * same coordinates, a different `elevation`, so Open-Meteo's own
+   * elevation-downscaling does the work rather than a lapse-rate guess of
+   * ours. Failure here is independent of the main forecast — it returns
+   * `null`, never a copy of the other elevation's reading.
+   */
+  private async fetchElevationPoint(
+    mountain: Mountain,
+    context: ProviderContext,
+    elevationFt: number,
+    timestamp: Date,
+  ): Promise<ElevationConditions | null> {
+    try {
+      const baseUrl = this.options.baseUrl ?? BASE_URL;
+      const { lat, lon } = mountain.coordinates;
+      const elevationM = Math.round(elevationFt / 3.28084);
+      const forecastDays = Math.min(MAX_FORECAST_DAYS, Math.max(2, context.horizonDays + 2));
+
+      const params = new URLSearchParams({
+        latitude: lat.toFixed(4),
+        longitude: lon.toFixed(4),
+        elevation: String(elevationM),
+        hourly: 'temperature_2m,windspeed_10m,windgusts_10m,snow_depth',
+        forecast_days: String(forecastDays),
+        timezone: 'auto',
+        temperature_unit: 'celsius',
+        windspeed_unit: 'kmh',
+      });
+
+      const payload = await fetchJson<OpenMeteoResponse>(`${baseUrl}?${params.toString()}`, {
+        timeoutMs: 8000,
+      });
+      const hourly = payload.hourly;
+      if (!hourly?.time || !hourly.temperature_2m || !hourly.windspeed_10m) return null;
+
+      const anchorMinute = context.horizonDays === 0 ? roundDownToHour(context.now) : at(12);
+      const anchorIso = localIsoFor(context.date, anchorMinute);
+      let index = hourly.time.indexOf(anchorIso);
+      if (index === -1) index = hourly.time.findIndex((iso) => iso.startsWith(context.date));
+      if (index === -1) return null;
+
+      const windMph = kmhToMph(hourly.windspeed_10m[index] ?? 0);
+      const gustMph = kmhToMph(hourly.windgusts_10m?.[index] ?? windMph * 1.5);
+      const depthM = hourly.snow_depth?.[index];
+
+      return {
+        temperatureF: Math.round(celsiusToF(hourly.temperature_2m[index] ?? 0)),
+        windMph: Math.round(windMph),
+        windGustMph: Math.round(gustMph),
+        snowDepthIn: depthM === undefined || depthM === null ? null : round1(depthM * 39.3701),
+        timestamp: timestamp.toISOString(),
+        source: this.id,
+      };
+    } catch {
+      return null;
+    }
+  }
+}
+
+/**
+ * Five-day-back / five-day-forward snowfall from Open-Meteo's own daily
+ * aggregate — not summed by hand from the hourly series, so it matches
+ * whatever day-boundary convention the provider itself uses. Anchored to
+ * `today`, not to whichever date is being planned: it describes the
+ * mountain's snow cycle, independent of which day the user is looking at.
+ */
+function buildSnowHistory(daily: OpenMeteoResponse['daily'], today: DateKey): SnowHistory | null {
+  if (!daily?.time || !daily.snowfall_sum) return null;
+  const todayIndex = daily.time.indexOf(today);
+  if (todayIndex === -1) return null;
+
+  const dayAt = (offset: number, kind: DailySnowfall['kind']): DailySnowfall | null => {
+    const index = todayIndex + offset;
+    const date = daily.time?.[index];
+    const cm = daily.snowfall_sum?.[index];
+    if (date === undefined || cm === undefined || cm === null) return null;
+    return { date, snowfallIn: round1(cm / 2.54), kind };
+  };
+
+  const past = [-5, -4, -3, -2, -1]
+    .map((offset) => dayAt(offset, 'observed'))
+    .filter((day): day is DailySnowfall => day !== null);
+  const future = [1, 2, 3, 4, 5]
+    .map((offset) => dayAt(offset, 'forecast'))
+    .filter((day): day is DailySnowfall => day !== null);
+
+  if (past.length === 0 && future.length === 0) return null;
+
+  return {
+    past,
+    pastTotalIn: round1(past.reduce((sum, day) => sum + day.snowfallIn, 0)),
+    future,
+    futureTotalIn: round1(future.reduce((sum, day) => sum + day.snowfallIn, 0)),
+  };
+}
+
+function roundDownToHour(minute: MinuteOfDay): MinuteOfDay {
+  return Math.floor(minute / HOUR) * HOUR;
 }
 
 function describeError(error: unknown): string {

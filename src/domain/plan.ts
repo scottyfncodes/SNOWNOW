@@ -1,6 +1,8 @@
 import type { WeatherAlert } from './alerts';
+import type { ElevationConditions, SnowHistory } from './conditions';
 import type { DateKey } from './dates';
 import type { Mountain, Origin } from './mountain';
+import type { MountainOperationalState, OffSeasonMessage } from './mountainStatus';
 import type { TicketPrice } from './pricing';
 import type { ConfidenceLevel, DisplayStatus, Provenance } from './provenance';
 import type { MinuteOfDay, Minutes } from './time';
@@ -65,6 +67,7 @@ export interface SnowClock {
 
 export type ScoreFactorKey =
   | 'snow'
+  | 'snowCycle'
   | 'snowTiming'
   | 'weather'
   | 'wind'
@@ -172,6 +175,16 @@ export interface SkiDayPlan {
   isToday: boolean;
   score: DayScore;
   snowClock: SnowClock;
+  /** Base-elevation conditions, when the weather feed succeeded. Never a guess. */
+  baseConditions: ElevationConditions | null;
+  /** Summit conditions. `null` whenever the provider couldn't resolve one — never copied from base. */
+  peakConditions: ElevationConditions | null;
+  /** Five-day-back / five-day-forward snowfall, when a real source covers it. */
+  snowHistory: SnowHistory | null;
+  /** Real-world operational state, distinct from "the feed is unavailable." */
+  operationalState: MountainOperationalState;
+  /** Set only in the non-skiable states (see `NON_SKIABLE_STATES`) — a personality-forward line plus the real data behind it. */
+  offSeasonMessage: OffSeasonMessage | null;
   /** Null when pricing was unavailable — never a guessed number. */
   ticket: TicketPrice | null;
   /**

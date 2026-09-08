@@ -213,3 +213,154 @@ describe('fixture sanity', () => {
     expect(minutes.length).toBe(17);
   });
 });
+
+/** Elevation (m) the provider requests for each of testMountain()'s named points. */
+const BASE_ELEVATION_M = Math.round(mountain.elevations.baseFt / 3.28084);
+const PEAK_ELEVATION_M = Math.round(mountain.elevations.summitFt / 3.28084);
+
+function isMainRequest(url: URL): boolean {
+  return (url.searchParams.get('hourly') ?? '').includes('freezinglevel_height');
+}
+
+/** A minimal single-elevation response, as the base/peak requests expect. */
+function buildElevationResponse(options: { snowDepthM?: number | null } = {}) {
+  const time: string[] = [];
+  const temperature_2m: number[] = [];
+  const windspeed_10m: number[] = [];
+  const windgusts_10m: number[] = [];
+  const snow_depth: (number | null)[] = [];
+  for (let h = 0; h < 24; h += 1) {
+    time.push(`${TODAY}T${String(h).padStart(2, '0')}:00`);
+    temperature_2m.push(-4);
+    windspeed_10m.push(12);
+    windgusts_10m.push(20);
+    snow_depth.push(options.snowDepthM === undefined ? 1 : options.snowDepthM);
+  }
+  return { hourly: { time, temperature_2m, windspeed_10m, windgusts_10m, snow_depth } };
+}
+
+/** The main response, extended with an 11-day daily snowfall aggregate centered on `TODAY`. */
+function buildResponseWithDaily(dailySnowfallCm: number[]) {
+  const main = buildResponse({ date: TODAY });
+  const time: string[] = [];
+  for (let offset = -5; offset <= 5; offset += 1) {
+    const d = new Date(`${TODAY}T00:00:00Z`);
+    d.setUTCDate(d.getUTCDate() + offset);
+    time.push(d.toISOString().slice(0, 10));
+  }
+  return { ...main, daily: { time, snowfall_sum: dailySnowfallCm } };
+}
+
+describe('OpenMeteoWeatherProvider — base and peak conditions', () => {
+  it('resolves base and peak from independent, elevation-specific requests', async () => {
+    const fetchMock = vi.fn(async (rawUrl: string) => {
+      const url = new URL(rawUrl);
+      if (isMainRequest(url)) {
+        return new Response(JSON.stringify(buildResponse({ date: TODAY })), { status: 200 });
+      }
+      const elevation = Number(url.searchParams.get('elevation'));
+      const snowDepthM = elevation === BASE_ELEVATION_M ? 1.2 : elevation === PEAK_ELEVATION_M ? 2.4 : 0;
+      return new Response(JSON.stringify(buildElevationResponse({ snowDepthM })), { status: 200 });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const provider = new OpenMeteoWeatherProvider();
+    const result = await provider.getMountainWeather(mountain, makeContext(TODAY, TODAY, at(5)));
+    expect(result.status).toBe('ok');
+    if (result.status !== 'ok') return;
+
+    expect(result.data.base).not.toBeNull();
+    expect(result.data.peak).not.toBeNull();
+    // Peak is colder/windier here and, crucially, never copied from base.
+    expect(result.data.base!.snowDepthIn).toBeCloseTo(1.2 * 39.3701, 0);
+    expect(result.data.peak!.snowDepthIn).toBeCloseTo(2.4 * 39.3701, 0);
+    expect(result.data.peak!.snowDepthIn).not.toBe(result.data.base!.snowDepthIn);
+    expect(result.data.base!.source).toBe('open-meteo');
+  });
+
+  it('reports snow depth as unavailable (null), never copied from the other elevation, when the provider omits it', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (rawUrl: string) => {
+        const url = new URL(rawUrl);
+        if (isMainRequest(url)) {
+          return new Response(JSON.stringify(buildResponse({ date: TODAY })), { status: 200 });
+        }
+        return new Response(JSON.stringify(buildElevationResponse({ snowDepthM: null })), { status: 200 });
+      }),
+    );
+    const provider = new OpenMeteoWeatherProvider();
+    const result = await provider.getMountainWeather(mountain, makeContext(TODAY, TODAY, at(5)));
+    expect(result.status).toBe('ok');
+    if (result.status !== 'ok') return;
+    expect(result.data.base!.snowDepthIn).toBeNull();
+    expect(result.data.peak!.snowDepthIn).toBeNull();
+  });
+
+  it('leaves peak unavailable — never copied from base — when only the summit request fails', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (rawUrl: string) => {
+        const url = new URL(rawUrl);
+        if (isMainRequest(url)) {
+          return new Response(JSON.stringify(buildResponse({ date: TODAY })), { status: 200 });
+        }
+        const elevation = Number(url.searchParams.get('elevation'));
+        if (elevation === PEAK_ELEVATION_M) {
+          return new Response('rate limited', { status: 429 });
+        }
+        return new Response(JSON.stringify(buildElevationResponse({ snowDepthM: 1.5 })), { status: 200 });
+      }),
+    );
+    const provider = new OpenMeteoWeatherProvider();
+    const result = await provider.getMountainWeather(mountain, makeContext(TODAY, TODAY, at(5)));
+    expect(result.status).toBe('ok');
+    if (result.status !== 'ok') return;
+    // The overall forecast still succeeds — one elevation point failing
+    // never takes the whole weather call down.
+    expect(result.data.base).not.toBeNull();
+    expect(result.data.peak).toBeNull();
+  });
+});
+
+describe('OpenMeteoWeatherProvider — 5-day snow history', () => {
+  it('splits the daily aggregate into 5 real days back and 5 projected days forward, anchored to today', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (rawUrl: string) => {
+        const url = new URL(rawUrl);
+        if (isMainRequest(url)) {
+          // 11 days: day -5..-1 observed, today, day +1..+5 forecast (cm).
+          const cm = [2, 0, 0, 5, 1, 0, 3, 0, 0, 8, 1];
+          return new Response(JSON.stringify(buildResponseWithDaily(cm)), { status: 200 });
+        }
+        return new Response(JSON.stringify(buildElevationResponse()), { status: 200 });
+      }),
+    );
+    const provider = new OpenMeteoWeatherProvider();
+    const result = await provider.getMountainWeather(mountain, makeContext(TODAY, TODAY, at(5)));
+    expect(result.status).toBe('ok');
+    if (result.status !== 'ok') return;
+
+    const history = result.data.snowHistory;
+    expect(history).not.toBeNull();
+    if (!history) return;
+    expect(history.past.length).toBe(5);
+    expect(history.future.length).toBe(5);
+    expect(history.past.every((day) => day.kind === 'observed')).toBe(true);
+    expect(history.future.every((day) => day.kind === 'forecast')).toBe(true);
+    // Each day is converted and rounded to a tenth before summing, so the
+    // total always matches what the five daily figures actually add up to.
+    expect(history.pastTotalIn).toBeCloseTo(3.2, 1);
+    expect(history.futureTotalIn).toBeCloseTo(4.7, 1);
+  });
+
+  it('returns null rather than a fabricated history when the daily aggregate is absent', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(buildResponse({ date: TODAY })), { status: 200 })));
+    const provider = new OpenMeteoWeatherProvider();
+    const result = await provider.getMountainWeather(mountain, makeContext(TODAY, TODAY, at(5)));
+    expect(result.status).toBe('ok');
+    if (result.status !== 'ok') return;
+    expect(result.data.snowHistory).toBeNull();
+  });
+});

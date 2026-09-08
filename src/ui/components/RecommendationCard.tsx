@@ -1,8 +1,11 @@
 import type { SkiDayPlan } from '@/domain/plan';
 import { formatPrice, savingsVsWindow } from '@/domain/pricing';
 import { formatClock, formatDuration, formatWindowLabel } from '@/domain/time';
+import { BasePeakConditions } from './BasePeakConditions';
 import { ConfidencePill, DataBadge } from './DataBadge';
+import { OffSeasonNotice } from './OffSeasonNotice';
 import { ScoreDial } from './ScoreDial';
+import { SnowTimeline } from './SnowTimeline';
 
 export interface RecommendationCardProps {
   plan: SkiDayPlan;
@@ -48,6 +51,7 @@ export function RecommendationCard({ plan, why, projected = false, onCompare }: 
   const { departure, snowClock } = plan;
   const ret = plan.return;
   const ticket = plan.ticket;
+  const offSeason = plan.offSeasonMessage;
   const allSourcesUnavailable =
     plan.dataSources.length > 0 && plan.dataSources.every((source) => source.status === 'unavailable');
 
@@ -66,28 +70,35 @@ export function RecommendationCard({ plan, why, projected = false, onCompare }: 
               {plan.mountain.name} · {plan.mountain.region}
             </p>
           )}
-          <p className="reccard-verdict">{plan.verdict}</p>
+          <p className="reccard-verdict">{offSeason ? offSeason.line : plan.verdict}</p>
         </div>
-        <div className="reccard-scorewrap">
-          <ScoreDial score={plan.score.score} label={`${plan.mountain.name} day score`} />
-          <p className="reccard-scorelabel">Day score</p>
-        </div>
+        {!offSeason && (
+          <div className="reccard-scorewrap">
+            <ScoreDial score={plan.score.score} label={`${plan.mountain.name} day score`} />
+            <p className="reccard-scorelabel">Day score</p>
+          </div>
+        )}
       </div>
 
-      <p className="reccard-headline">{plan.headline}</p>
+      <p className="reccard-headline">{offSeason ? offSeason.detail : plan.headline}</p>
 
       <div className="reccard-badges">
         <DataBadge provenance={plan.provenance} allSourcesUnavailable={allSourcesUnavailable} />
-        <ConfidencePill level={plan.score.confidence} />
+        {!offSeason && <ConfidencePill level={plan.score.confidence} />}
       </div>
 
-      {projected && (
+      {projected && !offSeason && (
         <p className="reccard-projection">
           {projectionNote(plan.provenance.horizonDays, plan.score.confidence)}
         </p>
       )}
 
-      {departure && ret ? (
+      <BasePeakConditions base={plan.baseConditions} peak={plan.peakConditions} />
+      <SnowTimeline history={plan.snowHistory} />
+
+      {offSeason && <OffSeasonNotice message={offSeason} />}
+
+      {offSeason ? null : departure && ret ? (
         <dl className="reccard-times">
           <div className="reccard-time">
             <dt>Leave {plan.origin.shortName}</dt>
@@ -125,41 +136,51 @@ export function RecommendationCard({ plan, why, projected = false, onCompare }: 
         <p className="reccard-notiming">We can't time this day — see the notes below.</p>
       )}
 
-      {ticket ? (
-        <p className="reccard-ticket">
-          <span className="reccard-ticket-label">Lift ticket</span>
-          <span className="reccard-ticket-price numeral">
-            {formatPrice(ticket.adultDay, ticket.currency)}
-          </span>
-          <span className="reccard-ticket-note">
-            {savingsVsWindow(ticket) > 8
-              ? `${formatPrice(savingsVsWindow(ticket), ticket.currency)} under the window rate`
-              : ticket.note}
-          </span>
-        </p>
-      ) : (
-        plan.ticketPurchaseUrl && (
+      {!offSeason &&
+        (ticket ? (
           <p className="reccard-ticket">
             <span className="reccard-ticket-label">Lift ticket</span>
+            <span className="reccard-ticket-price numeral">
+              {formatPrice(ticket.adultDay, ticket.currency)}
+            </span>
             <span className="reccard-ticket-note">
-              Current price unavailable —{' '}
-              <a href={plan.ticketPurchaseUrl} target="_blank" rel="noreferrer">
-                buy at the resort
-              </a>
+              {savingsVsWindow(ticket) > 8
+                ? `${formatPrice(savingsVsWindow(ticket), ticket.currency)} under the window rate`
+                : ticket.note}
             </span>
           </p>
-        )
-      )}
+        ) : (
+          plan.ticketPurchaseUrl && (
+            <p className="reccard-ticket">
+              <span className="reccard-ticket-label">Lift ticket</span>
+              <span className="reccard-ticket-note">
+                Current price unavailable —{' '}
+                <a href={plan.ticketPurchaseUrl} target="_blank" rel="noreferrer">
+                  buy at the resort
+                </a>
+              </span>
+            </p>
+          )
+        ))}
 
       <div className="reccard-why">
         <h2 className="eyebrow">Why {plan.mountain.shortName}</h2>
-        {why && <p className="reccard-whyline">{why}</p>}
-        <ul className="reccard-reasons">
-          {plan.reasons.map((reason) => (
-            <li key={reason}>{reason}</li>
-          ))}
-        </ul>
-        {onCompare && (
+        {offSeason ? (
+          <p className="reccard-whyline">
+            Base, peak and the 5-day snow cycle above are live for this mountain — there's just not a normal
+            ski day to call right now.
+          </p>
+        ) : (
+          <>
+            {why && <p className="reccard-whyline">{why}</p>}
+            <ul className="reccard-reasons">
+              {plan.reasons.map((reason) => (
+                <li key={reason}>{reason}</li>
+              ))}
+            </ul>
+          </>
+        )}
+        {onCompare && !offSeason && (
           <button type="button" className="linkbutton" onClick={onCompare}>
             Compare the alternatives ↓
           </button>

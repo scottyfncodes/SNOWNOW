@@ -1,9 +1,11 @@
 import type {
   CrowdCurve,
+  DailySnowfall,
   HourlyWeather,
   MountainWeather,
   OperationsReport,
   RoadCondition,
+  SnowHistory,
   TravelCurve,
 } from '@/domain/conditions';
 import type { WeatherAlert } from '@/domain/alerts';
@@ -93,6 +95,22 @@ export interface WeatherSpec {
   visibility?: number;
   daysSinceStorm?: number;
   density?: number;
+  /** Base-elevation snow depth, inches. `null` to model an unavailable reading. */
+  baseSnowDepthIn?: number | null;
+  /** Set to model a mountain with no reliable base reading at all. */
+  baseUnavailable?: boolean;
+  /** Peak wind, mph. Independent of `windMph` so peak-wind tests don't have to fight the base reading. */
+  peakWindMph?: number;
+  peakTemperatureF?: number;
+  peakSnowDepthIn?: number | null;
+  /** Set to model a mountain with no reliable summit reading at all. */
+  peakUnavailable?: boolean;
+  /** Total inches over the last 5 days. Defaults to a value correlated with `overnightSnowIn`/`daysSinceStorm`. */
+  past5TotalIn?: number;
+  /** Total inches projected over the next 5 days. */
+  future5TotalIn?: number;
+  /** Set to model a mountain with no 5-day history/forecast source at all. */
+  snowHistoryUnavailable?: boolean;
 }
 
 export function testWeather(spec: WeatherSpec = {}): MountainWeather {
@@ -105,6 +123,15 @@ export function testWeather(spec: WeatherSpec = {}): MountainWeather {
     visibility = 0.95,
     daysSinceStorm = overnightSnowIn > 1 ? 0 : 4,
     density = 0.075,
+    baseSnowDepthIn = 42,
+    baseUnavailable = false,
+    peakWindMph = Math.round(windMph * 1.3),
+    peakTemperatureF = temperatureF - 8,
+    peakSnowDepthIn = baseSnowDepthIn === null ? null : Math.round(baseSnowDepthIn * 1.15),
+    peakUnavailable = false,
+    past5TotalIn = daysSinceStorm === 0 ? Math.max(overnightSnowIn * 2, 4) : Math.max(0, 12 - daysSinceStorm * 1.5),
+    future5TotalIn = 0,
+    snowHistoryUnavailable = false,
   } = spec;
 
   const hourly: HourlyWeather[] = minuteRange(at(4), at(20), HOUR).map((minute) => ({
@@ -124,8 +151,48 @@ export function testWeather(spec: WeatherSpec = {}): MountainWeather {
     daysSinceStorm,
     hourly,
     summary: 'Fixture weather.',
+    base: baseUnavailable
+      ? null
+      : {
+          temperatureF,
+          windMph,
+          windGustMph: Math.round(windMph * 1.5),
+          snowDepthIn: baseSnowDepthIn,
+          timestamp: '2026-01-17T08:00:00Z',
+          source: 'fixture',
+        },
+    peak: peakUnavailable
+      ? null
+      : {
+          temperatureF: peakTemperatureF,
+          windMph: peakWindMph,
+          windGustMph: Math.round(peakWindMph * 1.4),
+          snowDepthIn: peakSnowDepthIn,
+          timestamp: '2026-01-17T08:00:00Z',
+          source: 'fixture',
+        },
+    snowHistory: snowHistoryUnavailable ? null : buildFixtureSnowHistory(past5TotalIn, future5TotalIn),
   };
 }
+
+/** Spreads a total evenly across 5 fixture days — good enough to exercise UI/engine code that reads per-day entries. */
+function buildFixtureSnowHistory(pastTotalIn: number, futureTotalIn: number): SnowHistory {
+  const spread = (total: number, offsetStart: number, kind: DailySnowfall['kind']): DailySnowfall[] =>
+    Array.from({ length: 5 }, (_, i) => ({
+      date: `2026-01-${String(11 + offsetStart + i).padStart(2, '0')}`,
+      snowfallIn: round1(total / 5),
+      kind,
+    }));
+
+  return {
+    past: spread(pastTotalIn, 0, 'observed'),
+    pastTotalIn: round1(pastTotalIn),
+    future: spread(futureTotalIn, 6, 'forecast'),
+    futureTotalIn: round1(futureTotalIn),
+  };
+}
+
+const round1 = (value: number): number => Math.round(value * 10) / 10;
 
 export function testOperations(overrides: Partial<OperationsReport> = {}): OperationsReport {
   return {
@@ -243,6 +310,7 @@ export interface InputsSpec {
   primaryRoadStatus?: RoadStatus | 'unavailable' | null;
   date?: string;
   horizonDays?: number;
+  usingDemoData?: boolean;
 }
 
 const wrap = <T,>(value: T | 'unavailable', reason: string): Availability<T> =>
@@ -276,6 +344,6 @@ export function testInputs(spec: InputsSpec = {}): DayInputs {
         : spec.primaryRoadStatus === null
           ? null
           : wrap(spec.primaryRoadStatus, 'No road status.'),
-    usingDemoData: true,
+    usingDemoData: spec.usingDemoData ?? true,
   };
 }

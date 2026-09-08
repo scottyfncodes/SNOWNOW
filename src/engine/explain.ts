@@ -6,9 +6,10 @@ import type {
   SnowClock,
   Tradeoff,
 } from '@/domain/plan';
-import { formatClock, formatDuration, formatWindowLabel } from '@/domain/time';
+import { fromDateKey } from '@/domain/dates';
+import { at, formatClock, formatDuration, formatWindowLabel } from '@/domain/time';
 import type { DayInputs } from './inputs';
-import { resolveOperations, resolveWeather } from './snowClock';
+import { resolveOperations, resolveWeather, weatherAt } from './snowClock';
 
 /**
  * Copy generation. The engine knows a great deal; the user should hear one or
@@ -35,6 +36,24 @@ export function verdictFor(score: number, hasSnow: boolean): string {
   return 'SLEEP IN.';
 }
 
+/**
+ * Late-season is not just "another day with less snow" — the base is
+ * preserved by cold overnight refreeze and skis fastest early, before the
+ * sun softens it. Detected from real hourly numbers (a cold morning and a
+ * warm afternoon in a spring month, on a mountain that hasn't seen fresh
+ * snow in a few days), never inferred from the calendar alone.
+ */
+function isSpringWarmup(inputs: DayInputs): boolean {
+  const month = fromDateKey(inputs.date).getMonth() + 1;
+  if (month < 3 || month > 5) return false;
+  const weather = resolveWeather(inputs);
+  if (weather.daysSinceStorm > 4) return false;
+  const morning = weatherAt(weather.hourly, at(7));
+  const midday = weatherAt(weather.hourly, at(13));
+  if (!morning || !midday) return false;
+  return morning.temperatureF <= 26 && midday.temperatureF >= 38;
+}
+
 /** One line under the mountain name: the call, in the fewest words possible. */
 export function headlineFor(inputs: DayInputs, clock: SnowClock, score: DayScore): string {
   const weather = resolveWeather(inputs);
@@ -45,6 +64,7 @@ export function headlineFor(inputs: DayInputs, clock: SnowClock, score: DayScore
   if (weather.overnightSnowIn >= 4) return stacking ? 'STILL SNOWING.' : 'FRESH ON TOP.';
   if (weather.overnightSnowIn >= 1.5) return 'A LITTLE SOMETHING ON TOP.';
   if (clock.prime && clock.prime.averageQuality >= 74) return 'GROOMERS ARE THE PLAY.';
+  if (isSpringWarmup(inputs)) return 'SPRING MODE. GO EARLY.';
   if (score.score < 5.5) return 'NOT THE DAY.';
   return 'FIRM AND FAST.';
 }
@@ -109,6 +129,7 @@ export function reasonsFor(inputs: DayInputs, clock: SnowClock, score: DayScore)
 
 const FACTOR_PHRASES: Record<ScoreFactorKey, { better: string; worse: string }> = {
   snow: { better: 'More snow.', worse: 'Less fresh snow.' },
+  snowCycle: { better: 'A stronger snow cycle.', worse: 'A drier stretch lately.' },
   snowTiming: { better: 'Better snow timing.', worse: 'Timing lines up worse.' },
   weather: { better: 'Better visibility.', worse: 'Flatter light.' },
   wind: { better: 'Calmer.', worse: 'Higher wind.' },
@@ -184,6 +205,8 @@ const describeEdge = (factor: ScoreFactor): string => {
   switch (factor.key) {
     case 'snow':
       return 'more snow';
+    case 'snowCycle':
+      return 'a stronger snow cycle';
     case 'travel':
       return 'a shorter drive';
     case 'traffic':

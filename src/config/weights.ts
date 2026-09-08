@@ -16,6 +16,19 @@ export interface ScoringWeights {
 export const DEFAULT_WEIGHTS: ScoringWeights = {
   factors: {
     snow: 1.8,
+    /*
+     * The snow *cycle*, not the snow clock: how much actually fell in the
+     * last five days and how much is projected in the next five. `snow`
+     * above already answers "what's still there when you click in today" —
+     * this answers the question that leaves two mountains with an identical
+     * base and an identical overnight total looking identical when one just
+     * had a foot fall this week and the other has been bone dry. Weighted
+     * well under `snow` on purpose: a strong five-day cycle is context for
+     * today's call, not a substitute for what's actually skiable right now.
+     * See `engine/scoring.ts#snowCycleFactor` and the tests in
+     * `scoring.test.ts` under "snow cycle".
+     */
+    snowCycle: 0.6,
     snowTiming: 1.2,
     weather: 0.6,
     wind: 0.7,
@@ -42,6 +55,7 @@ export const DEFAULT_WEIGHTS: ScoringWeights = {
   },
   labels: {
     snow: 'Snow',
+    snowCycle: '5-day snow cycle',
     snowTiming: 'Snow timing',
     weather: 'Weather',
     wind: 'Wind',

@@ -1,3 +1,4 @@
+import type { DateKey } from './dates';
 import type { MinuteOfDay, Minutes } from './time';
 
 /** ---- Weather ---------------------------------------------------------- */
@@ -36,6 +37,53 @@ export interface HourlyWeather {
   freezingLevelFt?: number;
 }
 
+/**
+ * A single elevation's real-time reading: temperature, wind and (where the
+ * provider covers it) snow depth, each anchored to a specific point in time.
+ * Base and peak are reported independently — see `MountainWeather.base` /
+ * `.peak` — because a mid-mountain forecast point cannot honestly stand in
+ * for either end. Never derived from the other elevation's numbers.
+ */
+export interface ElevationConditions {
+  temperatureF: number;
+  windMph: number;
+  windGustMph: number;
+  /**
+   * Modeled or observed snow depth at this elevation, inches. `null` means
+   * the provider does not cover this metric for this point — never a
+   * silently-copied value from the other elevation, and never a guess.
+   */
+  snowDepthIn: number | null;
+  /** When this reading is anchored to, ISO 8601. */
+  timestamp: string;
+  /** Provider that produced this specific reading. */
+  source: string;
+}
+
+export type SnowfallObservationKind = 'observed' | 'forecast';
+
+export interface DailySnowfall {
+  date: DateKey;
+  snowfallIn: number;
+  kind: SnowfallObservationKind;
+}
+
+/**
+ * A rolling window around "today": what actually fell in the last five days
+ * and what the model expects over the next five. Distinct from
+ * `overnightSnowIn` / `recentSnow72hIn` above, which describe a single
+ * requested day — this is the mountain's snow cycle, independent of which
+ * day is being planned.
+ */
+export interface SnowHistory {
+  /** Oldest first, up to five entries ending with yesterday. Always 'observed'. */
+  past: DailySnowfall[];
+  pastTotalIn: number;
+  /** Nearest first, up to five entries starting tomorrow. Always 'forecast'. */
+  future: DailySnowfall[];
+  futureTotalIn: number;
+}
+
 export interface MountainWeather {
   /** Snow that fell before the day started and is still skiable. */
   overnightSnowIn: number;
@@ -45,6 +93,12 @@ export interface MountainWeather {
   daysSinceStorm: number;
   hourly: HourlyWeather[];
   summary: string;
+  /** Conditions at the mountain's base elevation. `null` only when that specific reading couldn't be resolved — the rest of the forecast can still be fine. */
+  base: ElevationConditions | null;
+  /** Conditions at the summit. `null` when the provider could not resolve a reliable summit reading — never copied from `base`. */
+  peak: ElevationConditions | null;
+  /** Five-day-back / five-day-forward snowfall. `null` when no provider covers it. */
+  snowHistory: SnowHistory | null;
 }
 
 /** ---- Mountain operations ---------------------------------------------- */
