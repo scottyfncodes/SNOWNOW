@@ -300,20 +300,24 @@ export function MapScreen({ registry, clock, origin, onOriginChange, preferences
   return (
     <div className="screen maphome">
       <header className="maphome-head shell">
-        <h1>
-          <Wordmark size="sm" />
-          <span className="visually-hidden">SNOWNOW</span>
+        <h1 className="maphome-brand">
+          <Wordmark size="lg" />
         </h1>
         <p className="home-tagline maphome-tagline">Colorado's mountains. Pick one.</p>
-        <p className="maphome-stat">{MOUNTAINS.length} resorts tracked</p>
+        <div className="maphome-meta">
+          <span className="maphome-stat">{MOUNTAINS.length} resorts tracked</span>
+          <span className="maphome-meta-sep" aria-hidden="true">•</span>
+          {usingDemoData ? (
+            <span className="chip chip-demo">DEMO DATA</span>
+          ) : (
+            <span className="chip chip-live">LIVE</span>
+          )}
+        </div>
         <OriginPicker onChange={onOriginChange} />
         {usingDemoData && (
           <p className="home-demo">
-            <span className="chip chip-demo">DEMO DATA</span>
-            <span>
-              No live weather, traffic or lift feeds are connected. Every number below is
-              simulated — and labelled as such.
-            </span>
+            No live weather, traffic or lift feeds are connected — every number below is
+            simulated and labelled as such.
           </p>
         )}
       </header>

@@ -101,8 +101,11 @@ export function OriginPicker({ onChange }: OriginPickerProps) {
         disabled={state.status === 'locating'}
         aria-busy={state.status === 'locating'}
       >
-        <span aria-hidden="true">📍</span>
-        {state.status === 'locating' ? 'Finding your location…' : 'Use my current location'}
+        <span className="originpicker-icon" aria-hidden="true">📍</span>
+        <span className="originpicker-label">
+          {state.status === 'locating' ? 'Finding your location…' : 'Use my current location'}
+        </span>
+        <span className="originpicker-chevron" aria-hidden="true">›</span>
       </button>
       {state.status === 'found' && (
         <p className="originpicker-locate-status">Using your current location</p>

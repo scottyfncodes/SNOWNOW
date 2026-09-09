@@ -26,14 +26,14 @@
 /* =========================================================== map homepage */
 
 .maphome-head {
-  padding-top: max(20px, env(safe-area-inset-top));
-  padding-bottom: 16px;
+  padding-top: max(28px, env(safe-area-inset-top));
+  padding-bottom: 18px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
 }
 
-.maphome-head h1 {
+.maphome-brand {
   margin: 0;
 }
 
@@ -44,31 +44,30 @@
 }
 
 .maphome-tagline {
-  margin: 0;
+  margin: -6px 0 0;
+  font-weight: 600;
+}
+
+.maphome-meta {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: -2px 0 0;
 }
 
 .maphome-stat {
-  margin: -4px 0 0;
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.04em;
   color: var(--ink-faint);
 }
 
+.maphome-meta-sep {
+  font-size: 10px;
+  color: var(--ink-ghost);
+}
+
 .home-demo {
-  display: flex;
-  gap: 10px;
-  align-items: flex-start;
-  font-size: 12.5px;
-  line-height: 1.45;
-  color: var(--ink-faint);
-}
-
-.home-demo .chip {
-  flex: none;
-}
-
-.home-note {
   font-size: 12.5px;
   line-height: 1.45;
   color: var(--ink-faint);
@@ -146,30 +145,58 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 12px 14px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--surface);
 }
 
 .originpicker-locate {
-  align-self: flex-start;
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 2px;
-  font-size: 12.5px;
+  gap: 12px;
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  font-size: 14px;
   font-weight: 700;
   color: var(--ice);
+  transition: background 150ms var(--ease), border-color 150ms var(--ease);
+}
+
+.originpicker-locate:hover:not(:disabled) {
+  background: var(--surface-2);
+  border-color: var(--line-strong);
 }
 
 .originpicker-locate:disabled {
   color: var(--ink-faint);
 }
 
+.originpicker-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--ice-glow);
+  font-size: 16px;
+}
+
+.originpicker-label {
+  flex: 1;
+  text-align: left;
+}
+
+.originpicker-chevron {
+  flex: none;
+  font-size: 18px;
+  color: var(--ink-faint);
+}
+
 .originpicker-locate-status {
   font-size: 12px;
   color: var(--ink-faint);
+  padding: 0 2px;
 }
 
 /* ================================================================= panel */
