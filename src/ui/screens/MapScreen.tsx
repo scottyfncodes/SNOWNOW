@@ -326,12 +326,12 @@ export function MapScreen({ registry, clock, origin, onOriginChange, preferences
         <div className="maphome-actions">
           <OriginPicker onChange={onOriginChange} />
           <div className="maphome-status">
-            {epicOnly && <span className="chip chip-pass-epic">EPIC PASS ONLY</span>}
             {usingDemoData ? (
               <span className="chip chip-demo">DEMO DATA</span>
             ) : (
               <span className="chip chip-live">LIVE</span>
             )}
+            {epicOnly && <span className="chip chip-pass-epic">EPIC PASS ONLY</span>}
           </div>
         </div>
       </header>
