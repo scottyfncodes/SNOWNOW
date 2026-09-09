@@ -59,19 +59,22 @@ const APPROXIMATE_ROUTE_STYLE: L.PathOptions = {
 };
 
 /**
- * A snow-capped peak, not a generic dot — big enough to read at a glance on a
- * phone, and colored (not just outlined) so it's visible against the map at
- * rest, not only on hover. Plain SVG shapes rather than an emoji glyph: an
- * emoji's colors are fixed by the font and can't be recolored for the
- * selected state.
+ * A snow-capped double peak (a real mountain range, not a single triangle),
+ * big enough to read at a glance on a phone, and colored (not just outlined)
+ * so it's visible against the map at rest, not only on hover. The back peak
+ * renders first and dimmer for depth; the front peak paints over it at full
+ * color. Plain SVG shapes rather than an emoji glyph: an emoji's colors are
+ * fixed by the font and can't be recolored for the selected state.
  */
 function mountainDivIcon(selected: boolean): L.DivIcon {
   return L.divIcon({
     className: `mm-pin${selected ? ' is-selected' : ''}`,
     html: `
       <svg class="mm-pin-icon" viewBox="0 0 24 24" aria-hidden="true">
-        <path class="mm-pin-base" d="M12 3.5 L21.5 20 H2.5 Z" />
-        <path class="mm-pin-cap" d="M12 3.5 L15.6 10.3 12.4 8.3 9 10.6 Z" />
+        <path class="mm-pin-back" d="M7 7 L16 20 H0.5 Z" />
+        <path class="mm-pin-back-cap" d="M7 7 L9.5 11.8 7.3 10.4 4.9 12 Z" />
+        <path class="mm-pin-base" d="M15 3.5 L23.5 20 H5 Z" />
+        <path class="mm-pin-cap" d="M15 3.5 L18.6 10.3 15.4 8.3 12 10.6 Z" />
       </svg>`,
     iconSize: [36, 36],
     iconAnchor: [18, 18],

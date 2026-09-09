@@ -1792,6 +1792,23 @@
   fill: var(--ink);
 }
 
+/* The back peak of the double-mountain glyph — dimmer than the front peak,
+   painted first, purely for depth. Selected-state swap mirrors the front
+   peak's so both keep reading as one coherent icon. */
+.mm-pin-back {
+  fill: var(--ice);
+  opacity: 0.55;
+  stroke: var(--bg-deep);
+  stroke-width: 1;
+  stroke-linejoin: round;
+  transition: fill 0.15s var(--ease);
+}
+
+.mm-pin-back-cap {
+  fill: var(--ink);
+  opacity: 0.75;
+}
+
 .mm-pin:hover .mm-pin-icon,
 .mm-pin:focus-visible .mm-pin-icon {
   transform: scale(1.15);
@@ -1801,11 +1818,13 @@
   transform: scale(1.4);
 }
 
-.mm-pin.is-selected .mm-pin-base {
+.mm-pin.is-selected .mm-pin-base,
+.mm-pin.is-selected .mm-pin-back {
   fill: var(--ink);
 }
 
-.mm-pin.is-selected .mm-pin-cap {
+.mm-pin.is-selected .mm-pin-cap,
+.mm-pin.is-selected .mm-pin-back-cap {
   fill: var(--ice);
 }
 
