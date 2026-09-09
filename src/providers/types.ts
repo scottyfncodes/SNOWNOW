@@ -1,11 +1,6 @@
 import type { WeatherAlert } from '@/domain/alerts';
 import type { DateKey } from '@/domain/dates';
-import type {
-  CrowdCurve,
-  MountainWeather,
-  OperationsReport,
-  TravelCurve,
-} from '@/domain/conditions';
+import type { MountainWeather, OperationsReport, TravelCurve } from '@/domain/conditions';
 import type { AccessRoute, Mountain, Origin } from '@/domain/mountain';
 import type { TicketPrice } from '@/domain/pricing';
 import type { Availability } from '@/domain/provenance';
@@ -55,10 +50,6 @@ export interface MountainProvider {
     mountain: Mountain,
     context: ProviderContext,
   ): Promise<Availability<OperationsReport>>;
-  getCrowdForecast(
-    mountain: Mountain,
-    context: ProviderContext,
-  ): Promise<Availability<CrowdCurve>>;
 }
 
 /**

@@ -34,13 +34,12 @@ export const DEFAULT_WEIGHTS: ScoringWeights = {
     wind: 0.7,
     terrain: 1.0,
     operations: 0.8,
-    // Traffic and crowds are deliberately light here: both already depress the
-    // snow clock and the travel burden, and double-counting them would let a
-    // two-hour dawn patrol outscore a full powder day.
+    // Traffic is deliberately light here: it already depresses the travel
+    // burden, and double-counting it would let a two-hour dawn patrol
+    // outscore a full powder day.
     travel: 1.2,
     traffic: 0.7,
     roads: 0.9,
-    crowds: 0.6,
     usableTime: 2.0,
     /*
      * Ticket price is real decision context, not the decision. It is weighted
@@ -64,7 +63,6 @@ export const DEFAULT_WEIGHTS: ScoringWeights = {
     travel: 'Travel burden',
     traffic: 'Traffic',
     roads: 'Roads',
-    crowds: 'Crowds',
     usableTime: 'Useful ski time',
     ticket: 'Ticket price',
   },
@@ -79,8 +77,6 @@ export interface RiderPreferences {
   sleepVsSend: number;
   /** How much powder is worth relative to everything else, 0.5..1.5 multiplier. */
   powderPreference: number;
-  /** 0 (hates crowds) .. 1 (doesn't care). */
-  crowdTolerance: number;
   /** Hard ceiling on one-way drive, minutes. */
   maxDriveMinutes: number;
   /** Earliest the rider will get out of bed. */
@@ -94,7 +90,6 @@ export const DEFAULT_PREFERENCES: RiderPreferences = {
   originId: 'denver',
   sleepVsSend: 0.6,
   powderPreference: 1,
-  crowdTolerance: 0.45,
   maxDriveMinutes: 300,
   earliestDeparture: 4 * 60,
   latestHomeArrival: 19 * 60,

@@ -1,4 +1,4 @@
-import type { CrowdCurve, OperationsReport } from '@/domain/conditions';
+import type { OperationsReport } from '@/domain/conditions';
 import { isWeekend } from '@/domain/dates';
 import { type Mountain, openTimeFor } from '@/domain/mountain';
 import {
@@ -8,14 +8,12 @@ import {
   observationForHorizon,
   unavailable,
 } from '@/domain/provenance';
-import { at, clamp, clamp01, minuteRange } from '@/domain/time';
-import { bell } from '@/lib/curve';
+import { clamp, clamp01 } from '@/domain/time';
 import type { MountainProvider, ProviderContext } from '@/providers/types';
 import { exposedWind, mountainRng, orographicFactor, patternFor, profileFor } from './scenario';
 
 export interface DemoMountainOptions {
   failOperationsFor?: (mountain: Mountain) => boolean;
-  failCrowdsFor?: (mountain: Mountain) => boolean;
 }
 
 /**
@@ -99,56 +97,6 @@ export class DemoMountainProvider implements MountainProvider {
         status,
         notes,
       },
-      {
-        source: 'demo',
-        observation: observationForHorizon(context.horizonDays),
-        confidence: confidenceForHorizon(context.horizonDays),
-        provider: this.id,
-        horizonDays: context.horizonDays,
-      },
-    );
-  }
-
-  async getCrowdForecast(
-    mountain: Mountain,
-    context: ProviderContext,
-  ): Promise<Availability<CrowdCurve>> {
-    if (this.options.failCrowdsFor?.(mountain)) {
-      return unavailable(this.id, 'No visitation signal for this mountain.');
-    }
-
-    const pattern = patternFor(mountain, context.date, context.horizonDays);
-    const profile = profileFor(mountain.id);
-    const weekend = isWeekend(context.date);
-    const open = openTimeFor(mountain, weekend);
-
-    const dayFactor = clamp(
-      pattern.demandFactor * mountain.popularity * profile.crowds * 1.15,
-      0.12,
-      1.9,
-    );
-
-    const drivers: string[] = [];
-    if (pattern.holiday) drivers.push(pattern.holiday);
-    if (weekend) drivers.push('Weekend');
-    else drivers.push('Weekday');
-    if (pattern.stormIntensity > 0.5) drivers.push('Powder day pull');
-    if (mountain.popularity > 0.85) drivers.push('Front Range favourite');
-    if (mountain.popularity < 0.45) drivers.push('Too far for the day-trip crowd');
-
-    const samples = minuteRange(at(7), at(17), 15).map((minute) => {
-      // Lines build from first chair, top out around late morning, then bleed off.
-      const build = clamp01((minute - open) / 150);
-      const fade = 1 - clamp01((minute - at(13, 30)) / 190) * 0.75;
-      const lunchDip = 1 - bell(minute, at(12, 15), 45) * 0.18;
-      return {
-        minute,
-        crowding: Math.round(clamp01(build * fade * lunchDip * dayFactor) * 100) / 100,
-      };
-    });
-
-    return ok(
-      { samples, dayFactor: Math.round(dayFactor * 100) / 100, drivers },
       {
         source: 'demo',
         observation: observationForHorizon(context.horizonDays),

@@ -118,15 +118,6 @@ describe('the demo actually differentiates the mountains', () => {
     }
   });
 
-  it('gives the quiet mountain fewer people than the Front Range favourite', async () => {
-    const [breck, cb] = await Promise.all([
-      registry.mountain.getCrowdForecast(findMountain('breckenridge')!, context),
-      registry.mountain.getCrowdForecast(findMountain('crested-butte')!, context),
-    ]);
-    if (breck.status === 'ok' && cb.status === 'ok') {
-      expect(cb.data.dayFactor).toBeLessThan(breck.data.dayFactor);
-    }
-  });
 });
 
 describe('departure-time-dependent traffic', () => {

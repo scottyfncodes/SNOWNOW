@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import { DEFAULT_PREFERENCES, DEFAULT_WEIGHTS } from '@/config/weights';
 import { at } from '@/domain/time';
 import {
-  testCrowds,
   testInputs,
   testOperations,
   testTicket,
@@ -107,11 +106,6 @@ describe('factor interactions', () => {
     expect(factor(open, 'operations').value).toBeGreaterThan(factor(shut, 'operations').value);
   });
 
-  it('notices crowds', () => {
-    const quiet = scoreFor(testInputs({ crowds: testCrowds(0.05) })).score;
-    const packed = scoreFor(testInputs({ crowds: testCrowds(0.95) })).score;
-    expect(factor(quiet, 'crowds').value).toBeGreaterThan(factor(packed, 'crowds').value);
-  });
 });
 
 describe('weight configuration', () => {
@@ -150,7 +144,7 @@ describe('missing data', () => {
   it('drops confidence when several feeds are missing', () => {
     const full = scoreFor(testInputs()).score;
     const partial = scoreFor(
-      testInputs({ weather: 'unavailable', operations: 'unavailable', crowds: 'unavailable' }),
+      testInputs({ weather: 'unavailable', operations: 'unavailable', ticket: 'unavailable' }),
     ).score;
     expect(full.confidence).toBe('high');
     expect(partial.confidence).toBe('low');
@@ -194,7 +188,6 @@ describe('extremes', () => {
       testInputs({
         weather: testWeather({ overnightSnowIn: 0, temperatureF: 48, windMph: 60, visibility: 0.1, daysSinceStorm: 20 }),
         operations: testOperations({ terrainOpenShare: 0.25, liftsExpectedOpen: 3, windHoldRisk: 0.9 }),
-        crowds: testCrowds(1),
         outbound: testTravel({ direction: 'outbound', duration: () => 280, roadCondition: 'chains-required', congestion: () => 0.95 }),
         inbound: testTravel({ direction: 'return', duration: () => 280, roadCondition: 'chains-required', congestion: () => 0.95 }),
       }),
@@ -209,7 +202,6 @@ describe('extremes', () => {
       testInputs({
         weather: testWeather({ overnightSnowIn: 13, temperatureF: 18, windMph: 4, visibility: 1 }),
         operations: testOperations({ terrainOpenShare: 0.99, liftsExpectedOpen: 20, windHoldRisk: 0 }),
-        crowds: testCrowds(0.1),
         outbound: testTravel({ direction: 'outbound', duration: () => 62, congestion: () => 0.02 }),
         inbound: testTravel({ direction: 'return', duration: () => 62, congestion: () => 0.02 }),
       }),

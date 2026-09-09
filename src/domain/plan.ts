@@ -36,7 +36,6 @@ export interface SnowClockPoint {
     surface: number;
     wind: number;
     visibility: number;
-    crowding: number;
     access: number;
   };
   /** Untracked fresh snow still available, inches. */
@@ -101,7 +100,6 @@ export type ScoreFactorKey =
   | 'travel'
   | 'traffic'
   | 'roads'
-  | 'crowds'
   | 'usableTime'
   | 'ticket';
 

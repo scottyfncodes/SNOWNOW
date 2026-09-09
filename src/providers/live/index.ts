@@ -43,7 +43,6 @@ export interface LiveRegistryOptions {
  * | traffic | `trafficApiBaseUrl` set | `unavailable` |
  * | roads | `enableRoadConditions` (default true) | `unavailable` |
  * | mountain (operations) | Liftie covers the resort | `unavailable` |
- * | mountain (crowds) | never — retired, see `mountainStatus.ts` | `unavailable` |
  * | pricing | never — no verifiable source, see `pricing.ts` | `unavailable` |
  * | places | never — no live implementation | `unavailable` |
  *

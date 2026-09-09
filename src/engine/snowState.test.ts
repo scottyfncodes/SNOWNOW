@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { testCrowds, testInputs, testOperations, testWeather } from '@/test/fixtures';
+import { testInputs, testOperations, testWeather } from '@/test/fixtures';
 import { buildSnowClock } from './snowClock';
 import { classifySnowState } from './snowState';
 
@@ -22,17 +22,15 @@ describe('classifySnowState', () => {
     const inputs = testInputs({
       weather: testWeather({ overnightSnowIn: 14, temperatureF: 15, windMph: 6 }),
       operations: testOperations({ terrainOpenShare: 0.95, windHoldRisk: 0.02 }),
-      crowds: testCrowds(0.15),
     });
     const clock = buildSnowClock(inputs);
     expect(clock.prime).not.toBeNull();
     expect(classifySnowState(inputs, clock)).toBe('prime');
   });
 
-  it('never calls a bone-dry, windy, crowded day prime — even though the clock still names a best window', () => {
+  it('never calls a bone-dry, windy day prime — even though the clock still names a best window', () => {
     const inputs = testInputs({
       weather: testWeather({ overnightSnowIn: 0, temperatureF: 42, windMph: 30 }),
-      crowds: testCrowds(0.85),
     });
     const clock = buildSnowClock(inputs);
     // The relative window still exists (used for "when to leave" timing) …
@@ -67,7 +65,6 @@ describe('classifySnowState', () => {
   it('reads as limited when some snow is present but conditions fall short of prime', () => {
     const inputs = testInputs({
       weather: testWeather({ overnightSnowIn: 1, temperatureF: 38, windMph: 25 }),
-      crowds: testCrowds(0.75),
     });
     const clock = buildSnowClock(inputs);
     expect(classifySnowState(inputs, clock)).toBe('limited');

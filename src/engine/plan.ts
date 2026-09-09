@@ -51,10 +51,7 @@ export function buildPlan(inputs: DayInputs, options: PlanOptions = {}): SkiDayP
   const weights = options.weights ?? DEFAULT_WEIGHTS;
 
   const snowClock = buildSnowClock(inputs, {
-    preferences: {
-      powderPreference: preferences.powderPreference,
-      crowdTolerance: preferences.crowdTolerance,
-    },
+    preferences: { powderPreference: preferences.powderPreference },
   });
 
   const optimized = optimizeDay(inputs, snowClock, { preferences, weights });
@@ -163,9 +160,6 @@ function collectCaveats(inputs: DayInputs, timingReason: string | null): string[
   }
   if (inputs.operations.status === 'unavailable') {
     caveats.push("Lift report isn't talking. Terrain and opening times are assumptions.");
-  }
-  if (inputs.crowds.status === 'unavailable') {
-    caveats.push('No crowd signal for this mountain.');
   }
   if (inputs.ticket.status === 'unavailable') {
     caveats.push("Ticket pricing isn't loading, so the cost of the day is missing.");

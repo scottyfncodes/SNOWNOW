@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { at } from '@/domain/time';
 import {
-  testCrowds,
   testInputs,
   testMountain,
   testOperations,
@@ -27,35 +26,22 @@ describe('snow clock — fresh snow as a consumable', () => {
     const clock = buildSnowClock(
       testInputs({
         weather: testWeather({ overnightSnowIn: 4, daytimeRateInPerHour: 1, snowUntil: at(9) }),
-        crowds: testCrowds(0),
       }),
     );
-    // Nobody is skiing it (crowding 0) and an inch an hour keeps falling.
+    // This early, close to opening, track-out is still minimal — an inch an hour keeps falling.
     expect(untrackedAt(clock, at(9))).toBeGreaterThan(4);
   });
 
-  it('tracks the snow out faster when the mountain is busy', () => {
-    const quiet = buildSnowClock(
-      testInputs({ weather: testWeather({ overnightSnowIn: 10 }), crowds: testCrowds(0.1) }),
-    );
-    const busy = buildSnowClock(
-      testInputs({ weather: testWeather({ overnightSnowIn: 10 }), crowds: testCrowds(0.9) }),
-    );
-    expect(untrackedAt(busy, at(12))).toBeLessThan(untrackedAt(quiet, at(12)));
-  });
-
-  it('spreads the same crowd further when more terrain is open', () => {
+  it('spreads the same traffic further when more terrain is open', () => {
     const narrow = buildSnowClock(
       testInputs({
         weather: testWeather({ overnightSnowIn: 10 }),
-        crowds: testCrowds(0.7),
         operations: testOperations({ terrainOpenShare: 0.35 }),
       }),
     );
     const wide = buildSnowClock(
       testInputs({
         weather: testWeather({ overnightSnowIn: 10 }),
-        crowds: testCrowds(0.7),
         operations: testOperations({ terrainOpenShare: 0.95 }),
       }),
     );
@@ -110,18 +96,14 @@ describe('snow clock — quality', () => {
   });
 
   it('degrades through the day as the powder gets skied off', () => {
-    const clock = buildSnowClock(
-      testInputs({ weather: testWeather({ overnightSnowIn: 12 }), crowds: testCrowds(0.7) }),
-    );
+    const clock = buildSnowClock(testInputs({ weather: testWeather({ overnightSnowIn: 12 }) }));
     expect(qualityAt(clock, at(9))).toBeGreaterThan(qualityAt(clock, at(15)));
   });
 });
 
 describe('prime window', () => {
   it('lands in the morning on a powder day', () => {
-    const clock = buildSnowClock(
-      testInputs({ weather: testWeather({ overnightSnowIn: 11 }), crowds: testCrowds(0.6) }),
-    );
+    const clock = buildSnowClock(testInputs({ weather: testWeather({ overnightSnowIn: 11 }) }));
     expect(clock.prime).not.toBeNull();
     expect(clock.prime!.start).toBeGreaterThanOrEqual(clock.open);
     expect(clock.prime!.peakMinute).toBeLessThan(at(12));
@@ -132,7 +114,6 @@ describe('prime window', () => {
     const clock = buildSnowClock(
       testInputs({
         weather: testWeather({ overnightSnowIn: 0, temperatureF: 42, windMph: 30 }),
-        crowds: testCrowds(0.85),
       }),
     );
     expect(clock.prime).not.toBeNull();
@@ -168,9 +149,7 @@ describe('weather interpolation', () => {
 
 describe('missing data', () => {
   it('still produces a clock when every feed is down', () => {
-    const clock = buildSnowClock(
-      testInputs({ weather: 'unavailable', operations: 'unavailable', crowds: 'unavailable' }),
-    );
+    const clock = buildSnowClock(testInputs({ weather: 'unavailable', operations: 'unavailable' }));
     expect(clock.points.length).toBeGreaterThan(10);
     expect(clock.points.every((p) => Number.isFinite(p.quality))).toBe(true);
   });

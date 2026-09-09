@@ -4,7 +4,6 @@ import { displayStatus, type Availability } from '@/domain/provenance';
 import { at } from '@/domain/time';
 import { sampleCurve } from '@/lib/curve';
 import {
-  testCrowds,
   testInputs,
   testMountain,
   testOperations,
@@ -94,7 +93,6 @@ describe('scenario 1 — huge overnight storm at a deep, out-of-the-way mountain
         mountain: wolfCreek,
         weather: testWeather({ overnightSnowIn: 28, temperatureF: 12, windMph: 10, daysSinceStorm: 0 }),
         operations: testOperations({ terrainOpenShare: 0.95, liftsExpectedOpen: 9, liftsTotal: 9 }),
-        crowds: testCrowds(0.2),
         ticket: testTicket(94, 99),
       }),
     );
@@ -239,7 +237,6 @@ describe('scenario 7 — poor new snow, but the groomers make it a real day', ()
       testInputs({
         weather: testWeather({ overnightSnowIn: 0, temperatureF: 22, windMph: 8, daysSinceStorm: 3 }),
         operations: testOperations({ groomedShare: 0.97, terrainOpenShare: 0.95 }),
-        crowds: testCrowds(0.15),
       }),
     );
 
@@ -392,7 +389,6 @@ describe('scenario 14 — total provider outage', () => {
       testInputs({
         weather: 'unavailable',
         operations: 'unavailable',
-        crowds: 'unavailable',
         ticket: 'unavailable',
         alerts: 'unavailable',
         outbound: 'unavailable',

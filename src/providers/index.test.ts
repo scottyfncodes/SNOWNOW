@@ -100,11 +100,6 @@ describe('createLiveRegistry — every slot, every configuration', () => {
     expect('data' in result).toBe(false);
   });
 
-  it('crowd forecast cannot silently fall back to a synthetic heuristic', async () => {
-    const registry = createLiveRegistry();
-    const result = await registry.mountain.getCrowdForecast(testMountain(), makeContext('2026-01-17', '2026-01-17', at(5)));
-    expect(result.status).toBe('unavailable');
-  });
 });
 
 describe('createProviderRegistry — the dispatcher', () => {

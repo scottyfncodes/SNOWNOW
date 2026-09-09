@@ -104,7 +104,6 @@ Day 0 is deliberately shaped into a storm day — the product story starts at
 | **Traffic** | Live | `server/` deployed + `GOOGLE_ROUTES_API_KEY` + `VITE_API_BASE_URL`, else **unavailable** |
 | **Road closures** (CDOT/COtrip) | Live, unverified, on by default | `VITE_ENABLE_ROAD_CONDITIONS=false` to disable → **unavailable** |
 | **Lift ops, terrain** | Live where covered, else unavailable | Nothing — tries Liftie (third-party) automatically |
-| **Crowds** | Unavailable, always | No trustworthy live source exists — retired, see below |
 | **Pricing** | Unavailable, always | Investigated, unverifiable — official purchase link shown instead |
 | **Places** | Unavailable, always | No live implementation exists for this pass |
 
@@ -329,26 +328,41 @@ partner API) if one becomes available later.
 investigated in this pass. In live mode it reports `unavailable` — never
 demo data (see "The production data gate" above).
 
-### Crowds: retired from live mode
+### Crowds: removed, not just retired
 
 `LiveMountainProvider.getCrowdForecast` used to run a calendar heuristic
-here (weekday/weekend, holiday, mountain popularity), honestly labeled
-`low` confidence and `projected` — real arithmetic on real calendar facts,
-not a simulation. It has been removed. The reasoning: it was still a
-projection standing in for an observed signal, and a production decision
-engine is more trustworthy with fewer real signals than with one that can
-be mistaken for measured attendance. It now reports `unavailable`
-unconditionally.
+(weekday/weekend, holiday, mountain popularity), honestly labeled `low`
+confidence and `projected` — real arithmetic on real calendar facts, not a
+simulation. It was later reduced to an unconditional `unavailable`: the
+heuristic was still a projection standing in for an observed signal, and a
+production decision engine is more trustworthy with fewer real signals than
+with one that can be mistaken for measured attendance.
 
-This is not a gap that silently weakens the recommendation: `crowds` is a
-lightly-weighted (`0.6` in `config/weights.ts`), optional scoring factor,
-and `scoring.ts` already imputes a neutral contribution and flags it as
-imputed whenever it's unavailable — the exact, already-tested mechanism
-every other unresolved live signal uses (see `engine/scenarios.test.ts`).
-Nothing about a plan's timing, snow read, or operations read depends on
-crowd data. If a trustworthy live occupancy/crowd source is identified
-later, `MountainProvider.getCrowdForecast` is still a real interface a live
-implementation can drop into.
+That halfway state turned out to be its own honesty problem. `crowds` was a
+real, weighted scoring factor (`config/weights.ts`) and a real component of
+the Snow Clock's per-minute quality model (`engine/snowClock.ts`) — but in
+live mode it could only ever return `unavailable`, forever, on every single
+call. Keeping it wired in meant every live score carried a permanently-dead
+factor silently pulling toward a neutral filler value, and every live
+confidence rating was permanently capped lower than the real signals
+actually justified — not a gap that weakens one plan sometimes, but a fixed
+tax on every plan, always, with no live data behind it and never a prospect
+of any. So the feature was removed outright, not left `unavailable`:
+`getCrowdForecast` no longer exists on `MountainProvider`, `crowds` no
+longer exists as a `ScoreFactorKey` or a weight, and the Snow Clock's
+quality mix redistributes what used to be crowding's share across snow,
+wind, visibility, and access (`QUALITY_MIX` in `engine/snowClock.ts`) rather
+than spending 15% of every quality score on a signal that was never
+present. Untracked snow still gets skied off over the course of a day —
+that mechanic didn't need a crowd number, real or synthetic, to be true, so
+it now runs on a fixed, resort-agnostic daily traffic curve instead
+(`TRAFFIC_OUT_CURVE`).
+
+If a trustworthy live occupancy/crowd source is ever identified, it would
+be a new addition to `MountainProvider`, not a revival of this one — no
+interface was left in place to drop a future implementation into on
+purpose, since the last one demonstrated that keeping the shape around
+invites exactly the confidence-and-caveat problem this removal fixes.
 
 ---
 
@@ -360,7 +374,7 @@ src/
     time.ts       Minutes-since-local-midnight, the engine's unit of time
     dates.ts      DateKey helpers, weekday/holiday logic
     mountain.ts   The generic Mountain model (routes carry their own lat/lon)
-    conditions.ts Weather, operations, travel curves, crowds
+    conditions.ts Weather, operations, travel curves
     alerts.ts     Official weather alerts — supplements the forecast only
     road.ts       Authoritative road/corridor status, separate from traffic
     plan.ts       SnowClock, DayScore, DepartureOption, ReturnOption, SkiDayPlan
@@ -453,13 +467,13 @@ while displaying a better number next to 5:30am.
 
 ### Scoring
 
-Eleven weighted factors — snow, snow timing, weather, wind, terrain,
-operations, travel burden, traffic, roads, crowds, useful ski time — plus named
+Ten weighted factors — snow, snow timing, weather, wind, terrain,
+operations, travel burden, traffic, roads, useful ski time — plus named
 post-hoc penalties for costs that have no upper bound (getting home hours late).
 
-Traffic and crowds are weighted *lightly* on purpose: both already depress the
-snow clock and the travel burden, and double-counting them would let a
-two-hour dawn patrol outscore a full powder day.
+Traffic is weighted *lightly* on purpose: it already depresses the travel
+burden, and double-counting it would let a two-hour dawn patrol outscore a
+full powder day.
 
 A missing feed produces a neutral, **explicitly flagged** value and lowers the
 day's confidence. It never silently becomes a plausible-looking number.
@@ -508,7 +522,7 @@ weather generator produces the conditions that expose them:
 
 | Mountain | Wins when | Loses when |
 |---|---|---|
-| Vail | It dumps and the wind stays down | Wind, crowds, the drive |
+| Vail | It dumps and the wind stays down | Wind, the drive |
 | Beaver Creek | It's blowing everywhere else | Modest snow, furthest up I-70 |
 | Breckenridge | Cold, calm, decent snow | Wind holds, long control work |
 | Keystone | Dry and firm — first chair, best corduroy | Any real storm |
@@ -820,10 +834,12 @@ unavailable" above.
 
 ## What's intentionally still demo, and what's not built at all
 
-**Nothing is demo in live mode, of anything.** Places (après suggestions)
-has no live implementation; crowds has been retired; pricing was
-investigated and found unverifiable — all three report `unavailable`, not
-demo data, in a live registry (see "The production data gate" above).
+**Nothing is demo in live mode, of anything.** Places (après suggestions) has
+no live implementation and pricing was investigated and found unverifiable —
+both report `unavailable`, not demo data, in a live registry (see "The
+production data gate" above). Crowds isn't in this list because it isn't a
+live-mode gap at all anymore — see "Crowds: removed, not just retired" — the
+feature doesn't exist for either registry to report on.
 `Demo*Provider` classes exist only for `createDemoRegistry()`, used by
 `npm run dev` with no env vars set and by every deterministic engine test —
 never reachable from a live-mode registry, which `providers/index.test.ts`
