@@ -86,6 +86,10 @@ export function MapScreen({ registry, clock, origin, onOriginChange, preferences
     setSelectedId(id);
     setShowFactors(false);
     setShowSources(false);
+    // The list view can be scrolled well past the fold (15 rows); without
+    // this, the mountain screen would render starting wherever that scroll
+    // position happened to land instead of at its own top.
+    window.scrollTo(0, 0);
     // The app-load warm-up (App.tsx) only helps a session that picks a
     // mountain quickly. Someone who lingers on the map first re-fires the
     // same fire-and-forget ping right as the real requests are about to go

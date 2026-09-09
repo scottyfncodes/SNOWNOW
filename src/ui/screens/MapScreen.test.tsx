@@ -97,6 +97,18 @@ describe('MapScreen', () => {
     expect(await screen.findByRole('heading', { name: new RegExp(`^${vail.name}`) })).toBeInTheDocument();
   });
 
+  it('scrolls back to the top when a mountain is selected from a scrolled-down list', async () => {
+    const scrollTo = vi.fn();
+    vi.stubGlobal('scrollTo', scrollTo);
+    renderMap();
+    await user().click(screen.getByRole('button', { name: /^list view$/i }));
+
+    const vail = MOUNTAINS.find((m) => m.id === 'vail')!;
+    await user().click(screen.getByRole('button', { name: new RegExp(`^${vail.name}`) }));
+
+    expect(scrollTo).toHaveBeenCalledWith(0, 0);
+  });
+
   it('re-shows the map after returning from a mountain opened from the list', async () => {
     renderMap();
     await user().click(screen.getByRole('button', { name: /^list view$/i }));

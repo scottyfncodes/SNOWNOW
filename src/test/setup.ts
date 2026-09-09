@@ -1,5 +1,11 @@
 import '@testing-library/jest-dom/vitest';
 
+// jsdom has no layout engine, so it never implements scrollTo and logs a
+// "Not implemented" error to the console every time app code calls it —
+// noise, not a real failure, in a test that isn't asserting on scroll
+// position itself.
+window.scrollTo = (() => {}) as typeof window.scrollTo;
+
 /*
  * Deterministic, low-motion environment for component tests. jsdom ships a
  * matchMedia that always answers "no", which would leave the decorative canvas
