@@ -29,7 +29,7 @@ async function selectMountain(name: string | RegExp) {
 describe('the homepage', () => {
   it('opens directly onto the Colorado map, with no NOW/LATER choice anywhere', () => {
     render(<App />);
-    expect(screen.getByText("Colorado's mountains. Pick one.")).toBeInTheDocument();
+    expect(screen.getByText(/colorado peaks/i)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^NOW$/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^LATER$/i })).not.toBeInTheDocument();
     for (const mountain of MOUNTAINS) {
@@ -90,7 +90,7 @@ describe('GPS location flow', () => {
     );
 
     // No manual city fallback exists — the map and its mountains stay usable regardless.
-    expect(screen.getByText("Colorado's mountains. Pick one.")).toBeInTheDocument();
+    expect(screen.getByText(/colorado peaks/i)).toBeInTheDocument();
     for (const mountain of MOUNTAINS) {
       expect(screen.getByRole('button', { name: new RegExp(`^${mountain.name}\. Tap to view`, 'i') })).toBeInTheDocument();
     }

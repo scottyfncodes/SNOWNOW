@@ -307,10 +307,8 @@ export function MapScreen({ registry, clock, origin, onOriginChange, preferences
         <h1 className="maphome-brand">
           <Wordmark size="lg" />
         </h1>
-        <p className="home-tagline maphome-tagline">Colorado's mountains. Pick one.</p>
+        <p className="home-tagline maphome-tagline">{MOUNTAINS.length} Colorado peaks.. so far</p>
         <div className="maphome-meta">
-          <span className="maphome-stat">{MOUNTAINS.length} resorts tracked</span>
-          <span className="maphome-meta-sep" aria-hidden="true">•</span>
           {usingDemoData ? (
             <span className="chip chip-demo">DEMO DATA</span>
           ) : (
