@@ -10,6 +10,7 @@ import { makeContext } from '@/engine/inputs';
 import { planForMountain } from '@/engine/plan';
 import { resolveAccessRoutes } from '@/engine/routing';
 import { travelAt } from '@/engine/travel';
+import { warmUpTrafficService } from '@/lib/warmup';
 import { describeRoutePreviewFailure, fetchRoutePreview } from '@/providers/live/routePreview';
 import type { ProviderRegistry } from '@/providers/types';
 import type { ClockState } from '@/ui/hooks/useClock';
@@ -73,6 +74,12 @@ export function MapScreen({ registry, clock, origin, onOriginChange, preferences
     setSelectedId(id);
     setShowFactors(false);
     setShowSources(false);
+    // The app-load warm-up (App.tsx) only helps a session that picks a
+    // mountain quickly. Someone who lingers on the map first lets the
+    // free-tier proxy fall back asleep, so a tap re-fires the same
+    // fire-and-forget ping right as the real requests are about to go out —
+    // a second head start against the cold start, not a guarantee against it.
+    warmUpTrafficService(apiBaseUrl);
   };
 
   const routeState = useAsync(

@@ -813,6 +813,27 @@ unavailable" above.
   "Ticket pricing: investigated, and genuinely unavailable" above. This is
   the one gap that isn't a "not yet verified" caveat: it's the documented
   conclusion of actually checking, not a placeholder for future work.
+- **"Road intel is offline" is a free-tier cold-start symptom, not a
+  per-mountain bug — confirmed against the real deployment's logs, not
+  guessed.** `snownow-traffic-proxy` runs on Render's free plan, which spins
+  the process down after idle and cold-boots it on the next request; the
+  service's own boot log (`SNOWNOW traffic proxy on :10000 — API key
+  present`) recurs every 10 minutes to a few hours in production, which is
+  the process restarting from idle, not crashing. `lib/warmup.ts` already
+  fires a fire-and-forget ping at app load to give that boot a head start,
+  but a session that lingers on the map before tapping a mountain lets the
+  proxy fall back asleep in the meantime — so `MapScreen`'s `selectMountain`
+  now re-fires the same ping the moment a mountain is tapped, right before
+  the real route-preview and travel-curve requests go out, rather than
+  relying on the one ping from page load. This mitigates the failure — it
+  does not eliminate it: a cold boot can still exceed the 15s client timeout
+  on `/api/travel-curve` (`providers/live/googleRoutesTraffic.ts`) if the tap
+  lands early enough in that boot. Any mountain can hit this; it isn't a
+  Monarch-specific defect, it's the mountain most recently added and so most
+  likely to be checked cold rather than mid-session with an already-warm
+  proxy. Moving off the free plan (a paid Render tier that doesn't spin down)
+  would remove the failure mode entirely — a cost/infra decision, not a code
+  change.
 - **Liftie coverage for Purgatory and Wolf Creek is unconfirmed**, so
   `data/resortSources.ts` leaves their `liftieSlug` unset rather than
   guessing one — both report `unavailable` for operations until a real
