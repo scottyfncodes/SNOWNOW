@@ -63,15 +63,15 @@
   color: var(--ink-faint);
 }
 
-/* The location picker and the live/demo status sit on one row, set well
-   below the brand block — this is the app's controls, not more branding,
-   and it sits right against the map it controls. */
+/* The location picker and the live/demo status sit on one row, set below
+   the brand block — this is the app's controls, not more branding — and
+   right against the map it controls. */
 .maphome-actions {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin: 34px 0 0;
+  margin: 18px 0 0;
 }
 
 .mapscreen-planloading {
