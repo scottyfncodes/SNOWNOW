@@ -260,7 +260,13 @@ export function MapScreen({ registry, clock, origin, onOriginChange, preferences
               <Timeline events={planState.data.timeline} />
               <DepartureWhatIf plan={planState.data} />
               <ReturnPlanner plan={planState.data} now={planState.data.isToday ? clock.now : null} />
+            </div>
+          )}
 
+          <MountainProfilePanel mountain={selectedMountain} profile={mountainProfileFor(selectedMountain.id)} />
+
+          {planState.status === 'ready' && planState.data && (
+            <div className="stack mapscreen-plan">
               <section className="panel">
                 <button
                   type="button"
@@ -290,8 +296,6 @@ export function MapScreen({ registry, clock, origin, onOriginChange, preferences
               <Caveats items={planState.data.caveats} />
             </div>
           )}
-
-          <MountainProfilePanel mountain={selectedMountain} profile={mountainProfileFor(selectedMountain.id)} />
         </div>
       </div>
     );
