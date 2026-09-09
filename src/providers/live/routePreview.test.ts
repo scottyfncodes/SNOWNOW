@@ -94,7 +94,7 @@ describe('fetchRoutePreview — one call, not a curve', () => {
     );
     const pending = fetchRoutePreview(origin, destination, 'https://proxy.example.test');
     const assertion = expect(pending).rejects.toThrow();
-    await vi.advanceTimersByTimeAsync(10000);
+    await vi.advanceTimersByTimeAsync(45000);
     await assertion;
   });
 });
@@ -109,7 +109,7 @@ describe('describeRoutePreviewFailure — never leaks a raw status code', () => 
 
   it('flags a timeout as a likely slow wake-up, in plain language', () => {
     const { message, likelySlowWake } = describeRoutePreviewFailure(
-      new ProviderTimeoutError('https://proxy.example.test/api/route-preview', 10000),
+      new ProviderTimeoutError('https://proxy.example.test/api/route-preview', 45000),
     );
     expect(likelySlowWake).toBe(true);
     expect(message.toLowerCase()).toMatch(/wake|nap|quiet/);

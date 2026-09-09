@@ -37,7 +37,10 @@ export async function fetchRoutePreview(
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ origin, destination }),
-    timeoutMs: 10000,
+    // See googleRoutesTraffic.ts's matching comment: the free-tier proxy can
+    // take up to 30-50s to cold-boot, confirmed from its own production
+    // logs, so a 10s timeout was giving up before a genuine slow success.
+    timeoutMs: 45000,
   });
   if (typeof payload.durationMinutes !== 'number') {
     throw new Error('Route preview service returned no duration.');

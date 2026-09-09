@@ -174,7 +174,7 @@ function collectCaveats(inputs: DayInputs, timingReason: string | null): string[
       (inputs.inbound.status === 'unavailable' && timeoutPattern.test(inputs.inbound.reason));
     caveats.push(
       isSlowWake
-        ? "Road intel is offline. We'll show the mountain, but we're not going to fake the drive. (Our traffic service naps when it's quiet and can take ~15 seconds to wake up — try again in a moment.)"
+        ? "Road intel is offline. We'll show the mountain, but we're not going to fake the drive. (Our traffic service naps when it's quiet and can take up to 45 seconds to wake up — we already waited that long, so it should be warm now. Try again in a moment.)"
         : "Road intel is offline. We'll show the mountain, but we're not going to fake the drive.",
     );
   } else if (timingReason) {

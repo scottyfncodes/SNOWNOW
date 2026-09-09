@@ -312,8 +312,8 @@ export function MapScreen({ registry, clock, origin, onOriginChange, preferences
           </p>
         ) : (
           <p className="home-note">
-            First traffic check in a while? It can take up to 15 seconds to wake up — that's
-            normal, not a bug. Give it a moment or check again if it says unavailable.
+            First traffic check in a while? Our traffic service can take up to 30-45 seconds to
+            wake up — that's normal, not a bug, and we already wait that long before giving up.
           </p>
         )}
       </header>

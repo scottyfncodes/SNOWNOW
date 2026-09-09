@@ -836,22 +836,27 @@ unavailable" above.
   guessed.** `snownow-traffic-proxy` runs on Render's free plan, which spins
   the process down after idle and cold-boots it on the next request; the
   service's own boot log (`SNOWNOW traffic proxy on :10000 — API key
-  present`) recurs every 10 minutes to a few hours in production, which is
-  the process restarting from idle, not crashing. `lib/warmup.ts` already
-  fires a fire-and-forget ping at app load to give that boot a head start,
-  but a session that lingers on the map before tapping a mountain lets the
-  proxy fall back asleep in the meantime — so `MapScreen`'s `selectMountain`
-  now re-fires the same ping the moment a mountain is tapped, right before
-  the real route-preview and travel-curve requests go out, rather than
-  relying on the one ping from page load. This mitigates the failure — it
-  does not eliminate it: a cold boot can still exceed the 15s client timeout
-  on `/api/travel-curve` (`providers/live/googleRoutesTraffic.ts`) if the tap
-  lands early enough in that boot. Any mountain can hit this; it isn't a
-  Monarch-specific defect, it's the mountain most recently added and so most
-  likely to be checked cold rather than mid-session with an already-warm
-  proxy. Moving off the free plan (a paid Render tier that doesn't spin down)
-  would remove the failure mode entirely — a cost/infra decision, not a code
-  change.
+  present`) recurs every 10 minutes to a few hours in production — pulled
+  directly from Render's logs, not inferred — which is the process
+  restarting from idle, not crashing. Two mitigations are in place:
+  `lib/warmup.ts` fires a fire-and-forget ping at app load *and* again the
+  moment a mountain is tapped (`MapScreen`'s `selectMountain`), so a session
+  that lingers on the map before committing still gets a head start; and the
+  client timeouts on both traffic calls (`providers/live/routePreview.ts`,
+  `providers/live/googleRoutesTraffic.ts`) were raised from 10s/15s to 45s,
+  matching `warmup.ts`'s own documented 30-50s cold-boot window — the
+  original timeouts were throwing away genuine, if slow, successes during
+  exactly the boot window they existed to survive. Any mountain can hit
+  this; it isn't a Monarch-specific defect, it's whichever mountain gets
+  checked first after the proxy has gone back to sleep. These mitigate the
+  failure; they do not eliminate it, because the root cause is Render's free
+  tier itself, not application code. The two real structural fixes are: pay
+  for a Render tier that doesn't spin down, or move `server/index.mjs`'s two
+  endpoints into Vercel serverless functions in this same project (already
+  on Vercel, Hobby plan, no separate cold-start problem to inherit) and
+  retire the Render service entirely. Neither has been done — both are
+  infra decisions with cost/ownership implications, not something to change
+  silently.
 - **Liftie coverage for Purgatory and Wolf Creek is unconfirmed**, so
   `data/resortSources.ts` leaves their `liftieSlug` unset rather than
   guessing one — both report `unavailable` for operations until a real

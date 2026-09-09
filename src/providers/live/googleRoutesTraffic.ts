@@ -63,9 +63,13 @@ export class LiveTrafficProvider implements TrafficProvider {
           direction,
           date: context.date,
         }),
-        // Real routing calls take longer than a JSON GET; the server itself
-        // also caches, so a slow *first* request for a corridor is expected.
-        timeoutMs: 15000,
+        // The free-tier proxy this points at (see lib/warmup.ts) can take up
+        // to 30-50s to cold-boot from asleep — confirmed against its own
+        // production logs, which show it repeatedly spinning down and
+        // rebooting from idle. 15s was throwing away genuine, if slow,
+        // successes during exactly that boot window; 45s gives a cold boot a
+        // real chance to finish before this gives up and reports unavailable.
+        timeoutMs: 45000,
       });
     } catch (error) {
       return unavailable(this.id, describeError(error));
