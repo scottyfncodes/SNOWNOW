@@ -168,7 +168,7 @@ export function MapScreen({ registry, clock, origin, onOriginChange, preferences
           <span className="visually-hidden">SNOWNOW</span>
         </h1>
         <p className="home-tagline maphome-tagline">Colorado's mountains. Pick one.</p>
-        <OriginPicker origin={origin} onChange={onOriginChange} />
+        <OriginPicker onChange={onOriginChange} />
         {usingDemoData ? (
           <p className="home-demo">
             <span className="chip chip-demo">DEMO DATA</span>

@@ -43,11 +43,10 @@ describe('the homepage', () => {
     expect(screen.getByText(/No live weather, traffic or lift feeds/i)).toBeInTheDocument();
   });
 
-  it('lets you change where you are starting from without typing, without leaving the map', async () => {
+  it('offers only "use my current location" — no manual city list', () => {
     render(<App />);
-    const select = screen.getByLabelText(/starting from/i);
-    await user().selectOptions(select, 'boulder');
-    expect((select as HTMLSelectElement).value).toBe('boulder');
+    expect(screen.getByRole('button', { name: /use my current location/i })).toBeInTheDocument();
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
   });
 });
 
@@ -58,7 +57,7 @@ describe('GPS location flow', () => {
     delete navigator.geolocation;
   });
 
-  it('routes from the actual GPS fix once granted, and back to a manual city after switching', async () => {
+  it('routes from the actual GPS fix once granted', async () => {
     const getCurrentPosition = vi.fn((success: PositionCallback) => {
       success({
         coords: { latitude: 39.7047, longitude: -105.0814, accuracy: 10 },
@@ -76,7 +75,7 @@ describe('GPS location flow', () => {
     expect(screen.getAllByText(/your location/i).length).toBeGreaterThan(0);
   });
 
-  it('stays fully usable with manual cities when location permission is denied', async () => {
+  it('shows an actionable message and stays on the map when location permission is denied', async () => {
     const getCurrentPosition = vi.fn(
       (_success: PositionCallback, error: PositionErrorCallback) => {
         error({ code: 1, PERMISSION_DENIED: 1, message: 'denied' } as GeolocationPositionError);
@@ -87,12 +86,14 @@ describe('GPS location flow', () => {
     render(<App />);
     await user().click(screen.getByRole('button', { name: /use my current location/i }));
     await waitFor(() =>
-      expect(screen.getByText(/location access is off.*choose a starting city instead/i)).toBeInTheDocument(),
+      expect(screen.getByText(/location access is off/i)).toBeInTheDocument(),
     );
 
-    const select = screen.getByLabelText(/starting from/i);
-    await user().selectOptions(select, 'boulder');
-    expect((select as HTMLSelectElement).value).toBe('boulder');
+    // No manual city fallback exists — the map and its mountains stay usable regardless.
+    expect(screen.getByText("Colorado's mountains. Pick one.")).toBeInTheDocument();
+    for (const mountain of MOUNTAINS) {
+      expect(screen.getByRole('button', { name: new RegExp(`^${mountain.name}\. Tap to view`, 'i') })).toBeInTheDocument();
+    }
   });
 });
 

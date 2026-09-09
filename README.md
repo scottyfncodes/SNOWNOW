@@ -150,6 +150,18 @@ console only — see `logRouteFetchFailure` in `server/index.mjs`).
 
 ### GPS-based routing
 
+**GPS is now the only way to set where you're starting from.** Once exact-GPS
+routing worked end to end, the six-city dropdown in `OriginPicker.tsx` was
+removed entirely — "📍 Use my current location" is the whole "starting from"
+UI, with no manual fallback. The six cities (`data/origins.ts#ORIGINS`)
+still exist and are still exercised — the demo registry's hand-authored
+corridor routes are keyed to them, `npm run dev` with no env vars still uses
+one as its initial origin before any location is granted, and the engine
+test suite still uses them as fixtures — but a live user can no longer pick
+one from the app itself. Every "manual city" comparison below (cache-pooling,
+hand-authored vs. synthesized routes) describes that underlying data model
+and demo mode, not a reachable part of the live UI.
+
 "📍 Use my current location" sends the browser's exact `navigator.geolocation`
 coordinates straight through as the routing origin — `origin`/`destination`
 were always plain `{ lat, lon }`, never a place name or an address, so **no

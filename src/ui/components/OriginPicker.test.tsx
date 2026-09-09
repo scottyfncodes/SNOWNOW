@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { findOrigin } from '@/data/origins';
 import { OriginPicker } from './OriginPicker';
 
 const user = () => userEvent.setup();
@@ -26,7 +25,7 @@ describe('OriginPicker — use my location', () => {
     vi.stubGlobal('navigator', { ...navigator, geolocation: { getCurrentPosition } });
 
     const onChange = vi.fn();
-    render(<OriginPicker origin={findOrigin('denver')} onChange={onChange} />);
+    render(<OriginPicker onChange={onChange} />);
 
     await user().click(screen.getByRole('button', { name: /use my current location/i }));
 
@@ -44,7 +43,7 @@ describe('OriginPicker — use my location', () => {
     });
     vi.stubGlobal('navigator', { ...navigator, geolocation: { getCurrentPosition } });
 
-    render(<OriginPicker origin={findOrigin('denver')} onChange={vi.fn()} />);
+    render(<OriginPicker onChange={vi.fn()} />);
     const button = screen.getByRole('button', { name: /use my current location/i });
     await user().click(button);
 
@@ -66,17 +65,17 @@ describe('OriginPicker — use my location', () => {
     vi.stubGlobal('navigator', { ...navigator, geolocation: { getCurrentPosition } });
 
     const onChange = vi.fn();
-    render(<OriginPicker origin={findOrigin('denver')} onChange={onChange} />);
+    render(<OriginPicker onChange={onChange} />);
 
     await user().click(screen.getByRole('button', { name: /use my current location/i }));
 
     await waitFor(() =>
-      expect(screen.getByText(/location access is off.*choose a starting city instead/i)).toBeInTheDocument(),
+      expect(screen.getByText(/location access is off/i)).toBeInTheDocument(),
     );
     expect(onChange).not.toHaveBeenCalled();
   });
 
-  it('tells a denied user specifically how to re-enable location in Safari, not just "choose a city"', async () => {
+  it('tells a denied user specifically how to re-enable location in Safari', async () => {
     const getCurrentPosition = vi.fn(
       (_success: PositionCallback, error: PositionErrorCallback) => {
         error({ code: 1, PERMISSION_DENIED: 1, message: 'denied' } as GeolocationPositionError);
@@ -84,7 +83,7 @@ describe('OriginPicker — use my location', () => {
     );
     vi.stubGlobal('navigator', { ...navigator, geolocation: { getCurrentPosition } });
 
-    render(<OriginPicker origin={findOrigin('denver')} onChange={vi.fn()} />);
+    render(<OriginPicker onChange={vi.fn()} />);
     await user().click(screen.getByRole('button', { name: /use my current location/i }));
 
     await waitFor(() => expect(screen.getByText(/settings.*safari.*location/i)).toBeInTheDocument());
@@ -98,11 +97,11 @@ describe('OriginPicker — use my location', () => {
     );
     vi.stubGlobal('navigator', { ...navigator, geolocation: { getCurrentPosition } });
 
-    render(<OriginPicker origin={findOrigin('denver')} onChange={vi.fn()} />);
+    render(<OriginPicker onChange={vi.fn()} />);
     await user().click(screen.getByRole('button', { name: /use my current location/i }));
 
     await waitFor(() =>
-      expect(screen.getByText(/couldn't get a location fix.*choose a starting city instead/i)).toBeInTheDocument(),
+      expect(screen.getByText(/couldn't get a location fix/i)).toBeInTheDocument(),
     );
     expect(screen.queryByText(/^2$/)).not.toBeInTheDocument();
   });
@@ -115,27 +114,26 @@ describe('OriginPicker — use my location', () => {
     );
     vi.stubGlobal('navigator', { ...navigator, geolocation: { getCurrentPosition } });
 
-    render(<OriginPicker origin={findOrigin('denver')} onChange={vi.fn()} />);
+    render(<OriginPicker onChange={vi.fn()} />);
     await user().click(screen.getByRole('button', { name: /use my current location/i }));
 
-    await waitFor(() => expect(screen.getByText(/choose a starting city instead/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/took too long to find/i)).toBeInTheDocument());
     expect(screen.queryByText(/code/i)).not.toBeInTheDocument();
   });
 
   it("tells the user plainly when the browser can't share location at all, instead of failing silently", async () => {
     vi.stubGlobal('navigator', { ...navigator, geolocation: undefined });
 
-    render(<OriginPicker origin={findOrigin('denver')} onChange={vi.fn()} />);
+    render(<OriginPicker onChange={vi.fn()} />);
     await user().click(screen.getByRole('button', { name: /use my current location/i }));
 
     expect(screen.getByText(/can't share your location/i)).toBeInTheDocument();
   });
 
-  it('still lets you pick a city from the dropdown directly', async () => {
-    const onChange = vi.fn();
-    render(<OriginPicker origin={findOrigin('denver')} onChange={onChange} />);
-    await user().selectOptions(screen.getByLabelText(/starting from/i), 'durango');
-    expect(onChange).toHaveBeenCalledWith(findOrigin('durango'));
+  it('offers no manual city fallback — location is the only way to set where you start from', () => {
+    render(<OriginPicker onChange={vi.fn()} />);
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+    expect(screen.queryByText(/starting from/i)).not.toBeInTheDocument();
   });
 
   it('never shows the raw coordinates in the UI once GPS mode is active', async () => {
@@ -146,7 +144,7 @@ describe('OriginPicker — use my location', () => {
     });
     vi.stubGlobal('navigator', { ...navigator, geolocation: { getCurrentPosition } });
 
-    render(<OriginPicker origin={findOrigin('denver')} onChange={vi.fn()} />);
+    render(<OriginPicker onChange={vi.fn()} />);
     await user().click(screen.getByRole('button', { name: /use my current location/i }));
 
     await waitFor(() => expect(screen.getByText(/using your current location/i)).toBeInTheDocument());
