@@ -82,6 +82,14 @@
   text-align: center;
 }
 
+/* Sits right under the wordmark — where the secret O that turns this on
+   actually lives — instead of crowding the LIVE/List view row below, which
+   only has room for two items before it wraps. */
+.maphome-epicflag {
+  margin: 10px 0 0;
+  text-align: center;
+}
+
 .home-demo {
   margin: 14px 0 0;
   font-size: 12.5px;

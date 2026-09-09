@@ -320,6 +320,11 @@ export function MapScreen({ registry, clock, origin, onOriginChange, preferences
         <h1 className="maphome-brand">
           <Wordmark size="lg" epicOnly={epicOnly} onToggleEpicOnly={() => setEpicOnly((value) => !value)} />
         </h1>
+        {epicOnly && (
+          <p className="maphome-epicflag">
+            <span className="chip chip-pass-epic">EPIC PASS ONLY</span>
+          </p>
+        )}
         <p className="home-tagline maphome-tagline">{MOUNTAINS.length} Colorado peaks.. so far</p>
         {usingDemoData && (
           <p className="home-demo">
@@ -335,7 +340,6 @@ export function MapScreen({ registry, clock, origin, onOriginChange, preferences
             ) : (
               <span className="chip chip-live">LIVE</span>
             )}
-            {epicOnly && <span className="chip chip-pass-epic">EPIC PASS ONLY</span>}
             <button
               type="button"
               className="maphome-viewtoggle"
