@@ -56,6 +56,31 @@ describe('RecommendationCard — base/peak and snow timeline', () => {
   });
 });
 
+describe('RecommendationCard — Epic Pass badge', () => {
+  it('shows the badge in the top-right corner for a mountain on the Epic Pass', () => {
+    const plan = buildPlan(testInputs({ mountain: testMountain({ passAffiliations: ['epic'] }) }));
+    render(<RecommendationCard plan={plan} />);
+    expect(screen.getByText('Epic Pass')).toBeInTheDocument();
+  });
+
+  it('still shows the badge off-season, when the day-score dial is not rendered', () => {
+    const plan = buildPlan(
+      testInputs({
+        mountain: testMountain({ passAffiliations: ['epic'] }),
+        operations: testOperations({ status: 'closed' }),
+      }),
+    );
+    render(<RecommendationCard plan={plan} />);
+    expect(screen.getByText('Epic Pass')).toBeInTheDocument();
+  });
+
+  it('shows no badge for a mountain on a different pass', () => {
+    const plan = buildPlan(testInputs({ mountain: testMountain({ passAffiliations: ['ikon'] }) }));
+    render(<RecommendationCard plan={plan} />);
+    expect(screen.queryByText('Epic Pass')).not.toBeInTheDocument();
+  });
+});
+
 describe('RecommendationCard — ticket price', () => {
   it('shows a ballpark range, clearly not a live quote, when no live price is available', () => {
     const mountain = testMountain({ id: 'vail', name: 'Vail' });

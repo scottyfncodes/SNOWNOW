@@ -1,5 +1,6 @@
 import type { Mountain } from '@/domain/mountain';
 import type { MountainProfile, SeasonDate } from '@/domain/mountainProfile';
+import { EpicPassBadge } from './EpicPassBadge';
 
 export interface MountainProfilePanelProps {
   mountain: Mountain;
@@ -88,19 +89,24 @@ export function MountainProfilePanel({ mountain, profile }: MountainProfilePanel
         )}
       </section>
 
-      <section className="profile-dining" aria-labelledby="profile-dining-heading">
-        <h3 id="profile-dining-heading" className="eyebrow">
-          Food &amp; Drink
+      <section className="profile-dining" aria-labelledby="profile-grub-heading">
+        <h3 id="profile-grub-heading" className="eyebrow">
+          Grub
         </h3>
-        {profile.dining ? (
+        {profile.grub ? (
           <>
-            {profile.dining.town && (
+            {profile.grub.town && (
               <p className="profile-dining-note">
-                There's little to no base-area dining here — most people eat in {profile.dining.town}.
+                There's little to no base-area dining here — most people eat in {profile.grub.town}.
+              </p>
+            )}
+            {profile.grub.quickBreakfast && (
+              <p className="profile-dining-note">
+                <strong>Best quick breakfast:</strong> {profile.grub.quickBreakfast.name} — {profile.grub.quickBreakfast.note}
               </p>
             )}
             <ul className="profile-dining-list">
-              {profile.dining.picks.map((pick) => (
+              {profile.grub.picks.map((pick) => (
                 <li key={pick.name}>
                   <strong>{pick.name}</strong> — {pick.note}
                 </li>
@@ -108,9 +114,40 @@ export function MountainProfilePanel({ mountain, profile }: MountainProfilePanel
             </ul>
           </>
         ) : (
-          <p className="profile-dining-note">
-            We haven't researched food and drink options for this mountain yet.
-          </p>
+          <p className="profile-dining-note">We haven't researched restaurants for this mountain yet.</p>
+        )}
+      </section>
+
+      <section className="profile-dining" aria-labelledby="profile-brews-heading">
+        <h3 id="profile-brews-heading" className="eyebrow">
+          Brews
+        </h3>
+        {profile.brews ? (
+          <>
+            <ul className="profile-dining-list">
+              {profile.brews.picks.map((pick) => (
+                <li key={pick.name}>
+                  <strong>{pick.name}</strong> — {pick.note}
+                </li>
+              ))}
+            </ul>
+            {profile.brews.distilleries && profile.brews.distilleries.length > 0 && (
+              <>
+                <p className="profile-dining-note">
+                  <strong>Bonus — distilleries:</strong>
+                </p>
+                <ul className="profile-dining-list">
+                  {profile.brews.distilleries.map((pick) => (
+                    <li key={pick.name}>
+                      <strong>{pick.name}</strong> — {pick.note}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </>
+        ) : (
+          <p className="profile-dining-note">We haven't researched breweries for this mountain yet.</p>
         )}
       </section>
 
@@ -128,16 +165,6 @@ export function MountainProfilePanel({ mountain, profile }: MountainProfilePanel
         </p>
       )}
     </section>
-  );
-}
-
-/** A quiet marker next to the name — never the resort's own pass-program branding, just a fact from `Mountain.passAffiliations`. */
-function EpicPassBadge({ mountain }: { mountain: Mountain }) {
-  if (!mountain.passAffiliations.includes('epic')) return null;
-  return (
-    <span className="chip chip-pass-epic" title="Included on the Epic Pass">
-      Epic Pass
-    </span>
   );
 }
 

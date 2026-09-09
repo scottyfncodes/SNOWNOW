@@ -5,6 +5,7 @@ import { formatPrice, savingsVsWindow } from '@/domain/pricing';
 import { formatClock, formatDuration, formatWindowLabel } from '@/domain/time';
 import { BasePeakConditions } from './BasePeakConditions';
 import { ConfidencePill, DataBadge } from './DataBadge';
+import { EpicPassBadge } from './EpicPassBadge';
 import { ScoreDial } from './ScoreDial';
 import { SnowTimeline } from './SnowTimeline';
 
@@ -75,12 +76,15 @@ export function RecommendationCard({ plan, why, projected = false, onCompare }: 
             {offSeason ? offSeason.line : plan.verdict}
           </p>
         </div>
-        {!offSeason && (
-          <div className="reccard-scorewrap">
-            <ScoreDial score={plan.score.score} label={`${plan.mountain.name} day score`} />
-            <p className="reccard-scorelabel">Day score</p>
-          </div>
-        )}
+        <div className="reccard-topright">
+          <EpicPassBadge mountain={plan.mountain} />
+          {!offSeason && (
+            <div className="reccard-scorewrap">
+              <ScoreDial score={plan.score.score} label={`${plan.mountain.name} day score`} />
+              <p className="reccard-scorelabel">Day score</p>
+            </div>
+          )}
+        </div>
       </div>
 
       <p className="reccard-headline">{offSeason ? offSeason.detail : plan.headline}</p>

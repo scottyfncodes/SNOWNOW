@@ -39,12 +39,12 @@ describe('MountainProfilePanel — Epic Pass badge', () => {
   });
 });
 
-describe('MountainProfilePanel — food & drink', () => {
-  it('lists researched picks by name', () => {
+describe('MountainProfilePanel — Grub', () => {
+  it('lists researched restaurant picks by name', () => {
     const mountain = testMountain();
     const profile: MountainProfile = {
       ...baseProfile,
-      dining: {
+      grub: {
         picks: [
           { name: "Garfinkel's", note: 'Base-area sports bar.' },
           { name: 'Sweet Basil', note: 'Elevated seasonal American.' },
@@ -56,11 +56,25 @@ describe('MountainProfilePanel — food & drink', () => {
     expect(screen.getByText('Sweet Basil')).toBeInTheDocument();
   });
 
+  it('calls out the best quick breakfast separately from the general picks', () => {
+    const mountain = testMountain();
+    const profile: MountainProfile = {
+      ...baseProfile,
+      grub: {
+        picks: [{ name: 'Sweet Basil', note: 'Elevated seasonal American.' }],
+        quickBreakfast: { name: "Loaded Joe's Coffeehouse", note: 'Breakfast sandwiches, steps from Gondola One.' },
+      },
+    };
+    render(<MountainProfilePanel mountain={mountain} profile={profile} />);
+    expect(screen.getByText(/best quick breakfast/i)).toBeInTheDocument();
+    expect(screen.getByText(/Loaded Joe's Coffeehouse/)).toBeInTheDocument();
+  });
+
   it('names the real nearby town instead of pretending the mountain has its own scene', () => {
     const mountain = testMountain();
     const profile: MountainProfile = {
       ...baseProfile,
-      dining: {
+      grub: {
         town: 'Pagosa Springs, about 25 miles west',
         picks: [{ name: "Kip's", note: 'Baja-style tacos downtown.' }],
       },
@@ -69,9 +83,43 @@ describe('MountainProfilePanel — food & drink', () => {
     expect(screen.getByText(/most people eat in Pagosa Springs/)).toBeInTheDocument();
   });
 
-  it('says food and drink has not been researched yet rather than showing an empty list', () => {
+  it('says restaurants have not been researched yet rather than showing an empty list', () => {
     const mountain = testMountain();
     render(<MountainProfilePanel mountain={mountain} profile={baseProfile} />);
-    expect(screen.getByText(/haven't researched food and drink/)).toBeInTheDocument();
+    expect(screen.getByText(/haven't researched restaurants/)).toBeInTheDocument();
+  });
+});
+
+describe('MountainProfilePanel — Brews', () => {
+  it('lists researched brewery picks by name', () => {
+    const mountain = testMountain();
+    const profile: MountainProfile = {
+      ...baseProfile,
+      brews: {
+        picks: [{ name: 'Breckenridge Brewery', note: "The town's own brewery." }],
+      },
+    };
+    render(<MountainProfilePanel mountain={mountain} profile={profile} />);
+    expect(screen.getByText('Breckenridge Brewery')).toBeInTheDocument();
+  });
+
+  it('lists a bonus distillery only when one was actually found', () => {
+    const mountain = testMountain();
+    const profile: MountainProfile = {
+      ...baseProfile,
+      brews: {
+        picks: [{ name: 'Breckenridge Brewery', note: "The town's own brewery." }],
+        distilleries: [{ name: 'Breckenridge Distillery', note: 'Award-winning bourbon.' }],
+      },
+    };
+    render(<MountainProfilePanel mountain={mountain} profile={profile} />);
+    expect(screen.getByText(/bonus.*distilleries/i)).toBeInTheDocument();
+    expect(screen.getByText('Breckenridge Distillery')).toBeInTheDocument();
+  });
+
+  it('says breweries have not been researched yet rather than showing an empty list', () => {
+    const mountain = testMountain();
+    render(<MountainProfilePanel mountain={mountain} profile={baseProfile} />);
+    expect(screen.getByText(/haven't researched breweries/)).toBeInTheDocument();
   });
 });

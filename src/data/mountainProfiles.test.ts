@@ -88,4 +88,21 @@ describe('mountain profiles — data integrity', () => {
       expect(isValidHttpsUrl(url), `${mountain.id} parking.infoUrl`).toBe(true);
     }
   });
+
+  it('gives every mountain a researched Grub section with at least one pick and a quick-breakfast call-out', () => {
+    for (const mountain of MOUNTAINS) {
+      const profile = mountainProfileFor(mountain.id)!;
+      expect(profile.grub, `missing grub info for ${mountain.id}`).toBeDefined();
+      expect(profile.grub!.picks.length, `${mountain.id} grub picks`).toBeGreaterThan(0);
+      expect(profile.grub!.quickBreakfast?.name, `${mountain.id} quick breakfast`).toBeTruthy();
+    }
+  });
+
+  it('gives every mountain a researched Brews section with at least one brewery pick', () => {
+    for (const mountain of MOUNTAINS) {
+      const profile = mountainProfileFor(mountain.id)!;
+      expect(profile.brews, `missing brews info for ${mountain.id}`).toBeDefined();
+      expect(profile.brews!.picks.length, `${mountain.id} brews picks`).toBeGreaterThan(0);
+    }
+  });
 });

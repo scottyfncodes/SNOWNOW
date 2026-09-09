@@ -253,8 +253,15 @@
   color: var(--ink-faint);
 }
 
-.reccard-scorewrap {
+.reccard-topright {
   flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.reccard-scorewrap {
   text-align: right;
   padding-top: 4px;
 }
