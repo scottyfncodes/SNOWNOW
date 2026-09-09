@@ -57,7 +57,10 @@
    stack rather than a deliberate one. */
 .maphome-head {
   padding-top: max(22px, env(safe-area-inset-top));
-  padding-bottom: 0;
+  /* Same rhythm as the 6px gap between the stacked status chips — now that
+     the row above is bottom-aligned (see .maphome-actions), that gap applies
+     evenly on both sides instead of only ever showing under one of them. */
+  padding-bottom: 6px;
   display: flex;
   flex-direction: column;
 }
