@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import { estimatedRangeFor } from '@/data/pricing';
+import { formatPrice } from '@/domain/pricing';
 import { buildPlan } from '@/engine/plan';
-import { testInputs, testOperations, testWeather } from '@/test/fixtures';
+import { testInputs, testMountain, testOperations, testWeather } from '@/test/fixtures';
 import { RecommendationCard } from './RecommendationCard';
 
 describe('RecommendationCard — base/peak and snow timeline', () => {
@@ -51,5 +53,20 @@ describe('RecommendationCard — base/peak and snow timeline', () => {
     // Base/peak and the snow cycle are still shown — the point is an honest
     // "not today", not a blank screen.
     expect(screen.getByText('Base')).toBeInTheDocument();
+  });
+});
+
+describe('RecommendationCard — ticket price', () => {
+  it('shows a ballpark range, clearly not a live quote, when no live price is available', () => {
+    const mountain = testMountain({ id: 'vail', name: 'Vail' });
+    const plan = buildPlan(testInputs({ mountain, ticket: 'unavailable' }));
+    render(<RecommendationCard plan={plan} />);
+
+    const range = estimatedRangeFor('vail');
+    expect(
+      screen.getByText(`${formatPrice(range.low, range.currency)}–${formatPrice(range.high, range.currency)}`),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Ballpark estimate, not a live quote/)).toBeInTheDocument();
+    expect(screen.queryByText(/Current price unavailable/)).not.toBeInTheDocument();
   });
 });

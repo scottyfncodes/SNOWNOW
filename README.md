@@ -315,12 +315,23 @@ silently-breaking integration ruled out elsewhere in this project, and
 is stateful.
 
 So live mode reports ticket price as `unavailable` for every resort,
-honestly — never the demo model's plausible number presented as live. The
-resort's real ticket page is still shown (`SkiDayPlan.ticketPurchaseUrl`,
-from the same `data/resortSources.ts` registry), so "we can't confirm the
-price" never means "and we won't tell you where to look." `PricingProvider`
-stays a real interface with a real production path (a ticketing platform's
-partner API) if one becomes available later.
+honestly — never the demo model's plausible number presented as live.
+`PricingProvider` stays a real interface with a real production path (a
+ticketing platform's partner API) if one becomes available later.
+
+Rather than leave the card blank when there's no quote, `RecommendationCard`
+shows a ballpark range instead: `data/pricing.ts#estimatedRangeFor` reads the
+same per-mountain advance-floor/window-rate profile the demo pricing model
+uses (documented there as "representative figures shaped like the real
+market") and returns that span, labeled "Ballpark estimate, not a live
+quote." This is a UI-layer display choice, not a change to what the provider
+reports — `LivePricingProvider.getTicketPrice` still returns `unavailable`,
+`registry.pricing`'s `Availability` result is untouched, and the production-
+data-gate tests still confirm no live quote is ever fabricated. The estimate
+is presented as what it is: a season's worth of pattern, not a quote for
+today. The resort's real ticket page is still linked
+(`SkiDayPlan.ticketPurchaseUrl`, from the same `data/resortSources.ts`
+registry) so the estimate never stands in for buying the actual ticket.
 
 ### Places: never in scope
 

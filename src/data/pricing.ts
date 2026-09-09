@@ -49,3 +49,20 @@ export const DEFAULT_PRICING: Omit<TicketPricingProfile, 'mountainId'> = {
 
 export const pricingFor = (mountainId: string): TicketPricingProfile =>
   TICKET_PRICING[mountainId] ?? { mountainId, ...DEFAULT_PRICING };
+
+/**
+ * A ballpark walk-up range for when there is no live quote, drawn from this
+ * same profile — the advance floor and window rate a season of watching this
+ * mountain's pricing would lead you to expect. Not a quote for any specific
+ * date, and never presented as one.
+ */
+export interface EstimatedPriceRange {
+  low: number;
+  high: number;
+  currency: Currency;
+}
+
+export const estimatedRangeFor = (mountainId: string): EstimatedPriceRange => {
+  const profile = pricingFor(mountainId);
+  return { low: profile.advanceFloor, high: profile.windowRate, currency: profile.currency };
+};

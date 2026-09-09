@@ -162,7 +162,7 @@ function collectCaveats(inputs: DayInputs, timingReason: string | null): string[
     caveats.push("Lift report isn't talking. Terrain and opening times are assumptions.");
   }
   if (inputs.ticket.status === 'unavailable') {
-    caveats.push("Ticket pricing isn't loading, so the cost of the day is missing.");
+    caveats.push("Ticket pricing isn't loading — the price shown is a ballpark estimate, not today's actual rate.");
   }
   if (inputs.closedCorridors.length > 0) {
     caveats.push(`${inputs.closedCorridors.join(', ')} closed. Routing around it wasn't possible from here today.`);

@@ -1,5 +1,6 @@
 import type { SkiDayPlan } from '@/domain/plan';
 import { SNOW_STATE_LABEL } from '@/engine/snowState';
+import { estimatedRangeFor } from '@/data/pricing';
 import { formatPrice, savingsVsWindow } from '@/domain/pricing';
 import { formatClock, formatDuration, formatWindowLabel } from '@/domain/time';
 import { BasePeakConditions } from './BasePeakConditions';
@@ -150,17 +151,28 @@ export function RecommendationCard({ plan, why, projected = false, onCompare }: 
             </span>
           </p>
         ) : (
-          plan.ticketPurchaseUrl && (
-            <p className="reccard-ticket">
-              <span className="reccard-ticket-label">Lift ticket</span>
-              <span className="reccard-ticket-note">
-                Current price unavailable —{' '}
-                <a href={plan.ticketPurchaseUrl} target="_blank" rel="noreferrer">
-                  buy at the resort
-                </a>
-              </span>
-            </p>
-          )
+          (() => {
+            const range = estimatedRangeFor(plan.mountain.id);
+            return (
+              <p className="reccard-ticket">
+                <span className="reccard-ticket-label">Lift ticket</span>
+                <span className="reccard-ticket-price numeral">
+                  {formatPrice(range.low, range.currency)}–{formatPrice(range.high, range.currency)}
+                </span>
+                <span className="reccard-ticket-note">
+                  Ballpark estimate, not a live quote
+                  {plan.ticketPurchaseUrl && (
+                    <>
+                      {' — '}
+                      <a href={plan.ticketPurchaseUrl} target="_blank" rel="noreferrer">
+                        buy at the resort
+                      </a>
+                    </>
+                  )}
+                </span>
+              </p>
+            );
+          })()
         ))}
 
       <div className="reccard-why">

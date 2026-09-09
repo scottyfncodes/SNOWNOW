@@ -205,11 +205,11 @@ describe('honest empty states', () => {
     expect(screen.queryByText('Head home')).not.toBeInTheDocument();
   });
 
-  it('says the price is unavailable rather than inventing one when pricing is down', async () => {
+  it('shows a labeled ballpark range rather than inventing a live price when pricing is down', async () => {
     await selectVailWith(createDemoRegistry({ pricing: { failFor: () => true } }));
-    // No dollar figure anywhere — the honest fallback names the gap instead of a number.
-    expect(screen.queryByText(/^\$\d/)).not.toBeInTheDocument();
-    expect(screen.getByText(/Current price unavailable/i)).toBeInTheDocument();
+    // A range is shown, but explicitly as an estimate — never as today's actual price.
+    expect(screen.getByText(/Ballpark estimate, not a live quote/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Current price unavailable/i)).not.toBeInTheDocument();
     expect(screen.getByText(/Ticket pricing isn't loading/i)).toBeInTheDocument();
   });
 
