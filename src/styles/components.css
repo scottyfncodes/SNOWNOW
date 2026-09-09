@@ -13,6 +13,24 @@
   text-shadow: 0 0 34px var(--ice-glow);
 }
 
+/* Looks exactly like the letter next to it — the whole point is that
+   nothing here hints it's a button. Still a real, focusable, labelled
+   control underneath (see Wordmark.tsx), just an undecorated one. */
+.wordmark-o {
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  line-height: inherit;
+  vertical-align: baseline;
+  transition: color 200ms var(--ease), text-shadow 200ms var(--ease);
+}
+
+.wordmark-o.is-active {
+  color: var(--go);
+  text-shadow: 0 0 24px rgba(79, 224, 160, 0.55);
+}
+
 .wordmark-lg {
   font-size: clamp(42px, 14.2vw, 92px);
   white-space: nowrap;
@@ -72,6 +90,12 @@
   justify-content: space-between;
   gap: 12px;
   margin: 18px 0 0;
+}
+
+.maphome-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .mapscreen-planloading {

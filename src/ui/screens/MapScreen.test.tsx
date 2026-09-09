@@ -51,6 +51,29 @@ describe('MapScreen', () => {
     }
   });
 
+  it('the undocumented O in the wordmark filters the map to Epic Pass mountains and back', async () => {
+    renderMap();
+    const epicMountains = MOUNTAINS.filter((mountain) => mountain.passAffiliations.includes('epic'));
+    const nonEpicMountain = MOUNTAINS.find((mountain) => !mountain.passAffiliations.includes('epic'))!;
+    expect(epicMountains.length).toBeGreaterThan(0);
+    expect(screen.getByRole('button', { name: new RegExp(`^${nonEpicMountain.name}\\. Tap to view`, 'i') })).toBeInTheDocument();
+
+    const toggle = screen.getByRole('button', { name: /show epic pass mountains only/i });
+    await user().click(toggle);
+
+    expect(screen.getByText('EPIC PASS ONLY')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: new RegExp(`^${nonEpicMountain.name}\\. Tap to view`, 'i') }),
+    ).not.toBeInTheDocument();
+    for (const mountain of epicMountains) {
+      expect(screen.getByRole('button', { name: new RegExp(`^${mountain.name}\\. Tap to view`, 'i') })).toBeInTheDocument();
+    }
+
+    await user().click(screen.getByRole('button', { name: /showing epic pass mountains only/i }));
+    expect(screen.queryByText('EPIC PASS ONLY')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: new RegExp(`^${nonEpicMountain.name}\\. Tap to view`, 'i') })).toBeInTheDocument();
+  });
+
   it('opens the mountain profile in place when a mountain is selected, with drive time, distance and traffic', async () => {
     renderMap();
     const vail = MOUNTAINS.find((m) => m.id === 'vail')!;

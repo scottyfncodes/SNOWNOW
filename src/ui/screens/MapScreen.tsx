@@ -61,6 +61,13 @@ export function MapScreen({ registry, clock, origin, onOriginChange, preferences
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showFactors, setShowFactors] = useState(false);
   const [showSources, setShowSources] = useState(false);
+  // Undocumented: the O in the home screen's wordmark toggles this. See
+  // Wordmark.tsx.
+  const [epicOnly, setEpicOnly] = useState(false);
+  const homeMountains = useMemo(
+    () => (epicOnly ? MOUNTAINS.filter((mountain) => mountain.passAffiliations.includes('epic')) : MOUNTAINS),
+    [epicOnly],
+  );
   const selectedMountain = selectedId ? (findMountain(selectedId) ?? null) : null;
   const apiBaseUrl = resolveEnvironment().trafficApiBaseUrl;
   // Only the dedicated single-call preview endpoint gets used in real live
@@ -305,7 +312,7 @@ export function MapScreen({ registry, clock, origin, onOriginChange, preferences
     <div className="screen maphome">
       <header className="maphome-head shell">
         <h1 className="maphome-brand">
-          <Wordmark size="lg" />
+          <Wordmark size="lg" epicOnly={epicOnly} onToggleEpicOnly={() => setEpicOnly((value) => !value)} />
         </h1>
         <p className="home-tagline maphome-tagline">{MOUNTAINS.length} Colorado peaks.. so far</p>
         {usingDemoData && (
@@ -316,17 +323,20 @@ export function MapScreen({ registry, clock, origin, onOriginChange, preferences
         )}
         <div className="maphome-actions">
           <OriginPicker onChange={onOriginChange} />
-          {usingDemoData ? (
-            <span className="chip chip-demo">DEMO DATA</span>
-          ) : (
-            <span className="chip chip-live">LIVE</span>
-          )}
+          <div className="maphome-status">
+            {epicOnly && <span className="chip chip-pass-epic">EPIC PASS ONLY</span>}
+            {usingDemoData ? (
+              <span className="chip chip-demo">DEMO DATA</span>
+            ) : (
+              <span className="chip chip-live">LIVE</span>
+            )}
+          </div>
         </div>
       </header>
 
       <div className="screen-body shell maphome-body">
         <MountainMap
-          mountains={MOUNTAINS}
+          mountains={homeMountains}
           origin={origin}
           selectedMountainId={null}
           onSelectMountain={selectMountain}
