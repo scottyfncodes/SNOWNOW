@@ -67,7 +67,7 @@ describe('GPS location flow', () => {
 
     render(<App />);
     await user().click(screen.getByRole('button', { name: /use my current location/i }));
-    await waitFor(() => expect(screen.getByText(/using your current location/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/\(using\)/i)).toBeInTheDocument());
 
     const vail = MOUNTAINS.find((m) => m.id === 'vail')!;
     await user().click(screen.getByRole('button', { name: new RegExp(`^${vail.name}\. Tap to view`, 'i') }));

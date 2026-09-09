@@ -53,7 +53,7 @@ describe('OriginPicker — use my location', () => {
     act(() => {
       resolvePosition({ coords: { latitude: 39.7, longitude: -105.1 } } as GeolocationPosition);
     });
-    await waitFor(() => expect(screen.getByText(/using your current location/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/\(using\)/i)).toBeInTheDocument());
   });
 
   it('shows a plain-language message and never crashes when location access is denied', async () => {
@@ -147,7 +147,7 @@ describe('OriginPicker — use my location', () => {
     render(<OriginPicker onChange={vi.fn()} />);
     await user().click(screen.getByRole('button', { name: /use my current location/i }));
 
-    await waitFor(() => expect(screen.getByText(/using your current location/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/\(using\)/i)).toBeInTheDocument());
     expect(screen.queryByText(/39\.7047/)).not.toBeInTheDocument();
     expect(screen.queryByText(/-105\.0814/)).not.toBeInTheDocument();
   });
