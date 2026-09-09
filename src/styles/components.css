@@ -88,11 +88,15 @@
 
 /* The location picker and the live/demo status sit on one row, set below
    the brand block — this is the app's controls, not more branding — and
-   right against the map it controls. */
+   right against the map it controls. Bottom-aligned, not centered: the
+   status column can stack two or three lines (live/demo, epic-only,
+   List view) while the location picker is always one, and centering them
+   left visible empty space under the shorter one instead of both sitting
+   flush against the map. */
 .maphome-actions {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
   gap: 8px 12px;
   margin: 18px 0 0;
