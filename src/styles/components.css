@@ -2153,6 +2153,16 @@
   border-top: 1px solid var(--line);
 }
 
+/* One accent color for every sub-label in this section — the "Grub"/"Brews"
+   eyebrow and the inline "Best quick breakfast:"/"Bonus — distilleries:"
+   lead-ins — so they read as one consistent kind of thing, distinct from
+   both the plain description text and the restaurant/brewery names
+   themselves (.profile-dining-list strong, still plain ink). */
+.eyebrow.profile-dining-heading,
+.profile-dining-label {
+  color: var(--ice);
+}
+
 .profile-dining-note {
   margin: 4px 0 8px;
   font-size: 13.5px;

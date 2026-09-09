@@ -90,7 +90,7 @@ export function MountainProfilePanel({ mountain, profile }: MountainProfilePanel
       </section>
 
       <section className="profile-dining" aria-labelledby="profile-grub-heading">
-        <h3 id="profile-grub-heading" className="eyebrow">
+        <h3 id="profile-grub-heading" className="eyebrow profile-dining-heading">
           Grub
         </h3>
         {profile.grub ? (
@@ -102,7 +102,8 @@ export function MountainProfilePanel({ mountain, profile }: MountainProfilePanel
             )}
             {profile.grub.quickBreakfast && (
               <p className="profile-dining-note">
-                <strong>Best quick breakfast:</strong> {profile.grub.quickBreakfast.name} — {profile.grub.quickBreakfast.note}
+                <strong className="profile-dining-label">Best quick breakfast:</strong>{' '}
+                {profile.grub.quickBreakfast.name} — {profile.grub.quickBreakfast.note}
               </p>
             )}
             <ul className="profile-dining-list">
@@ -119,7 +120,7 @@ export function MountainProfilePanel({ mountain, profile }: MountainProfilePanel
       </section>
 
       <section className="profile-dining" aria-labelledby="profile-brews-heading">
-        <h3 id="profile-brews-heading" className="eyebrow">
+        <h3 id="profile-brews-heading" className="eyebrow profile-dining-heading">
           Brews
         </h3>
         {profile.brews ? (
@@ -134,7 +135,7 @@ export function MountainProfilePanel({ mountain, profile }: MountainProfilePanel
             {profile.brews.distilleries && profile.brews.distilleries.length > 0 && (
               <>
                 <p className="profile-dining-note">
-                  <strong>Bonus — distilleries:</strong>
+                  <strong className="profile-dining-label">Bonus — distilleries:</strong>
                 </p>
                 <ul className="profile-dining-list">
                   {profile.brews.distilleries.map((pick) => (
