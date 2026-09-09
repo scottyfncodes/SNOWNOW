@@ -1,42 +1,23 @@
-import { useMemo } from 'react';
-import type { Mountain, Origin } from '@/domain/mountain';
-import { buildProjector, declutterPoints } from '@/lib/geoProjection';
-import { smoothPath } from './chart';
-
-const WIDTH = 640;
-const HEIGHT = 480;
-const PADDING = 34;
-
-/**
- * Colorado's own official boundary — the 37th and 41st parallels and the
- * meridians at 102°02'48"W / 109°02'48"W (Colorado is famously one of the
- * only states drawn straight from lines of latitude and longitude). Fitting
- * the projection to these corners, not just to wherever the supported
- * mountains happen to sit, is what makes the map read as "Colorado" at a
- * glance instead of an unlabelled cluster of dots — the real notch near the
- * Four Corners is a few miles wide at this scale and is left out rather than
- * approximated.
- */
-const COLORADO_BOUNDS = {
-  minLat: 37,
-  maxLat: 41,
-  minLon: -109.045,
-  maxLon: -102.042,
-};
-const COLORADO_CORNERS = [
-  { lat: COLORADO_BOUNDS.maxLat, lon: COLORADO_BOUNDS.minLon },
-  { lat: COLORADO_BOUNDS.minLat, lon: COLORADO_BOUNDS.maxLon },
-];
-/** Hit-circle radius, in the same SVG units as the marker layout below. */
-const HIT_RADIUS = 24;
-/** Two hit circles must clear this centre-to-centre distance to never overlap. */
-const MIN_MARKER_SEPARATION = HIT_RADIUS * 2 + 10;
-const ORIGIN_KEY = '__origin__';
+import { useEffect, useMemo, useRef } from 'react';
+import L from 'leaflet';
+import 'leaflet.markercluster';
+import { MapContainer, Marker, Polyline, TileLayer, Tooltip, useMap } from 'react-leaflet';
+import type { GeoPoint, Mountain, Origin } from '@/domain/mountain';
+import 'leaflet/dist/leaflet.css';
+import 'leaflet.markercluster/dist/MarkerCluster.css';
+import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 
 export interface MapRoutePreview {
   durationMinutes: number;
   distanceMiles: number | null;
   trafficAware: boolean;
+  /**
+   * The real driven road geometry, decoded from Google's polyline. `null`
+   * when no real geometry is available (demo mode, or a live proxy that
+   * didn't return one) — the map then draws a clearly-marked approximate
+   * direction line instead of pretending it's the actual road.
+   */
+  routePoints: GeoPoint[] | null;
 }
 
 export interface MountainMapProps {
@@ -48,13 +29,166 @@ export interface MountainMapProps {
   route?: MapRoutePreview | 'loading' | 'error' | null;
 }
 
+const toLatLng = (point: GeoPoint): L.LatLngTuple => [point.lat, point.lon];
+
+/** A small, unmistakably-a-mountain glyph — compact enough for mobile, obvious at a glance. */
+function mountainDivIcon(selected: boolean): L.DivIcon {
+  return L.divIcon({
+    className: `mm-pin${selected ? ' is-selected' : ''}`,
+    html: '<span class="mm-pin-glyph" aria-hidden="true">▲</span>',
+    iconSize: [30, 30],
+    iconAnchor: [15, 15],
+    tooltipAnchor: [0, -14],
+  });
+}
+
+function originDivIcon(isGps: boolean): L.DivIcon {
+  return L.divIcon({
+    className: `mm-origin${isGps ? ' is-gps' : ''}`,
+    html: '<span class="mm-origin-dot" aria-hidden="true"></span><span class="mm-origin-ring" aria-hidden="true"></span>',
+    iconSize: [1, 1],
+    iconAnchor: [0, 0],
+  });
+}
+
+function clusterDivIcon(cluster: L.MarkerCluster): L.DivIcon {
+  return L.divIcon({
+    className: 'mm-cluster',
+    html: `<span class="mm-cluster-count" aria-hidden="true">${cluster.getChildCount()}</span>`,
+    iconSize: [34, 34],
+  });
+}
+
 /**
- * A hand-drawn schematic map, in the same spirit as the Snow Clock and
- * travel charts elsewhere in the app: real coordinates, a real projection,
- * no tile server and no mapping library. The connecting line between origin
- * and a selected mountain is a schematic route indicator — it shows *that*
- * and roughly *how far*, not a turn-by-turn road path — the numbers next to
- * it (drive time, distance) are the real, non-fabricated claim.
+ * Several Colorado resorts (Summit County above all) sit only a few real
+ * miles apart — close enough that at any zoom wide enough to show the whole
+ * state, their markers physically overlap on a phone screen, and a tap can
+ * land on the wrong one. `leaflet.markercluster` is the standard answer for
+ * exactly this: nearby pins collapse into one cluster bubble that expands
+ * (zooming in) on tap, so a mistaken tap is never actually possible — it
+ * either hits one unambiguous mountain, or a cluster that has to be opened
+ * first. Individual peaks that aren't part of a tight cluster stay single-tap.
+ *
+ * This manages its own imperative Leaflet layer (clustering needs one)
+ * rather than react-leaflet's declarative `<Marker>` — real coordinates and
+ * click wiring are identical either way, only the mounting mechanism differs.
+ */
+function MountainClusterLayer({
+  mountains,
+  selectedMountainId,
+  onSelectMountain,
+}: {
+  mountains: Mountain[];
+  selectedMountainId: string | null;
+  onSelectMountain: (mountainId: string) => void;
+}) {
+  const map = useMap();
+  const groupRef = useRef<L.MarkerClusterGroup | null>(null);
+
+  useEffect(() => {
+    const group = L.markerClusterGroup({
+      maxClusterRadius: 28,
+      showCoverageOnHover: false,
+      spiderfyOnMaxZoom: true,
+      iconCreateFunction: clusterDivIcon,
+    });
+    group.addTo(map);
+    groupRef.current = group;
+    return () => {
+      group.remove();
+      groupRef.current = null;
+    };
+  }, [map]);
+
+  useEffect(() => {
+    const group = groupRef.current;
+    if (!group) return;
+    group.clearLayers();
+    for (const mountain of mountains) {
+      const isSelected = mountain.id === selectedMountainId;
+      const marker = L.marker(toLatLng(mountain.coordinates), {
+        icon: mountainDivIcon(isSelected),
+        keyboard: false,
+      });
+      marker.on('click', () => onSelectMountain(mountain.id));
+      marker.bindTooltip(mountain.shortName, {
+        permanent: isSelected,
+        direction: 'top',
+        offset: [0, -16],
+        className: 'mm-tooltip',
+      });
+      // The real accessible/keyboard control for this mountain is the button
+      // below the map (see the visually-hidden mountain list) — marking the
+      // visual pin `aria-hidden` avoids the same target being announced
+      // twice, once for a decorative element whose geometry a screen reader
+      // has no use for.
+      marker.on('add', () => marker.getElement()?.setAttribute('aria-hidden', 'true'));
+      group.addLayer(marker);
+    }
+  }, [mountains, selectedMountainId, onSelectMountain]);
+
+  return null;
+}
+
+/**
+ * Keeps the map framed on whatever's relevant: Colorado (plus the origin, if
+ * it's off in another state) when nothing is selected, or the origin and the
+ * selected mountain — and the real route between them, when one exists —
+ * once a mountain is tapped. Runs inside `MapContainer` so it can reach the
+ * live Leaflet map instance via `useMap()`.
+ */
+function MapFraming({
+  origin,
+  selectedMountain,
+  routePoints,
+  homeBounds,
+}: {
+  origin: Origin;
+  selectedMountain: Mountain | null;
+  routePoints: GeoPoint[] | null;
+  homeBounds: L.LatLngBounds;
+}) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (selectedMountain) {
+      const points = routePoints && routePoints.length > 1 ? routePoints : [origin.coordinates, selectedMountain.coordinates];
+      const bounds = L.latLngBounds(points.map(toLatLng));
+      map.flyToBounds(bounds, { padding: [48, 48], maxZoom: 12, duration: 0.6 });
+      return;
+    }
+    const bounds = L.latLngBounds(homeBounds.getSouthWest(), homeBounds.getNorthEast()).extend(
+      toLatLng(origin.coordinates),
+    );
+    map.flyToBounds(bounds, { padding: [30, 30], duration: 0.6 });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedMountain?.id, origin.coordinates.lat, origin.coordinates.lon, routePoints, homeBounds]);
+
+  return null;
+}
+
+/**
+ * `MapContainer` only forwards `className`/`id`/`style` to the DOM node it
+ * renders — everything else, `aria-label` included, is treated as a Leaflet
+ * `Map` constructor option and silently dropped. Setting it here, directly
+ * on the real container Leaflet built, is the only way it actually reaches
+ * the accessibility tree.
+ */
+function MapAccessibleLabel({ label }: { label: string }) {
+  const map = useMap();
+  useEffect(() => {
+    map.getContainer().setAttribute('aria-label', label);
+  }, [map, label]);
+  return null;
+}
+
+/**
+ * A real, pannable, zoomable Colorado map — CARTO's keyless dark basemap (no
+ * API key, same "no secrets in the client" rule the traffic proxy already
+ * follows), every mountain positioned at its real coordinates from the
+ * canonical `Mountain` dataset. Selecting a mountain draws the real driven
+ * route when one is available, and a clearly-marked approximate line — never
+ * a route dressed up as real — when it isn't.
  */
 export function MountainMap({
   mountains,
@@ -63,105 +197,97 @@ export function MountainMap({
   onSelectMountain,
   route,
 }: MountainMapProps) {
-  const geoPoints = [...COLORADO_CORNERS, origin.coordinates, ...mountains.map((m) => m.coordinates)];
-  const project = buildProjector(geoPoints, WIDTH, HEIGHT, PADDING);
   const selected = mountains.find((m) => m.id === selectedMountainId) ?? null;
-  const stateTopLeft = project(COLORADO_CORNERS[0]!);
-  const stateBottomRight = project(COLORADO_CORNERS[1]!);
-
-  // Several Colorado resorts (Summit County above all) sit only a few real
-  // miles apart — close enough that their true projected positions can land
-  // on top of each other at phone-screen scale. Markers are nudged apart just
-  // enough to keep every tap target distinct; the actual route/drive numbers
-  // are always computed from the real, un-nudged coordinates elsewhere.
-  const layout = useMemo(() => {
-    const raw = [
-      { key: ORIGIN_KEY, ...project(origin.coordinates) },
-      ...mountains.map((mountain) => ({ key: mountain.id, ...project(mountain.coordinates) })),
-    ];
-    const declustered = declutterPoints(raw, MIN_MARKER_SEPARATION);
-    return new Map(declustered.map((point) => [point.key, { x: point.x, y: point.y }]));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mountains, origin.coordinates.lat, origin.coordinates.lon]);
-
-  const originXY = layout.get(ORIGIN_KEY)!;
-  const positionOf = (mountain: Mountain) => layout.get(mountain.id)!;
-
-  const routeLine =
-    selected && route && route !== 'loading' && route !== 'error'
-      ? smoothPath([originXY, positionOf(selected)])
-      : null;
-
   const isGps = origin.id === 'gps';
+
+  const resolvedRoute = route && route !== 'loading' && route !== 'error' ? route : null;
+  const routePoints = resolvedRoute?.routePoints ?? null;
+  const showApproximateLine = Boolean(selected) && Boolean(resolvedRoute) && !routePoints;
+
+  const originIcon = useMemo(() => originDivIcon(isGps), [isGps]);
+
+  // The default view frames every supported mountain, not the whole state
+  // rectangle — Colorado has a lot of empty plains a resort map has no
+  // reason to show, and a tighter default fit is also what keeps closely
+  // spaced resorts (Summit County) far enough apart in screen pixels to stay
+  // out of the same cluster at first glance.
+  const homeBounds = useMemo(() => L.latLngBounds(mountains.map((m) => toLatLng(m.coordinates))), [mountains]);
 
   return (
     <figure className="mountainmap">
-      <svg
-        viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
-        className="mountainmap-svg"
-        role="img"
-        aria-label={`Map of ${mountains.length} mountains relative to ${origin.name}`}
+      <MapContainer
+        bounds={homeBounds}
+        className="mountainmap-leaflet"
+        scrollWheelZoom
+        attributionControl
       >
-        <rect x={0} y={0} width={WIDTH} height={HEIGHT} className="mountainmap-bg" rx={16} />
-        <rect
-          x={stateTopLeft.x}
-          y={stateTopLeft.y}
-          width={stateBottomRight.x - stateTopLeft.x}
-          height={stateBottomRight.y - stateTopLeft.y}
-          className="mountainmap-state"
+        <TileLayer
+          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+          maxZoom={19}
         />
-        <text x={stateBottomRight.x - 10} y={stateBottomRight.y - 10} textAnchor="end" className="mountainmap-statelabel">
-          COLORADO
-        </text>
 
-        {routeLine && <path d={routeLine} className="mountainmap-route" />}
-        {selected && !routeLine && route !== 'loading' && (
-          <line
-            x1={originXY.x}
-            y1={originXY.y}
-            x2={positionOf(selected).x}
-            y2={positionOf(selected).y}
-            className="mountainmap-route is-pending"
+        <MapAccessibleLabel label={`Map of ${mountains.length} Colorado mountains relative to ${origin.name}`} />
+        <MapFraming origin={origin} selectedMountain={selected} routePoints={routePoints} homeBounds={homeBounds} />
+
+        {routePoints && routePoints.length > 1 && (
+          <Polyline
+            positions={routePoints.map(toLatLng)}
+            pathOptions={{ className: 'mm-route is-real' }}
+          />
+        )}
+        {showApproximateLine && selected && (
+          <Polyline
+            positions={[toLatLng(origin.coordinates), toLatLng(selected.coordinates)]}
+            pathOptions={{ className: 'mm-route is-approximate', dashArray: '2 10' }}
           />
         )}
 
+        <MountainClusterLayer
+          mountains={mountains}
+          selectedMountainId={selectedMountainId}
+          onSelectMountain={onSelectMountain}
+        />
+
+        <Marker
+          position={toLatLng(origin.coordinates)}
+          icon={originIcon}
+          interactive={false}
+          keyboard={false}
+          ref={(instance) => {
+            const el = instance?.getElement();
+            el?.setAttribute('aria-hidden', 'true');
+          }}
+        >
+          <Tooltip permanent direction="top" offset={[0, -6]} className="mm-origin-tooltip">
+            {isGps ? 'You' : origin.shortName}
+          </Tooltip>
+        </Marker>
+      </MapContainer>
+
+      {/*
+       * A map pin is a mouse/touch affordance a screen reader can't usefully
+       * navigate by shape or position. This list is the real, focusable
+       * control for every mountain — visually hidden, but functionally
+       * identical to tapping its pin, and exactly what keyboard and
+       * screen-reader users actually interact with.
+       */}
+      <div className="visually-hidden" role="group" aria-label="Mountains">
         {mountains.map((mountain) => {
-          const { x, y } = positionOf(mountain);
           const isSelected = mountain.id === selectedMountainId;
           return (
-            <g
+            <button
               key={mountain.id}
-              className={`mountainmap-marker${isSelected ? ' is-selected' : ''}`}
-              transform={`translate(${x}, ${y})`}
-              role="button"
-              tabIndex={0}
-              aria-label={`Select ${mountain.name}${isSelected ? ' (selected)' : ''}`}
+              type="button"
+              aria-pressed={isSelected}
               onClick={() => onSelectMountain(mountain.id)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter' || event.key === ' ') {
-                  event.preventDefault();
-                  onSelectMountain(mountain.id);
-                }
-              }}
             >
-              {/* A generous, invisible hit target — the visible dot is deliberately small, but the tap/click target isn't. Markers are decluttered above so no two of these ever overlap. */}
-              <circle r={HIT_RADIUS} className="mountainmap-hit" />
-              <circle r={isSelected ? 7 : 5} className="mountainmap-dot" />
-              <text y={-11} textAnchor="middle" className="mountainmap-label">
-                {mountain.shortName}
-              </text>
-            </g>
+              {mountain.name}
+              {isSelected ? ' (selected)' : ''}. Tap to view mountain conditions and route.
+            </button>
           );
         })}
-
-        <g className="mountainmap-origin" transform={`translate(${originXY.x}, ${originXY.y})`}>
-          <circle r={8} className={`mountainmap-origin-dot${isGps ? ' is-gps' : ''}`} />
-          <circle r={14} className="mountainmap-origin-ring" />
-          <text y={-18} textAnchor="middle" className="mountainmap-origin-label">
-            {isGps ? 'YOU' : origin.shortName.toUpperCase()}
-          </text>
-        </g>
-      </svg>
+      </div>
 
       <figcaption className="mountainmap-legend">
         <span className="mountainmap-legend-item">
@@ -170,6 +296,11 @@ export function MountainMap({
         <span className="mountainmap-legend-item">
           <span className="mountainmap-swatch is-mountain" aria-hidden="true" /> Mountain
         </span>
+        {showApproximateLine && (
+          <span className="mountainmap-legend-item mountainmap-legend-note">
+            Dashed line is approximate direction, not the actual road
+          </span>
+        )}
       </figcaption>
     </figure>
   );

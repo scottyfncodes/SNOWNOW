@@ -183,6 +183,12 @@ async function buildTravelCurve(origin, destination, direction, date) {
  * duration/distance for whichever mountain the user actually tapped, never a
  * whole day's curve. Reusing `/api/travel-curve` for that would mean up to 9
  * extra Google calls per tap for numbers the UI throws away.
+ *
+ * Also asks for the route's `encodedPolyline` — the real driven road
+ * geometry, decoded client-side (`lib/polyline.ts`) to draw the actual route
+ * on the map instead of a straight line pretending to be one. This is a free
+ * addition to the same call: Google always returns a polyline with the
+ * route, no extra request or billing.
  */
 async function fetchRoutePreview(origin, destination) {
   try {
@@ -193,7 +199,7 @@ async function fetchRoutePreview(origin, destination) {
         headers: {
           'Content-Type': 'application/json',
           'X-Goog-Api-Key': API_KEY,
-          'X-Goog-FieldMask': 'routes.duration,routes.distanceMeters',
+          'X-Goog-FieldMask': 'routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline',
         },
         body: JSON.stringify({
           origin: { location: { latLng: { latitude: origin.lat, longitude: origin.lon } } },
@@ -216,6 +222,7 @@ async function fetchRoutePreview(origin, destination) {
     return {
       durationMinutes: Math.round(seconds / 60),
       distanceMiles: Number.isFinite(distanceMeters) ? Math.round((distanceMeters / 1609.344) * 10) / 10 : null,
+      polyline: typeof route.polyline?.encodedPolyline === 'string' ? route.polyline.encodedPolyline : null,
     };
   } catch {
     return null;

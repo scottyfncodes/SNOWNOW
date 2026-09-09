@@ -1650,108 +1650,177 @@
   padding: 8px 8px 10px;
 }
 
-.mountainmap-svg {
+/* ------------------------------------------------------------- leaflet map */
+
+.mountainmap-leaflet {
   width: 100%;
-  height: auto;
-  display: block;
+  height: min(64vh, 520px);
+  min-height: 340px;
+  border-radius: calc(var(--radius) - 4px);
+  background: var(--bg-raise);
 }
 
-.mountainmap-bg {
-  fill: var(--bg-raise);
+/* Leaflet ships its own baseline CSS (imported alongside this file); these
+   overrides only retheme it to match the app's dark, low-chrome aesthetic —
+   the map data and interaction all stay Leaflet's own. */
+.leaflet-container {
+  font: inherit;
+  background: var(--bg-raise);
 }
 
-.mountainmap-state {
-  fill: rgba(124, 231, 255, 0.045);
-  stroke: var(--line-strong);
-  stroke-width: 1.5;
+.leaflet-control-attribution {
+  background: rgba(4, 6, 10, 0.72) !important;
+  color: var(--ink-faint) !important;
+  font-size: 9.5px !important;
 }
 
-.mountainmap-statelabel {
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.16em;
-  fill: var(--ink-ghost);
-  pointer-events: none;
+.leaflet-control-attribution a {
+  color: var(--ink-dim) !important;
 }
 
-.mountainmap-route {
-  fill: none;
-  stroke: var(--ice);
-  stroke-width: 2.5;
-  stroke-linecap: round;
-  opacity: 0.85;
+.leaflet-control-zoom a {
+  background: var(--surface) !important;
+  color: var(--ink) !important;
+  border-color: var(--line) !important;
 }
 
-.mountainmap-route.is-pending {
-  stroke-dasharray: 5 6;
-  opacity: 0.35;
+.leaflet-control-zoom a:hover {
+  background: var(--surface-2) !important;
 }
 
-.mountainmap-marker {
+/* ------------------------------------------------------------ mountain pin */
+
+.mm-pin {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
   cursor: pointer;
 }
 
-.mountainmap-hit {
-  fill: transparent;
+.mm-pin-glyph {
+  font-size: 15px;
+  line-height: 1;
+  color: var(--ink-ghost);
+  text-shadow: 0 0 6px rgba(0, 0, 0, 0.65);
+  transition: color 0.15s var(--ease), transform 0.15s var(--ease);
 }
 
-.mountainmap-dot {
-  fill: var(--ink-ghost);
-  stroke: var(--bg-raise);
-  stroke-width: 1.5;
-  transition: fill 0.15s var(--ease), r 0.15s var(--ease);
+.mm-pin:hover .mm-pin-glyph,
+.mm-pin:focus-visible .mm-pin-glyph {
+  color: var(--ice);
 }
 
-.mountainmap-marker:hover .mountainmap-dot,
-.mountainmap-marker:focus-visible .mountainmap-dot {
-  fill: var(--ice);
+.mm-pin.is-selected .mm-pin-glyph {
+  color: var(--ice);
+  transform: scale(1.35);
 }
 
-.mountainmap-marker.is-selected .mountainmap-dot {
-  fill: var(--ice);
-  stroke: var(--ink);
+.mm-tooltip {
+  background: var(--surface) !important;
+  border: 1px solid var(--line) !important;
+  color: var(--ink) !important;
+  font-size: 10.5px !important;
+  font-weight: 700 !important;
+  padding: 2px 6px !important;
+  box-shadow: none !important;
 }
 
-.mountainmap-label {
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  fill: var(--ink-faint);
-  pointer-events: none;
+.mm-tooltip::before {
+  border-top-color: var(--line) !important;
 }
 
-.mountainmap-marker.is-selected .mountainmap-label {
-  fill: var(--ink);
+/* ---------------------------------------------------------------- cluster */
+
+.mm-cluster {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 2px solid var(--ice);
+  box-shadow: 0 0 0 4px rgba(124, 231, 255, 0.12);
+  cursor: pointer;
+}
+
+.mm-cluster-count {
+  font-size: 13px;
   font-weight: 800;
+  color: var(--ice);
 }
 
-.mountainmap-origin-dot {
-  fill: var(--go);
-  stroke: var(--bg-raise);
-  stroke-width: 2;
+/* -------------------------------------------------------------- origin pin */
+
+.mm-origin {
+  position: relative;
 }
 
-.mountainmap-origin-dot.is-gps {
-  fill: var(--wait);
+.mm-origin-dot {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  margin: -6px 0 0 -6px;
+  border-radius: 50%;
+  background: var(--go);
+  border: 2px solid var(--bg-raise);
 }
 
-.mountainmap-origin-ring {
-  fill: none;
-  stroke: var(--go);
-  stroke-width: 1;
+.mm-origin.is-gps .mm-origin-dot {
+  background: var(--wait);
+}
+
+.mm-origin-ring {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  margin: -12px 0 0 -12px;
+  border-radius: 50%;
+  border: 1px solid var(--go);
   opacity: 0.35;
 }
 
-.mountainmap-origin-label {
-  font-size: 9.5px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  fill: var(--ink);
+.mm-origin.is-gps .mm-origin-ring {
+  border-color: var(--wait);
 }
+
+.mm-origin-tooltip {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  color: var(--ink) !important;
+  font-size: 9.5px !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.06em !important;
+  text-transform: uppercase;
+  text-shadow: 0 0 6px rgba(0, 0, 0, 0.85);
+  padding: 0 !important;
+}
+
+.mm-origin-tooltip::before {
+  display: none !important;
+}
+
+/* ---------------------------------------------------------------- route */
+
+.mm-route.is-real {
+  stroke: var(--ice) !important;
+  stroke-width: 4 !important;
+  stroke-opacity: 0.85 !important;
+}
+
+.mm-route.is-approximate {
+  stroke: var(--ink-faint) !important;
+  stroke-width: 2 !important;
+  stroke-opacity: 0.6 !important;
+}
+
+/* ------------------------------------------------------------------ legend */
 
 .mountainmap-legend {
   display: flex;
-  gap: 14px;
+  flex-wrap: wrap;
+  gap: 6px 14px;
   margin-top: 6px;
   padding: 0 6px;
   font-size: 11.5px;
@@ -1762,6 +1831,10 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
+}
+
+.mountainmap-legend-note {
+  font-style: italic;
 }
 
 .mountainmap-swatch {

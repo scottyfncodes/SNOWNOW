@@ -18,7 +18,7 @@ const user = () => userEvent.setup();
 
 async function selectMountain(name: string | RegExp) {
   render(<App />);
-  await user().click(screen.getByRole('button', { name: new RegExp(`select ${name}`, 'i') }));
+  await user().click(screen.getByRole('button', { name: new RegExp(`^${name}\. Tap to view`, 'i') }));
   // The full day plan (score, snow, weather, drive timing) loads after the
   // quick route preview — this text only exists once that has resolved.
   return waitFor(() => expect(screen.getAllByText(/out of 10/i).length).toBeGreaterThan(0), {
@@ -33,7 +33,7 @@ describe('the homepage', () => {
     expect(screen.queryByRole('button', { name: /^NOW$/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^LATER$/i })).not.toBeInTheDocument();
     for (const mountain of MOUNTAINS) {
-      expect(screen.getByRole('button', { name: new RegExp(`select ${mountain.name}`, 'i') })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: new RegExp(`^${mountain.name}\. Tap to view`, 'i') })).toBeInTheDocument();
     }
   });
 
@@ -71,7 +71,7 @@ describe('GPS location flow', () => {
     await waitFor(() => expect(screen.getByText(/using your current location/i)).toBeInTheDocument());
 
     const vail = MOUNTAINS.find((m) => m.id === 'vail')!;
-    await user().click(screen.getByRole('button', { name: new RegExp(`select ${vail.name}`, 'i') }));
+    await user().click(screen.getByRole('button', { name: new RegExp(`^${vail.name}\. Tap to view`, 'i') }));
     await waitFor(() => expect(screen.getByText('Drive time')).toBeInTheDocument());
     expect(screen.getAllByText(/your location/i).length).toBeGreaterThan(0);
   });
@@ -151,7 +151,7 @@ describe('the mountain profile', () => {
     expect(screen.queryByRole('heading', { name: 'VAIL' })).not.toBeInTheDocument();
 
     const breck = MOUNTAINS.find((m) => m.id === 'breckenridge')!;
-    await user().click(screen.getByRole('button', { name: new RegExp(`select ${breck.name}`, 'i') }));
+    await user().click(screen.getByRole('button', { name: new RegExp(`^${breck.name}\. Tap to view`, 'i') }));
     await waitFor(() => expect(screen.getByRole('heading', { name: breck.shortName })).toBeInTheDocument());
     expect(screen.queryByRole('heading', { name: 'VAIL' })).not.toBeInTheDocument();
   });
@@ -186,7 +186,7 @@ describe('accessibility basics', () => {
 describe('honest empty states', () => {
   async function selectVailWith(registry: ReturnType<typeof createDemoRegistry>) {
     render(<App registry={registry} />);
-    await user().click(screen.getByRole('button', { name: /select vail/i }));
+    await user().click(screen.getByRole('button', { name: /^Vail\. Tap to view/i }));
     await waitFor(() => expect(screen.getByRole('heading', { name: 'VAIL' })).toBeInTheDocument(), {
       timeout: 12_000,
     });

@@ -87,7 +87,12 @@ export function MapScreen({ registry, clock, origin, onOriginChange, preferences
           const preview = await fetchRoutePreview(route.originPoint, route.destinationPoint, apiBaseUrl);
           return {
             kind: 'ok',
-            preview: { durationMinutes: preview.durationMinutes, distanceMiles: preview.distanceMiles, trafficAware: true },
+            preview: {
+              durationMinutes: preview.durationMinutes,
+              distanceMiles: preview.distanceMiles,
+              trafficAware: true,
+              routePoints: preview.routePoints,
+            },
           };
         } catch (error) {
           const { message, likelySlowWake } = describeRoutePreviewFailure(error);
@@ -108,6 +113,9 @@ export function MapScreen({ registry, clock, origin, onOriginChange, preferences
           durationMinutes: Math.round(estimate.durationMinutes),
           distanceMiles: curve.distanceMiles ?? route.distanceMiles ?? null,
           trafficAware: false,
+          // The demo/day-curve path never has real road geometry — the map
+          // draws an honestly-labelled approximate line instead of one.
+          routePoints: null,
         },
       };
     },

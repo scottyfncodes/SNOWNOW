@@ -25,13 +25,17 @@ Head home 2:42 PM · Home 4:28 PM
 ## The map
 
 SNOWNOW opens straight onto a Colorado map — the map *is* the homepage and the
-mountain selector, not a screen reached from some other choice. Every
-supported mountain is a tappable marker, positioned from the same real
-coordinates the engine routes to; tapping one opens that mountain's profile in
-place: the day's verdict and score, snow and weather, the drive from wherever
-you're starting (GPS or a manual city), traffic, parking, the trail map, lift
-tickets, and any active alerts. There is no NOW/LATER choice standing between
-opening the app and getting an answer.
+mountain selector, not a screen reached from some other choice. It's a real,
+pannable, zoomable Leaflet map (`ui/components/MountainMap.tsx`), not a
+diagram: every supported mountain is a tappable marker at its real coordinate
+from `data/mountains.ts`, the same data the engine routes to, with no second
+copy anywhere. Tapping one (or its cluster, if it's bunched too close to
+neighbors to tap unambiguously at the current zoom — see "Known limitations")
+opens that mountain's profile in place: the day's verdict and score, snow and
+weather, the real driven route from wherever you're starting (GPS or a manual
+city) drawn on the map itself when the traffic proxy returns one, traffic,
+parking, the trail map, lift tickets, and any active alerts. There is no
+NOW/LATER choice standing between opening the app and getting an answer.
 
 The engine underneath still separates "today" from "a future date" —
 `buildPlan`/`planForMountain` for today, `future.ts`'s range projection for
@@ -145,6 +149,16 @@ for nearly every visitor, so GPS requests mostly miss that shared cache and
 each pay their own Google Routes calls. This is an inherent cost of routing
 from someone's actual location rather than a bug — see "Caching and API
 cost" below for the numbers.
+
+**The map draws the real route, not a decoration.** `/api/route-preview`'s
+`X-Goog-FieldMask` also asks for `routes.polyline.encodedPolyline` — Google
+returns this with the same call, no extra request or billing — and
+`lib/polyline.ts` decodes it into real lat/lon points using Google's own
+published encoding algorithm (tested against Google's documented example).
+`MountainMap` draws that as a solid line; when no real geometry is available
+(demo mode, or a live proxy old enough not to return one yet) it draws a
+visually distinct dashed line and says so in the map's legend — never a route
+dressed up as real.
 
 ### The production data gate
 
@@ -662,16 +676,18 @@ unavailable" above.
   `data/resortSources.ts` leaves their `liftieSlug` unset rather than
   guessing one — both report `unavailable` for operations until a real
   slug is confirmed and added to the registry.
-- **Map markers are smaller than the ideal 44px touch target in the densest
-  cluster (Summit County).** `lib/geoProjection.ts#declutterPoints` guarantees
-  every marker's hit circle clears a minimum separation from every other one —
-  so no tap is ever swallowed by the wrong mountain — but 13 real ski areas at
-  Colorado's actual relative spacing, on a fixed, non-zoomable schematic map
-  sized to a phone screen, don't all fit at 44px without either distorting
-  their real positions well beyond what "real coordinates, nudged just enough"
-  should mean, or adding pinch-zoom/pan (not built). Every marker is
-  individually and reliably tappable; the two closest are not each a full
-  44px wide.
+- **The map is a real, tile-based, pannable/zoomable Leaflet map** (CARTO's
+  keyless dark basemap — no API key, same "no secrets in the client" rule the
+  traffic proxy already follows), not a hand-drawn schematic. Every mountain
+  sits at its real coordinate from `data/mountains.ts`; there is no second
+  location dataset anywhere in the map layer. Resorts close enough together
+  (Summit County above all) to physically overlap at a statewide zoom are
+  grouped by `leaflet.markercluster` into a tappable cluster bubble that
+  zooms in to spread its children apart — the standard answer to "too many
+  real pins, too little screen" — so a tap can never land on the wrong
+  mountain; it either hits one unambiguous peak or a cluster that opens
+  first. Zooming/panning further, as on any real map, gets every resort to
+  full individual size.
 - **Parking is reference information, not a live feed, for every resort.**
   No resort in `data/mountainProfiles.ts` has a confirmed live occupancy
   source, so every mountain's profile says so honestly and links to the
