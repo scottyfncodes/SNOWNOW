@@ -1,5 +1,5 @@
 import { isManualCityOrigin } from '@/data/origins';
-import { type AccessRoute, type Mountain, type Origin, routesFrom } from '@/domain/mountain';
+import { type AccessRoute, type Mountain, type Origin, routesFrom, routingDestinationFor } from '@/domain/mountain';
 import { haversineMiles } from '@/lib/geo';
 
 /**
@@ -47,7 +47,8 @@ const DEFAULT_WEATHER_SENSITIVITY = 0.65;
  * Google Routes and reports back the real duration, traffic, and distance.
  */
 function buildLiveRoute(mountain: Mountain, origin: Origin): AccessRoute {
-  const distanceMiles = haversineMiles(origin.coordinates, mountain.coordinates) * STRAIGHT_LINE_TO_ROAD_FACTOR;
+  const destinationPoint = routingDestinationFor(mountain);
+  const distanceMiles = haversineMiles(origin.coordinates, destinationPoint) * STRAIGHT_LINE_TO_ROAD_FACTOR;
   const primary = mountain.accessRoutes.find((route) => route.isPrimary) ?? mountain.accessRoutes[0];
 
   return {
@@ -56,7 +57,7 @@ function buildLiveRoute(mountain: Mountain, origin: Origin): AccessRoute {
     label: `Live route from ${origin.shortName}`,
     corridorId: primary?.corridorId ?? 'local',
     originPoint: origin.coordinates,
-    destinationPoint: mountain.coordinates,
+    destinationPoint,
     distanceMiles,
     freeFlowMinutes: Math.round((distanceMiles / AVERAGE_ROAD_SPEED_MPH) * 60),
     stormPenaltyMinutes: Math.round(distanceMiles * 0.15),

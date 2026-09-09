@@ -76,6 +76,37 @@ describe('OriginPicker — use my location', () => {
     expect(onChange).not.toHaveBeenCalled();
   });
 
+  it('tells a denied user specifically how to re-enable location in Safari, not just "choose a city"', async () => {
+    const getCurrentPosition = vi.fn(
+      (_success: PositionCallback, error: PositionErrorCallback) => {
+        error({ code: 1, PERMISSION_DENIED: 1, message: 'denied' } as GeolocationPositionError);
+      },
+    );
+    vi.stubGlobal('navigator', { ...navigator, geolocation: { getCurrentPosition } });
+
+    render(<OriginPicker origin={findOrigin('denver')} onChange={vi.fn()} />);
+    await user().click(screen.getByRole('button', { name: /use my current location/i }));
+
+    await waitFor(() => expect(screen.getByText(/settings.*safari.*location/i)).toBeInTheDocument());
+  });
+
+  it('gives a distinct, actionable message for POSITION_UNAVAILABLE rather than a generic failure', async () => {
+    const getCurrentPosition = vi.fn(
+      (_success: PositionCallback, error: PositionErrorCallback) => {
+        error({ code: 2, POSITION_UNAVAILABLE: 2, message: 'unavailable' } as GeolocationPositionError);
+      },
+    );
+    vi.stubGlobal('navigator', { ...navigator, geolocation: { getCurrentPosition } });
+
+    render(<OriginPicker origin={findOrigin('denver')} onChange={vi.fn()} />);
+    await user().click(screen.getByRole('button', { name: /use my current location/i }));
+
+    await waitFor(() =>
+      expect(screen.getByText(/couldn't get a location fix.*choose a starting city instead/i)).toBeInTheDocument(),
+    );
+    expect(screen.queryByText(/^2$/)).not.toBeInTheDocument();
+  });
+
   it('shows a plain-language message on timeout, not a raw error code', async () => {
     const getCurrentPosition = vi.fn(
       (_success: PositionCallback, error: PositionErrorCallback) => {

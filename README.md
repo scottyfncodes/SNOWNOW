@@ -125,21 +125,88 @@ GitHub Pages cannot host it, since Pages serves static files only and has no
 way to hold a server-side secret). Every variable is documented in
 `.env.example`.
 
+### Diagnosing the traffic proxy without exposing anything
+
+`GET /api/health` reports `{ ok, googleRoutesConfigured, cacheSize, time }` —
+enough to confirm from a browser or `curl` that a deployment has the key
+configured at all, never the key itself.
+
+`GET /api/test-route-preview` (optionally `?originLat=&originLon=&destLat=&destLon=`,
+defaulting to Denver → Keystone — this project's own product requirement)
+runs one real single-call route preview and reports `hasPolyline: true/false`
+alongside the duration/distance/polyline it got back, so whether a
+deployment's Google Routes integration is really returning route geometry is
+a URL a person can open, not something that needs a POST client or reading
+server logs. `GET /api/test-drive` does the same for the day-curve endpoint.
+
+Every failure from `/api/route-preview` and `/api/travel-curve` is a
+structured `{ error: CODE, message }`, `CODE` one of `MISSING_API_KEY`,
+`MALFORMED_REQUEST`, `GOOGLE_ROUTES_ERROR`, `NO_ROUTE_FOUND`, `TIMEOUT`, or
+`SERVER_ERROR` — distinct enough to tell "you forgot to set the key" apart
+from "Google rejected this specific request" apart from "we couldn't reach
+Google in time" from a response body alone, without ever including the raw
+Google response, a stack trace, or the key (those go to the server's own
+console only — see `logRouteFetchFailure` in `server/index.mjs`).
+
 ### GPS-based routing
 
 "📍 Use my current location" sends the browser's exact `navigator.geolocation`
-coordinates to the same `/api/travel-curve` endpoint the six manual cities
-already use — `origin`/`destination` there were always plain `{ lat, lon }`,
-never a place name or an address, so **no new Google API and no geocoding
-service were added**. The Google Routes `computeRoutes` call this project
-already makes accepts an arbitrary coordinate as `origin.location.latLng` the
-same way it accepts one of the six cities'; that capability was already
-present in the existing `GOOGLE_ROUTES_API_KEY`; this feature only stopped
-throwing the GPS fix away before it reached that call
-(`ui/components/OriginPicker.tsx` used to look up the *nearest of the six
-cities* and route from there instead — see `engine/routing.ts` for the
-replacement). Geocoding (reverse or forward) was deliberately not added: the
-UI never needs to show a street address, only "Using your current location".
+coordinates straight through as the routing origin — `origin`/`destination`
+were always plain `{ lat, lon }`, never a place name or an address, so **no
+new Google API and no geocoding service were added**. The Google Routes
+`computeRoutes` call this project already makes accepts an arbitrary
+coordinate as `origin.location.latLng` the same way it accepts one of the six
+cities'; that capability was already present in the existing
+`GOOGLE_ROUTES_API_KEY`; this feature only stopped throwing the GPS fix away
+before it reached that call (`ui/components/OriginPicker.tsx` used to look up
+the *nearest of the six cities* and route from there instead — see
+`engine/routing.ts` for the replacement). Geocoding (reverse or forward) was
+deliberately not added: the UI never needs to show a street address, only
+"Using your current location".
+
+Two separate server endpoints exist for two separate jobs, and a GPS origin
+goes through both exactly like a manual city does:
+
+- **`/api/route-preview`** — one Google Routes call, no departure grid,
+  traffic-aware for *right now*. The map uses this, and only for the one
+  mountain the user tapped, never all thirteen (`ui/screens/MapScreen.tsx`).
+- **`/api/travel-curve`** — up to 20 departure-time samples across the day.
+  NOW/LATER's recommendation engine uses this, unchanged, through the same
+  `TrafficProvider` interface it always has.
+
+`navigator.geolocation.getCurrentPosition` is only ever called from the
+"Use my current location" tap handler — never on page load — and its three
+error codes are handled distinctly (`ui/components/OriginPicker.tsx`):
+`PERMISSION_DENIED` tells the user specifically where to re-enable it
+(Settings → Safari → Location, or Settings → *app name* → Location for a
+Home Screen install — "choose a city instead" alone strands an iPhone user,
+since the toggle isn't reachable from inside the page at all), while
+`POSITION_UNAVAILABLE` and `TIMEOUT` each get their own plain-language
+message rather than collapsing into one generic failure.
+
+**The real driving destination isn't always the map-pin coordinate.**
+`domain/mountain.ts#RoutingDestination` is an optional per-mountain override
+for the small number of resorts where `Mountain.coordinates` (which also
+drives the map pin, distance math, and every hand-authored demo route's
+tuned numbers — left untouched) sits meaningfully away from the actual base
+area. `routingDestinationFor(mountain)` resolves to the override when one
+exists, otherwise `coordinates` itself; both the live map route-preview and
+the "Navigate" action use it, so a mountain like Steamboat — whose
+`coordinates` sit about 1.5 miles from the Wild Blue Gondola base, verified
+against Steamboat's own published resort coordinates — actually gets routed
+to the right arrival point. Every other mountain was spot-checked the same
+way and its existing coordinate kept as-is once confirmed close enough.
+
+**"Navigate" hands the destination to Apple/Google Maps — SNOWNOW never
+implements turn-by-turn itself.** Once a route resolves, two universal links
+(`lib/navigationLinks.ts`) appear: Apple Maps only on Apple platforms
+(detected from `navigator.userAgent`/`platform`, not shown to Android/
+Windows/Linux visitors) and Google Maps always, both carrying the exact same
+origin and destination coordinates SNOWNOW already resolved — never a
+re-geocoded address. Universal links (`maps.apple.com`/`google.com/maps/dir`)
+were chosen over a custom URL scheme (`comgooglemaps://`) specifically
+because a missing native app degrades to a working web page instead of a
+silent failure a web page has no way to detect.
 
 One real cost implication: the server's travel-curve cache key is rounded to
 three decimal degrees (~300 ft) and shared across every visitor asking about
@@ -619,13 +686,42 @@ unavailable" above.
 
 ## Known limitations
 
+- **The deployed Render service does not yet run this branch's server
+  code — this is the actual reason the map has never drawn a real route
+  polyline in production.** `snownow-traffic-proxy` (Render service
+  `srv-daf597gn74is738d5usg`) auto-deploys from branch
+  `claude/snownow-ski-optimization-j2z1nr`, not this one; its currently-live
+  commit's `/api/route-preview` field mask is `routes.duration,
+  routes.distanceMeters` only — no `routes.polyline.encodedPolyline`. Its
+  boot logs confirm `GOOGLE_ROUTES_API_KEY` is present, so duration/distance
+  for both manual-city and GPS origins should already work end-to-end in
+  production; the map's dashed "approximate" fallback line, not the solid
+  real-geometry line, is what a production user has actually been seeing on
+  every mountain, always — not a bug in the honesty logic that picks between
+  them (verified correct, see `MountainMap.test.tsx`), but the live polyline
+  it's honestly falling back from never being present upstream. Fixing this
+  needs either retargeting that Render service's branch to this one (or to
+  wherever this branch merges) via the Render dashboard, or shipping this
+  branch's `server/index.mjs` there some other way — neither of which a
+  coding session should do unprompted to a service already serving
+  production traffic.
 - **Google Routes traffic is live, deployed, and smoke-tested against a real
   key** — `server/index.mjs` is running on Render with a real
-  `GOOGLE_ROUTES_API_KEY`, and a real request returned real Denver→Copper
+  `GOOGLE_ROUTES_API_KEY` (confirmed again via this service's own boot logs:
+  `SNOWNOW traffic proxy on :10000 — API key present`, repeated across many
+  restarts), and a real request previously returned real Denver→Copper
   Mountain drive times (101–104 minutes across the sampled departure grid,
-  congestion varying realistically by time of day). The GitHub Pages build
-  is configured for live mode (`VITE_DATA_MODE=live`) and points at that
-  deployment.
+  congestion varying realistically by time of day) via `/api/travel-curve`.
+  That confirms duration/distance, not the polyline path added since — see
+  the bullet above for why the map's route *geometry* is a separate,
+  currently-unverified-in-production claim. The GitHub Pages build is
+  configured for live mode (`VITE_DATA_MODE=live`) and points at that
+  deployment; this sandbox's own outbound network can reach
+  `routes.googleapis.com` directly (confirmed by curl — unlike
+  `onrender.com`, `*.tile.openstreetmap.org`, and `arcgisonline.com`, all
+  blocked by this environment's egress policy), but has no access to the
+  real `GOOGLE_ROUTES_API_KEY` itself to run an authenticated end-to-end
+  check from here.
 - **Open-Meteo, NWS, CDOT, and Liftie have not been smoke-tested against
   their real endpoints from this environment.** This sandbox's network
   policy blocks `api.open-meteo.com`, `api.weather.gov`,

@@ -23,6 +23,21 @@ describe('mountain dataset integrity', () => {
     }
   });
 
+  it('gives every routingDestination override real, finite coordinates and a label, when one is set', () => {
+    for (const mountain of MOUNTAINS) {
+      const destination = mountain.routingDestination;
+      if (!destination) continue;
+      expect(Number.isFinite(destination.lat), mountain.id).toBe(true);
+      expect(Number.isFinite(destination.lon), mountain.id).toBe(true);
+      // Colorado only, same sanity bounds the coordinates themselves keep to.
+      expect(destination.lat, mountain.id).toBeGreaterThan(36);
+      expect(destination.lat, mountain.id).toBeLessThan(42);
+      expect(destination.lon, mountain.id).toBeGreaterThan(-110);
+      expect(destination.lon, mountain.id).toBeLessThan(-101);
+      expect(destination.label, mountain.id).toBeTruthy();
+    }
+  });
+
   it('points every access route at a real origin and a known corridor', () => {
     const originIds = new Set(ORIGINS.map((origin) => origin.id));
     for (const mountain of MOUNTAINS) {

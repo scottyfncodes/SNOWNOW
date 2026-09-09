@@ -45,17 +45,33 @@ function useLocate(onChange: (origin: Origin) => void) {
         setState({ status: 'found' });
       },
       (error) => {
+        // The browser reports the same PERMISSION_DENIED code whether this is
+        // the first time or the tenth — there's no API to tell those apart
+        // before asking, so one message has to cover both. What it can't
+        // leave out is *where* to fix it: "choose a city instead" alone
+        // strands a phone user in Safari, where the setting isn't inside the
+        // page at all but under Settings → Safari → Location (or, for an
+        // installed Home Screen app, Settings → [App Name] → Location).
         if (error.code === error.PERMISSION_DENIED) {
           setState({
             status: 'denied',
-            message: 'Location access is off. Choose a starting city instead.',
+            message:
+              'Location access is off for SNOWNOW. Enable it in Settings → Safari → Location (or Settings → SNOWNOW → Location if you added it to your Home Screen), or choose a starting city instead.',
           });
           return;
         }
         if (error.code === error.TIMEOUT) {
           setState({
             status: 'error',
-            message: "Location took too long to find. Choose a starting city instead.",
+            message: 'Location took too long to find. Choose a starting city instead.',
+          });
+          return;
+        }
+        if (error.code === error.POSITION_UNAVAILABLE) {
+          setState({
+            status: 'error',
+            message:
+              "Your device couldn't get a location fix right now — try again somewhere with a clearer view of the sky, or choose a starting city instead.",
           });
           return;
         }

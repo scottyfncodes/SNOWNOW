@@ -1642,6 +1642,40 @@
   font-weight: 800;
 }
 
+.navigatelinks {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.navigatelinks-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+  background: var(--surface-2);
+}
+
+.navigatelinks-link:hover,
+.navigatelinks-link:focus-visible {
+  border-color: var(--ice);
+  color: var(--ice);
+}
+
+.navigatelinks-note {
+  font-size: 11.5px;
+  color: var(--ink-faint);
+}
+
 .mountainmap {
   margin: 0 0 16px;
   border: 1px solid var(--line);

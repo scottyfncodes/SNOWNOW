@@ -83,6 +83,19 @@ export interface AccessRoute {
   isPrimary: boolean;
 }
 
+/**
+ * Where a real routing request should actually send a driver — a base area,
+ * primary parking lot, or arrival point — which is not always the same point
+ * as `Mountain.coordinates` (a general geographic marker for the resort,
+ * used for the map pin, distance math, and weather/scoring). Optional and
+ * additive: absent for any mountain whose `coordinates` already sit at (or
+ * close enough to) the practical arrival point — see `routingDestinationFor`.
+ */
+export interface RoutingDestination extends GeoPoint {
+  /** What this point actually is, e.g. "Wild Blue Gondola base area". */
+  label: string;
+}
+
 export interface Mountain {
   id: string;
   name: string;
@@ -100,6 +113,8 @@ export interface Mountain {
   state: string;
   country: string;
   coordinates: GeoPoint;
+  /** Set only when the practical driving destination differs meaningfully from `coordinates` — see `RoutingDestination`. */
+  routingDestination?: RoutingDestination;
   elevations: Elevations;
   operations: OperatingSchedule;
   lifts: LiftInventory;
@@ -112,6 +127,21 @@ export interface Mountain {
   /** One line of character used in explanations. */
   character: string;
 }
+
+/**
+ * The point a live route request (map preview, "Navigate") should actually
+ * send a driver to. Falls back to `coordinates` for every mountain where
+ * that's already a good enough arrival point — most of them, since these are
+ * mostly base-area coordinates already, not town centers or summits.
+ */
+export const routingDestinationFor = (mountain: Mountain): GeoPoint => {
+  const point = mountain.routingDestination ?? mountain.coordinates;
+  // Strip `label` explicitly rather than relying on structural typing to
+  // hide it: this value gets serialized straight into a route-preview
+  // request body, which should carry exactly `{ lat, lon }`, never a stray
+  // extra field riding along with it.
+  return { lat: point.lat, lon: point.lon };
+};
 
 /** Where the skier starts the day. */
 export interface Origin {

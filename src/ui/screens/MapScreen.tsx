@@ -3,7 +3,7 @@ import type { RiderPreferences } from '@/config/weights';
 import { resolveEnvironment } from '@/config/env';
 import { MOUNTAINS, findMountain } from '@/data/mountains';
 import { mountainProfileFor } from '@/data/mountainProfiles';
-import type { Origin } from '@/domain/mountain';
+import { type Origin, routingDestinationFor } from '@/domain/mountain';
 import { formatDuration } from '@/domain/time';
 import { planSummary } from '@/engine/explain';
 import { makeContext } from '@/engine/inputs';
@@ -21,6 +21,7 @@ import { DepartureWhatIf } from '@/ui/components/DepartureWhatIf';
 import { FactorBreakdown } from '@/ui/components/FactorBreakdown';
 import { MountainMap, type MapRoutePreview } from '@/ui/components/MountainMap';
 import { MountainProfilePanel } from '@/ui/components/MountainProfilePanel';
+import { NavigateLinks } from '@/ui/components/NavigateLinks';
 import { OriginPicker } from '@/ui/components/OriginPicker';
 import { RecommendationCard } from '@/ui/components/RecommendationCard';
 import { ReturnPlanner } from '@/ui/components/ReturnPlanner';
@@ -84,7 +85,11 @@ export function MapScreen({ registry, clock, origin, onOriginChange, preferences
 
       if (useLivePreview) {
         try {
-          const preview = await fetchRoutePreview(route.originPoint, route.destinationPoint, apiBaseUrl);
+          // The live single-shot preview always targets the mountain's real
+          // driving destination (base area / parking, when that differs from
+          // the map-pin coordinate) — not whichever `destinationPoint` a
+          // hand-authored demo route happened to be tuned to.
+          const preview = await fetchRoutePreview(route.originPoint, routingDestinationFor(selectedMountain), apiBaseUrl);
           return {
             kind: 'ok',
             preview: {
@@ -221,6 +226,13 @@ export function MapScreen({ registry, clock, origin, onOriginChange, preferences
                   <dd>{mapRoute.trafficAware ? 'Traffic-aware' : 'Demo estimate'}</dd>
                 </div>
               </dl>
+            )}
+            {mapRoute && mapRoute !== 'loading' && mapRoute !== 'error' && (
+              <NavigateLinks
+                destination={routingDestinationFor(selectedMountain)}
+                destinationLabel={selectedMountain.routingDestination?.label ?? selectedMountain.name}
+                origin={origin.coordinates}
+              />
             )}
           </section>
         )}

@@ -103,6 +103,37 @@ describe('MapScreen', () => {
     expect(fetchSpy.mock.calls.filter((call) => call[0] === 'https://proxy.example.test/api/route-preview')).toHaveLength(1);
   });
 
+  it('requests the live route preview against the routing destination, not the map-pin coordinate, and offers Navigate links to it', async () => {
+    vi.stubEnv('VITE_DATA_MODE', 'live');
+    vi.stubEnv('VITE_API_BASE_URL', 'https://proxy.example.test');
+    const fetchSpy = vi.fn(async (url: string, _init?: RequestInit) => {
+      if (url === 'https://proxy.example.test/api/route-preview') {
+        return new Response(JSON.stringify({ durationMinutes: 200, distanceMiles: 160, polyline: null }), {
+          status: 200,
+        });
+      }
+      return new Response('{}', { status: 200 });
+    });
+    vi.stubGlobal('fetch', fetchSpy);
+
+    const liveRegistry = createLiveRegistry({ trafficApiBaseUrl: 'https://proxy.example.test' });
+    const steamboat = MOUNTAINS.find((m) => m.id === 'steamboat')!;
+    renderMap({ registry: liveRegistry, usingDemoData: false, origin: gpsOrigin(40.0, -105.3) });
+    await user().click(screen.getByRole('button', { name: new RegExp(`^${steamboat.name}\. Tap to view`, 'i') }));
+
+    await waitFor(() => expect(screen.getByText('3h20')).toBeInTheDocument());
+
+    const [, init] = fetchSpy.mock.calls.find((call) => call[0] === 'https://proxy.example.test/api/route-preview')!;
+    const body = JSON.parse((init as RequestInit).body as string);
+    expect(body.destination).toEqual({ lat: steamboat.routingDestination!.lat, lon: steamboat.routingDestination!.lon });
+
+    const googleLink = screen.getByRole('link', { name: /navigate in google maps/i });
+    expect(googleLink.getAttribute('href')).toContain(
+      `destination=${steamboat.routingDestination!.lat}%2C${steamboat.routingDestination!.lon}`,
+    );
+    expect(googleLink.getAttribute('href')).toContain('origin=40%2C-105.3');
+  });
+
   it('works the same way for a GPS origin as for a manual city', async () => {
     const origin = gpsOrigin(39.7, -105.2);
     renderMap({ origin });

@@ -453,6 +453,14 @@ export const MOUNTAINS: Mountain[] = [
     state: 'CO',
     country: 'US',
     coordinates: { lat: 40.4572, lon: -106.8045 },
+    // `coordinates` above sits ~1.5 miles south of the actual base area —
+    // verified against Steamboat's own published resort coordinates
+    // (40°28'35"N 106°49'36"W) and the Wild Blue Gondola's address (2305 Mt.
+    // Werner Circle). Kept `coordinates` unchanged (it feeds the map pin,
+    // weather, and every hand-authored demo route's distance/time, already
+    // tuned to it) and added the real arrival point here instead, for live
+    // routing and navigation only. See `domain/mountain.ts#routingDestinationFor`.
+    routingDestination: { lat: 40.4764, lon: -106.8267, label: 'Wild Blue Gondola base area' },
     elevations: { baseFt: 6900, summitFt: 10568, verticalFt: 3668 },
     operations: {
       weekdayOpen: at(8, 30),
