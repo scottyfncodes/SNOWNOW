@@ -50,11 +50,11 @@ export interface MapScreenProps {
  * needs before they leave the house.
  *
  * Two independent requests fire when a mountain is selected, each scoped to
- * that one mountain only — never the other twelve:
+ * that one mountain only — never the rest:
  *   1. A single "right now" route preview (fast, one network call).
  *   2. The full day plan (`planForMountain`) — the same engine NOW used to
- *      run, just no longer spent recomputing all thirteen mountains to throw
- *      away twelve of them, because the map already did the choosing.
+ *      run, just no longer spent recomputing every mountain to throw away
+ *      all but the one, because the map already did the choosing.
  */
 export function MapScreen({ registry, clock, origin, onOriginChange, preferences, usingDemoData }: MapScreenProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);

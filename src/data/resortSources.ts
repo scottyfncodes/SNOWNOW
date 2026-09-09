@@ -101,6 +101,14 @@ export const RESORT_SOURCES: Record<string, ResortSource> = {
     officialPurchaseUrl: 'https://www.steamboat.com/lift-tickets',
     liftieSlug: 'steamboat',
   },
+  monarch: {
+    officialOpsUrl: 'https://skimonarch.com/conditions/',
+    officialPurchaseUrl: 'https://skimonarch.com/tickets/',
+    // Confirmed real coverage — liftie.info/resort/monarch lists Monarch's
+    // actual named lifts (Breezeway, Caterpillar, Garfield, Panorama,
+    // Pioneer, Safari, Tomichi), not a guessed slug.
+    liftieSlug: 'monarch',
+  },
 };
 
 export const resortSourceFor = (mountainId: string): ResortSource => RESORT_SOURCES[mountainId] ?? {};

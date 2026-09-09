@@ -274,6 +274,25 @@ export const MOUNTAIN_PROFILES: Record<string, MountainProfile> = {
     notes:
       'Nov 20, 2026 target is reported consistently by ski-trade outlets but could not be traced to a direct Alterra/Steamboat press release — a reputable secondary source, not a confirmed primary one, so treat with a little extra caution despite "projected" status. Not fetch-verified.',
   },
+  monarch: {
+    officialWebsite: 'https://skimonarch.com',
+    snowReportUrl: 'https://skimonarch.com/conditions/',
+    webcamUrl: null,
+    trailMapUrl: null,
+    ticketUrl: 'https://skimonarch.com/tickets/',
+    passInfoUrl: 'https://skimonarch.com/season-passes/',
+    phone: '719-530-5000',
+    address: '23715 W US Highway 50, Salida, CO 81201',
+    openingDate: TBD_DATE,
+    closingDate: TBD_DATE,
+    parking: {
+      infoUrl: 'https://skimonarch.com/parking/',
+      reservationRequired: false,
+      note: 'Free parking at the base, steps from the lodge and lifts. Staff on site from 7am direct cars front-to-back through the lot — no reservations, no spot-saving.',
+    },
+    notes:
+      'A figure of Dec 4, 2026 for 2026-27 opening appears only on third-party aggregators (in the same "projected openings" style flagged elsewhere in this file as unreliable), not a Monarch press release or its own site, so recorded as TBD rather than repeated as if confirmed. Webcam URL not confirmed on the resort\'s own site. The only trail-map URL found is a stale, year-stamped 2021-22 PDF — left null rather than linking an out-of-date map. Not fetch-verified.',
+  },
 };
 
 export const mountainProfileFor = (mountainId: string): MountainProfile | null =>

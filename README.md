@@ -181,7 +181,7 @@ goes through both exactly like a manual city does:
 
 - **`/api/route-preview`** — one Google Routes call, no departure grid,
   traffic-aware for *right now*. The map uses this, and only for the one
-  mountain the user tapped, never all thirteen (`ui/screens/MapScreen.tsx`).
+  mountain the user tapped, never all fourteen (`ui/screens/MapScreen.tsx`).
 - **`/api/travel-curve`** — up to 20 departure-time samples across the day.
   NOW/LATER's recommendation engine uses this, unchanged, through the same
   `TrafficProvider` interface it always has.
@@ -273,7 +273,7 @@ tries, in order:
 1. **Official resort feed.** Not implemented. It would need a verified,
    structured (JSON/REST/GraphQL) endpoint per resort, confirmed by actually
    hitting it — and this sandbox has no network path to any resort's site to
-   find and confirm one for even a single mountain, let alone the thirteen
+   find and confirm one for even a single mountain, let alone the fourteen
    in the dataset. Guessing at undocumented endpoints across a dozen
    different commerce/CMS platforms without verification is exactly the
    fragile, unaccountable integration this project avoids everywhere else.
@@ -305,11 +305,11 @@ lift count (see `liftieOperations.test.ts`).
 ### Ticket pricing: investigated, and genuinely unavailable
 
 `LivePricingProvider` (`providers/live/pricing.ts`) is the result of
-actually checking, resort by resort: every one of the thirteen mountains
+actually checking, resort by resort: every one of the fourteen mountains
 prices tickets through a dynamic commerce platform (a date-picker → cart →
 checkout flow), not a stable, public "price for this date" endpoint. None
 publishes structured pricing data outside that flow. Building a scraper
-across thirteen different front-ends to extract a number that changes with
+across fourteen different front-ends to extract a number that changes with
 the querying session — not just the date — is precisely the fragile,
 silently-breaking integration ruled out elsewhere in this project, and
 "reliably extractable" isn't achievable even in principle when the number
@@ -376,7 +376,7 @@ src/
     snow.ts       Snow-density physics shared by demo and live weather
 
   data/         Content, not code
-    mountains.ts  Thirteen Colorado mountains, four pass networks, two snow
+    mountains.ts  Fourteen Colorado mountains, four pass networks, two snow
                   regions; access routes per origin
     origins.ts    The six manually-selectable starting cities, plus
                   `gpsOrigin()` for a live GPS fix
@@ -687,12 +687,13 @@ GPS loses, not the cost of any single tap.
 | Steamboat | Liftie (`steamboat`) | Attempted*, else unavailable | — | Unavailable — [buy](https://www.steamboat.com/lift-tickets) |
 | Purgatory | None (no confirmed Liftie coverage) | Unavailable | — | Unavailable — [buy](https://www.purgatoryresort.com/lift-tickets/) |
 | Wolf Creek | None (no confirmed Liftie coverage) | Unavailable | — | Unavailable — [buy](https://wolfcreekski.com/lift-tickets/) |
+| Monarch | Liftie (`monarch`) | Attempted*, else unavailable | — | Unavailable — [buy](https://skimonarch.com/tickets/) |
 
 \* "Attempted" means `LiveMountainProvider` calls Liftie for that resort and
 normalizes a successful response; whether it actually returns live data
 right now depends on Liftie's own current coverage and uptime, which this
 sandbox cannot check (see below) — a miss fails safe to `unavailable`, never
-a fabricated lift count. **Pricing is `unavailable` for all thirteen by
+a fabricated lift count. **Pricing is `unavailable` for all fourteen by
 design**, not by gap — see "Ticket pricing: investigated, and genuinely
 unavailable" above.
 
@@ -808,7 +809,7 @@ unavailable" above.
   first. Zooming/panning further, as on any real map, gets every resort to
   full individual size.
 - **Parking is researched reference information, not a live feed, for every
-  resort.** All 13 mountains in `data/mountainProfiles.ts` carry real,
+  resort.** All 14 mountains in `data/mountainProfiles.ts` carry real,
   sourced parking logistics — which lots are free vs. paid, when (and
   whether) a reservation is actually required, and when to show up before a
   lot fills — researched from each resort's own parking page. None of it is

@@ -36,6 +36,7 @@ export const TICKET_PRICING: Record<string, TicketPricingProfile> = {
   loveland: { mountainId: 'loveland', currency: 'USD', windowRate: 109, advanceFloor: 79, dynamicRange: 0.25 },
   eldora: { mountainId: 'eldora', currency: 'USD', windowRate: 149, advanceFloor: 89, dynamicRange: 0.6 },
   steamboat: { mountainId: 'steamboat', currency: 'USD', windowRate: 239, advanceFloor: 139, dynamicRange: 0.9 },
+  monarch: { mountainId: 'monarch', currency: 'USD', windowRate: 99, advanceFloor: 65, dynamicRange: 0.4 },
 };
 
 /** A mountain with no published profile still gets a plausible, clearly-generic rate. */
