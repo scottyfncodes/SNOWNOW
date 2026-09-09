@@ -25,12 +25,18 @@
 
 /* =========================================================== map homepage */
 
+/* Each child below sets its own margin-top, sized to how closely it relates
+   to what's above it — tight within a group (the wordmark and its tagline
+   are one lockup), wider between groups (the stat line is a status readout,
+   not more branding; the location picker is an action, not a status). A
+   single flex `gap` here would space every child the same regardless of
+   that relationship, which is what made the block read as an arbitrary
+   stack rather than a deliberate one. */
 .maphome-head {
-  padding-top: max(28px, env(safe-area-inset-top));
-  padding-bottom: 18px;
+  padding-top: max(22px, env(safe-area-inset-top));
+  padding-bottom: 24px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
 }
 
 .maphome-brand {
@@ -44,7 +50,7 @@
 }
 
 .maphome-tagline {
-  margin: -6px 0 0;
+  margin: 6px 0 0;
   font-weight: 600;
 }
 
@@ -52,7 +58,7 @@
   display: flex;
   align-items: center;
   gap: 9px;
-  margin: -2px 0 0;
+  margin: 10px 0 0;
 }
 
 .maphome-stat {
@@ -68,6 +74,7 @@
 }
 
 .home-demo {
+  margin: 14px 0 0;
   font-size: 12.5px;
   line-height: 1.45;
   color: var(--ink-faint);
@@ -142,6 +149,7 @@
 /* ========================================================= origin picker */
 
 .originpicker {
+  margin: 22px 0 0;
   display: flex;
   flex-direction: column;
   gap: 8px;
