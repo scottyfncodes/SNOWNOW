@@ -1660,6 +1660,15 @@
   background: var(--bg-raise);
 }
 
+/* OpenStreetMap's standard tiles are the one raster basemap that's reliably
+   free with no API key — CARTO's keyless "dark_all" tiles this used to point
+   at now return an API-key-required watermark tile in production. This
+   filter recolors the light OSM tiles to match the app's dark theme rather
+   than switching to a tile source that could start requiring a key too. */
+.mountainmap-tiles {
+  filter: invert(1) hue-rotate(180deg) brightness(0.95) contrast(0.9) saturate(0.65);
+}
+
 /* Leaflet ships its own baseline CSS (imported alongside this file); these
    overrides only retheme it to match the app's dark, low-chrome aesthetic —
    the map data and interaction all stay Leaflet's own. */
