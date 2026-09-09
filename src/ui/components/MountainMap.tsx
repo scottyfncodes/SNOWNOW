@@ -31,14 +31,24 @@ export interface MountainMapProps {
 
 const toLatLng = (point: GeoPoint): L.LatLngTuple => [point.lat, point.lon];
 
-/** A small, unmistakably-a-mountain glyph — compact enough for mobile, obvious at a glance. */
+/**
+ * A snow-capped peak, not a generic dot — big enough to read at a glance on a
+ * phone, and colored (not just outlined) so it's visible against the map at
+ * rest, not only on hover. Plain SVG shapes rather than an emoji glyph: an
+ * emoji's colors are fixed by the font and can't be recolored for the
+ * selected state.
+ */
 function mountainDivIcon(selected: boolean): L.DivIcon {
   return L.divIcon({
     className: `mm-pin${selected ? ' is-selected' : ''}`,
-    html: '<span class="mm-pin-glyph" aria-hidden="true">▲</span>',
-    iconSize: [30, 30],
-    iconAnchor: [15, 15],
-    tooltipAnchor: [0, -14],
+    html: `
+      <svg class="mm-pin-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path class="mm-pin-base" d="M12 3.5 L21.5 20 H2.5 Z" />
+        <path class="mm-pin-cap" d="M12 3.5 L15.6 10.3 12.4 8.3 9 10.6 Z" />
+      </svg>`,
+    iconSize: [36, 36],
+    iconAnchor: [18, 18],
+    tooltipAnchor: [0, -16],
   });
 }
 
@@ -55,7 +65,7 @@ function clusterDivIcon(cluster: L.MarkerCluster): L.DivIcon {
   return L.divIcon({
     className: 'mm-cluster',
     html: `<span class="mm-cluster-count" aria-hidden="true">${cluster.getChildCount()}</span>`,
-    iconSize: [34, 34],
+    iconSize: [40, 40],
   });
 }
 

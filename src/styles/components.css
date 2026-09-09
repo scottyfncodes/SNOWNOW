@@ -1702,27 +1702,45 @@
 .mm-pin {
   display: grid;
   place-items: center;
-  width: 30px;
-  height: 30px;
+  width: 36px;
+  height: 36px;
   cursor: pointer;
 }
 
-.mm-pin-glyph {
-  font-size: 15px;
-  line-height: 1;
-  color: var(--ink-ghost);
-  text-shadow: 0 0 6px rgba(0, 0, 0, 0.65);
-  transition: color 0.15s var(--ease), transform 0.15s var(--ease);
+.mm-pin-icon {
+  width: 26px;
+  height: 26px;
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.65));
+  transition: transform 0.15s var(--ease);
 }
 
-.mm-pin:hover .mm-pin-glyph,
-.mm-pin:focus-visible .mm-pin-glyph {
-  color: var(--ice);
+.mm-pin-base {
+  fill: var(--ice);
+  stroke: var(--bg-deep);
+  stroke-width: 1;
+  stroke-linejoin: round;
+  transition: fill 0.15s var(--ease);
 }
 
-.mm-pin.is-selected .mm-pin-glyph {
-  color: var(--ice);
-  transform: scale(1.35);
+.mm-pin-cap {
+  fill: var(--ink);
+}
+
+.mm-pin:hover .mm-pin-icon,
+.mm-pin:focus-visible .mm-pin-icon {
+  transform: scale(1.15);
+}
+
+.mm-pin.is-selected .mm-pin-icon {
+  transform: scale(1.4);
+}
+
+.mm-pin.is-selected .mm-pin-base {
+  fill: var(--ink);
+}
+
+.mm-pin.is-selected .mm-pin-cap {
+  fill: var(--ice);
 }
 
 .mm-tooltip {
@@ -1744,8 +1762,8 @@
 .mm-cluster {
   display: grid;
   place-items: center;
-  width: 34px;
-  height: 34px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   background: var(--surface);
   border: 2px solid var(--ice);
@@ -1754,7 +1772,7 @@
 }
 
 .mm-cluster-count {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 800;
   color: var(--ice);
 }
