@@ -1375,18 +1375,6 @@
   font-weight: 700;
 }
 
-.factor-imputed {
-  margin-left: 6px;
-  padding: 2px 6px;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 194, 74, 0.4);
-  color: var(--wait);
-  font-size: 9.5px;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
 .factor-value {
   font-size: 13px;
   font-weight: 800;

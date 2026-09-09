@@ -166,18 +166,46 @@ async function fetchOneSample(origin, destination, departureIso) {
   }
 }
 
+/** Current minute-of-day (0-1439) in `timeZone`, for placing a "right now" fallback sample on the curve. */
+function nowMinuteOfDay(timeZone) {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    hourCycle: 'h23',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).formatToParts(new Date());
+  const map = Object.fromEntries(parts.map((p) => [p.type, p.value]));
+  return Number(map.hour) * 60 + Number(map.minute);
+}
+
 export async function buildTravelCurve(origin, destination, direction, date) {
   const minutes = direction === 'outbound' ? OUTBOUND_MINUTES : RETURN_MINUTES;
+  const now = Date.now();
   const samplesRaw = await Promise.all(
     minutes.map(async (minute) => {
       const iso = localToUtcIso(date, minute, TIME_ZONE);
+      // Google's Routes API rejects a departureTime that has already passed
+      // for TRAFFIC_AWARE routing (confirmed against its own error response) —
+      // skip those grid points instead of burning a call guaranteed to fail.
+      // This is routine, not exceptional: once "today"'s morning window (or
+      // the whole day) has elapsed, every remaining outbound (or return)
+      // sample lands in the past.
+      if (new Date(iso).getTime() <= now) return { minute, sample: null };
       const sample = await fetchOneSample(origin, destination, iso);
       return { minute, sample };
     }),
   );
 
-  const resolved = samplesRaw.filter((d) => d.sample !== null);
-  if (resolved.length === 0) return null;
+  let resolved = samplesRaw.filter((d) => d.sample !== null);
+  if (resolved.length === 0) {
+    // Every grid point for this direction already elapsed today — fall back
+    // to a single live "right now" reading (no departureTime, same as the
+    // map's own route preview) so a real number still comes back instead of
+    // reporting "unavailable" for drive time Google can plainly provide.
+    const nowSample = await fetchOneSample(origin, destination, undefined);
+    if (!nowSample) return null;
+    resolved = [{ minute: nowMinuteOfDay(TIME_ZONE), sample: nowSample }];
+  }
 
   const floor = Math.min(...resolved.map((d) => d.sample.durationMinutes));
   const samples = resolved.map(({ minute, sample }) => ({

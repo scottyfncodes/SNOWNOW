@@ -13,14 +13,7 @@ export function FactorBreakdown({ score }: { score: DayScore }) {
         {sorted.map((factor) => (
           <li key={factor.key} className="factor">
             <div className="factor-head">
-              <span className="factor-label">
-                {factor.label}
-                {factor.imputed && (
-                  <span className="factor-imputed" title="No data — neutral assumption used">
-                    assumed
-                  </span>
-                )}
-              </span>
+              <span className="factor-label">{factor.label}</span>
               <span className="factor-value numeral">{factor.value}</span>
             </div>
             <div
