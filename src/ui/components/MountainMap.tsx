@@ -368,19 +368,13 @@ export function MountainMap({
         })}
       </div>
 
-      <figcaption className="mountainmap-legend">
-        <span className="mountainmap-legend-item">
-          <span className="mountainmap-swatch is-origin" aria-hidden="true" /> {isGps ? 'Your location' : origin.shortName}
-        </span>
-        <span className="mountainmap-legend-item">
-          <span className="mountainmap-swatch is-mountain" aria-hidden="true" /> Mountain
-        </span>
-        {showApproximateLine && (
+      {showApproximateLine && (
+        <figcaption className="mountainmap-legend">
           <span className="mountainmap-legend-item mountainmap-legend-note">
             Dashed line is approximate direction, not the actual road
           </span>
-        )}
-      </figcaption>
+        </figcaption>
+      )}
     </figure>
   );
 }

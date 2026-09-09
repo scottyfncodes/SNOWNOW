@@ -92,7 +92,7 @@ describe('MountainMap', () => {
         onSelectMountain={() => {}}
       />,
     );
-    expect(screen.getAllByText(/your location/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/^you$/i).length).toBeGreaterThan(0);
   });
 
   it('draws no fabricated route line when nothing has resolved yet', () => {

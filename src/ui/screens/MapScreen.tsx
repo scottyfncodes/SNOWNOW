@@ -307,18 +307,13 @@ export function MapScreen({ registry, clock, origin, onOriginChange, preferences
         <p className="home-tagline maphome-tagline">Colorado's mountains. Pick one.</p>
         <p className="maphome-stat">{MOUNTAINS.length} resorts tracked</p>
         <OriginPicker onChange={onOriginChange} />
-        {usingDemoData ? (
+        {usingDemoData && (
           <p className="home-demo">
             <span className="chip chip-demo">DEMO DATA</span>
             <span>
               No live weather, traffic or lift feeds are connected. Every number below is
               simulated — and labelled as such.
             </span>
-          </p>
-        ) : (
-          <p className="home-note">
-            First traffic check in a while? Our traffic service can take up to 30-45 seconds to
-            wake up — that's normal, not a bug, and we already wait that long before giving up.
           </p>
         )}
       </header>

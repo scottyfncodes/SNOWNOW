@@ -140,7 +140,7 @@ describe('MapScreen', () => {
     const breck = MOUNTAINS.find((m) => m.id === 'breckenridge')!;
     await user().click(screen.getByRole('button', { name: new RegExp(`^${breck.name}\. Tap to view`, 'i') }));
     await waitFor(() => expect(screen.getByText('Drive time')).toBeInTheDocument());
-    expect(screen.getAllByText(/your location/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/^you$/i).length).toBeGreaterThan(0);
   });
 
   it('never fabricates a time or distance when routing fails — it says so honestly, without leaking a raw provider error', async () => {
