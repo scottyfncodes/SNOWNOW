@@ -34,7 +34,7 @@
    stack rather than a deliberate one. */
 .maphome-head {
   padding-top: max(22px, env(safe-area-inset-top));
-  padding-bottom: 16px;
+  padding-bottom: 8px;
   display: flex;
   flex-direction: column;
 }
@@ -63,7 +63,7 @@
   color: var(--ink-faint);
 }
 
-/* The live/demo status and the location picker sit on one row, set well
+/* The location picker and the live/demo status sit on one row, set well
    below the brand block — this is the app's controls, not more branding,
    and it sits right against the map it controls. */
 .maphome-actions {
@@ -145,7 +145,7 @@
 .originpicker {
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
+  align-items: flex-start;
   gap: 6px;
 }
 
@@ -156,7 +156,6 @@
   font-size: 14px;
   font-weight: 700;
   color: var(--ice);
-  text-align: right;
 }
 
 .originpicker-locate:disabled {

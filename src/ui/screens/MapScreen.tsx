@@ -315,12 +315,12 @@ export function MapScreen({ registry, clock, origin, onOriginChange, preferences
           </p>
         )}
         <div className="maphome-actions">
+          <OriginPicker onChange={onOriginChange} />
           {usingDemoData ? (
             <span className="chip chip-demo">DEMO DATA</span>
           ) : (
             <span className="chip chip-live">LIVE</span>
           )}
-          <OriginPicker onChange={onOriginChange} />
         </div>
       </header>
 
