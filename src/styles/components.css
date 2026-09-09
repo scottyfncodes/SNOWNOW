@@ -57,10 +57,7 @@
    stack rather than a deliberate one. */
 .maphome-head {
   padding-top: max(22px, env(safe-area-inset-top));
-  /* Same 6px as the gap between the stacked live/demo, epic-only and List
-     view items (.maphome-status) — the row-to-map gap should read as one
-     more step in that same rhythm, not a jump back to flush. */
-  padding-bottom: 6px;
+  padding-bottom: 0;
   display: flex;
   flex-direction: column;
 }
