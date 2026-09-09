@@ -111,13 +111,19 @@
    eating extra horizontal space. If the two still don't both fit on one
    row, `flex-wrap` above drops this column to its own line rather than
    letting "Use my current location" get compressed for room — see
-   `.originpicker-locate`'s `white-space: nowrap`. */
+   `.originpicker-locate`'s `white-space: nowrap`. `margin-left: auto`
+   (rather than relying on `.maphome-actions`'s `space-between`) keeps
+   this column pinned to the right edge in both cases: on a shared line
+   space-between already puts it there, but on its own wrapped line a
+   lone flex item under space-between collapses to the *left* edge
+   instead — this makes both cases land in the same place. */
 .maphome-status {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
   flex-shrink: 0;
   gap: 6px;
+  margin-left: auto;
 }
 
 .maphome-viewtoggle {
