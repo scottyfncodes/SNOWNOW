@@ -686,42 +686,49 @@ unavailable" above.
 
 ## Known limitations
 
-- **The deployed Render service does not yet run this branch's server
-  code — this is the actual reason the map has never drawn a real route
-  polyline in production.** `snownow-traffic-proxy` (Render service
-  `srv-daf597gn74is738d5usg`) auto-deploys from branch
-  `claude/snownow-ski-optimization-j2z1nr`, not this one; its currently-live
-  commit's `/api/route-preview` field mask is `routes.duration,
-  routes.distanceMeters` only — no `routes.polyline.encodedPolyline`. Its
-  boot logs confirm `GOOGLE_ROUTES_API_KEY` is present, so duration/distance
-  for both manual-city and GPS origins should already work end-to-end in
-  production; the map's dashed "approximate" fallback line, not the solid
-  real-geometry line, is what a production user has actually been seeing on
-  every mountain, always — not a bug in the honesty logic that picks between
-  them (verified correct, see `MountainMap.test.tsx`), but the live polyline
-  it's honestly falling back from never being present upstream. Fixing this
-  needs either retargeting that Render service's branch to this one (or to
-  wherever this branch merges) via the Render dashboard, or shipping this
-  branch's `server/index.mjs` there some other way — neither of which a
-  coding session should do unprompted to a service already serving
-  production traffic.
+- **The deployed Render service was missing this branch's route-polyline
+  fix — found, and then actually shipped to production, not just fixed
+  here.** `snownow-traffic-proxy` (Render service `srv-daf597gn74is738d5usg`)
+  auto-deploys from branch `claude/snownow-ski-optimization-j2z1nr`, not
+  this one; its live commit's `/api/route-preview` field mask was
+  `routes.duration,routes.distanceMeters` only, no
+  `routes.polyline.encodedPolyline` — so the map had only ever drawn the
+  honest dashed "approximate" fallback line, never Google's real
+  driven-road geometry, for every origin including GPS (not a bug in the
+  honesty logic that picks between the two lines — verified correct in
+  `MountainMap.test.tsx` — the live polyline it was honestly falling back
+  from just never reached it). With explicit go-ahead, that server's
+  `server/index.mjs` was replaced with this branch's fixed version (same
+  polyline support, structured errors, and health/diagnostic endpoints
+  documented above) and pushed straight to
+  `claude/snownow-ski-optimization-j2z1nr` — a deliberately server-file-only
+  commit, nothing else on that branch touched. Render's own deploy history
+  confirms it auto-deployed within seconds and came up clean: boot log
+  `SNOWNOW traffic proxy on :10000 — API key present`, deploy status
+  `live`, no errors. This sandbox has no network path to
+  `snownow-traffic-proxy.onrender.com` itself (confirmed blocked by both
+  `curl` and `WebFetch`) to independently replay a real request against the
+  now-deployed polyline path from here — the deploy is confirmed live and
+  clean, but an actual phone tap-through (does the map now draw a solid
+  line to a real mountain) is the one remaining check only a real client
+  can do.
 - **Google Routes traffic is live, deployed, and smoke-tested against a real
   key** — `server/index.mjs` is running on Render with a real
   `GOOGLE_ROUTES_API_KEY` (confirmed again via this service's own boot logs:
   `SNOWNOW traffic proxy on :10000 — API key present`, repeated across many
-  restarts), and a real request previously returned real Denver→Copper
-  Mountain drive times (101–104 minutes across the sampled departure grid,
-  congestion varying realistically by time of day) via `/api/travel-curve`.
-  That confirms duration/distance, not the polyline path added since — see
-  the bullet above for why the map's route *geometry* is a separate,
-  currently-unverified-in-production claim. The GitHub Pages build is
-  configured for live mode (`VITE_DATA_MODE=live`) and points at that
-  deployment; this sandbox's own outbound network can reach
-  `routes.googleapis.com` directly (confirmed by curl — unlike
-  `onrender.com`, `*.tile.openstreetmap.org`, and `arcgisonline.com`, all
-  blocked by this environment's egress policy), but has no access to the
-  real `GOOGLE_ROUTES_API_KEY` itself to run an authenticated end-to-end
-  check from here.
+  restarts, most recently right after the polyline-fix deploy above), and a
+  real request previously returned real Denver→Copper Mountain drive times
+  (101–104 minutes across the sampled departure grid, congestion varying
+  realistically by time of day) via `/api/travel-curve`. The GitHub Pages
+  build is configured for live mode (`VITE_DATA_MODE=live`) and points at
+  that deployment; this sandbox's own outbound network can reach
+  `routes.googleapis.com` directly (confirmed by curl — a request with a
+  deliberately invalid key got a real, correctly-classified rejection back,
+  proving the request path itself works end to end — unlike `onrender.com`,
+  `*.tile.openstreetmap.org`, and `arcgisonline.com`, all blocked by this
+  environment's egress policy), but has no access to the real
+  `GOOGLE_ROUTES_API_KEY` itself to run a fully authenticated check from
+  here.
 - **Open-Meteo, NWS, CDOT, and Liftie have not been smoke-tested against
   their real endpoints from this environment.** This sandbox's network
   policy blocks `api.open-meteo.com`, `api.weather.gov`,
