@@ -220,6 +220,38 @@ function MapAccessibleLabel({ label }: { label: string }) {
 }
 
 /**
+ * The home map's container is sized by flex (`flex: 1` down a chain of flex
+ * parents, see `.mountainmap-home` in components.css), not a fixed height —
+ * deliberately, so it fills whatever room is actually left below the header.
+ * Leaflet, however, measures its container's pixel size once at
+ * initialization and caches it; it has no way to know the flex layout
+ * settled into a different size a moment later. On mobile Safari in
+ * particular, the address bar's collapse/expand animation and `100dvh`
+ * resolving after first paint both change the available height *after*
+ * Leaflet has already measured a too-small (sometimes zero) box — which
+ * renders as a blank map with no tiles, no pins, not even the zoom control,
+ * because Leaflet believes there's nothing to draw. A `ResizeObserver` on
+ * the real container calls `invalidateSize()` every time its actual size
+ * changes, so the map always catches up to the layout instead of being
+ * stuck with its first, possibly-wrong measurement.
+ */
+function MapAutoResize() {
+  const map = useMap();
+  useEffect(() => {
+    // Not available in the test environment (jsdom) — the map still works
+    // there, it just can't self-correct a stale size, which no test needs.
+    if (typeof ResizeObserver === 'undefined') return;
+    const container = map.getContainer();
+    const observer = new ResizeObserver(() => {
+      map.invalidateSize();
+    });
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [map]);
+  return null;
+}
+
+/**
  * A real, pannable, zoomable Colorado map — Esri's keyless World Dark Gray
  * basemap (no API key, same "no secrets in the client" rule the traffic
  * proxy already follows), rendered as its own dark cartography rather than a
@@ -274,6 +306,7 @@ export function MountainMap({
         />
 
         <MapAccessibleLabel label={`Map of ${mountains.length} Colorado mountains relative to ${origin.name}`} />
+        <MapAutoResize />
         <MapFraming origin={origin} selectedMountain={selected} routePoints={routePoints} homeBounds={homeBounds} />
 
         {routePoints && routePoints.length > 1 && (
