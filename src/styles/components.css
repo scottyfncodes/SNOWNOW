@@ -2152,13 +2152,19 @@
 }
 
 /* One accent color for every sub-label in this section — the "Grub"/"Brews"
-   eyebrow and the inline "Best quick breakfast:"/"Bonus — distilleries:"
-   lead-ins — so they read as one consistent kind of thing, distinct from
-   both the plain description text and the restaurant/brewery names
-   themselves (.profile-dining-list strong, still plain ink). */
+   eyebrow and the "Bonus — distilleries:" lead-in — so they read as one
+   consistent kind of thing, distinct from both the plain description text
+   and the restaurant/brewery names themselves (.profile-dining-list strong,
+   still plain ink). */
 .eyebrow.profile-dining-heading,
 .profile-dining-label {
   color: var(--ice);
+}
+
+/* "Best quick breakfast:" specifically reads better bright — it's naming
+   the single pick right inline, not a section-y sub-label like the others. */
+.profile-dining-label-bright {
+  color: var(--ink);
 }
 
 .profile-dining-note {

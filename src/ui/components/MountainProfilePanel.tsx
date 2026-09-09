@@ -102,7 +102,7 @@ export function MountainProfilePanel({ mountain, profile }: MountainProfilePanel
             )}
             {profile.grub.quickBreakfast && (
               <p className="profile-dining-note">
-                <strong className="profile-dining-label">Best quick breakfast:</strong>{' '}
+                <strong className="profile-dining-label profile-dining-label-bright">Best quick breakfast:</strong>{' '}
                 {profile.grub.quickBreakfast.name} — {profile.grub.quickBreakfast.note}
               </p>
             )}
