@@ -40,6 +40,26 @@ export interface ParkingInfo {
   note: string | null;
 }
 
+/** One researched food/drink pick — a name and what it's actually known for, never a review score or a live wait time. */
+export interface DiningPick {
+  name: string;
+  note: string;
+}
+
+/**
+ * Food and drink around the mountain, researched the same way as parking:
+ * real, named places, never a live availability feed. Several of these
+ * resorts (Wolf Creek, Monarch, Loveland, Arapahoe Basin, Eldora) have little
+ * or no real base village of their own — for those, `town` names the actual
+ * town skiers eat in afterward (Pagosa Springs, Salida, Silverthorne/Dillon,
+ * Nederland) instead of pretending the mountain itself has a dining scene.
+ */
+export interface DiningInfo {
+  /** Set only when the real scene is a nearby town rather than the base area. */
+  town?: string;
+  picks: DiningPick[];
+}
+
 export interface MountainProfile {
   officialWebsite: string;
   /** `null` when no official snow-report page could be confirmed distinct from `officialWebsite`. */
@@ -55,6 +75,8 @@ export interface MountainProfile {
   closingDate: SeasonDate;
   /** Absent when parking specifics haven't been confirmed for this resort — render as "not currently available", never fabricated. */
   parking?: ParkingInfo;
+  /** Absent when food/drink hasn't been researched for this resort yet. */
+  dining?: DiningInfo;
   /** Provenance/uncertainty notes — never shown as fact, only as a caveat for whoever maintains this data. */
   notes?: string;
 }

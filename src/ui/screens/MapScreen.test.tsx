@@ -61,7 +61,7 @@ describe('MapScreen', () => {
     // Demo data is honestly labelled as a demo estimate, never claimed traffic-aware.
     expect(screen.getByText('Demo estimate')).toBeInTheDocument();
 
-    expect(screen.getByRole('heading', { name: vail.name })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: new RegExp(`^${vail.name}`) })).toBeInTheDocument();
     expect(screen.getByText('Official site ↗')).toBeInTheDocument();
   });
 
@@ -169,13 +169,17 @@ describe('MapScreen', () => {
     const breck = MOUNTAINS.find((m) => m.id === 'breckenridge')!;
 
     await user().click(screen.getByRole('button', { name: new RegExp(`^${vail.name}\. Tap to view`, 'i') }));
-    await waitFor(() => expect(screen.getByRole('heading', { name: vail.name })).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { name: new RegExp(`^${vail.name}`) })).toBeInTheDocument(),
+    );
 
     await user().click(screen.getByRole('button', { name: /^close$/i }));
-    expect(screen.queryByRole('heading', { name: vail.name })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: new RegExp(`^${vail.name}`) })).not.toBeInTheDocument();
 
     await user().click(screen.getByRole('button', { name: new RegExp(`^${breck.name}\. Tap to view`, 'i') }));
-    await waitFor(() => expect(screen.getByRole('heading', { name: breck.name })).toBeInTheDocument());
-    expect(screen.queryByRole('heading', { name: vail.name })).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { name: new RegExp(`^${breck.name}`) })).toBeInTheDocument(),
+    );
+    expect(screen.queryByRole('heading', { name: new RegExp(`^${vail.name}`) })).not.toBeInTheDocument();
   });
 });

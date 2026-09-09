@@ -18,8 +18,9 @@ export function MountainProfilePanel({ mountain, profile }: MountainProfilePanel
   if (!profile) {
     return (
       <section className="panel profile-panel" aria-labelledby="profile-heading">
-        <h2 id="profile-heading" className="section-title">
+        <h2 id="profile-heading" className="section-title profile-title">
           {mountain.name}
+          <EpicPassBadge mountain={mountain} />
         </h2>
         <p className="profile-unavailable">
           We don't have a researched profile for this mountain yet — not currently available.
@@ -31,8 +32,9 @@ export function MountainProfilePanel({ mountain, profile }: MountainProfilePanel
   return (
     <section className="panel profile-panel" aria-labelledby="profile-heading">
       <header className="panel-head">
-        <h2 id="profile-heading" className="section-title">
+        <h2 id="profile-heading" className="section-title profile-title">
           {mountain.name}
+          <EpicPassBadge mountain={mountain} />
         </h2>
         <a className="profile-website" href={profile.officialWebsite} target="_blank" rel="noreferrer">
           Official site ↗
@@ -86,6 +88,32 @@ export function MountainProfilePanel({ mountain, profile }: MountainProfilePanel
         )}
       </section>
 
+      <section className="profile-dining" aria-labelledby="profile-dining-heading">
+        <h3 id="profile-dining-heading" className="eyebrow">
+          Food &amp; Drink
+        </h3>
+        {profile.dining ? (
+          <>
+            {profile.dining.town && (
+              <p className="profile-dining-note">
+                There's little to no base-area dining here — most people eat in {profile.dining.town}.
+              </p>
+            )}
+            <ul className="profile-dining-list">
+              {profile.dining.picks.map((pick) => (
+                <li key={pick.name}>
+                  <strong>{pick.name}</strong> — {pick.note}
+                </li>
+              ))}
+            </ul>
+          </>
+        ) : (
+          <p className="profile-dining-note">
+            We haven't researched food and drink options for this mountain yet.
+          </p>
+        )}
+      </section>
+
       <ul className="profile-links">
         <ProfileLink label="Snow report" href={profile.snowReportUrl} />
         <ProfileLink label="Webcams" href={profile.webcamUrl} />
@@ -100,6 +128,16 @@ export function MountainProfilePanel({ mountain, profile }: MountainProfilePanel
         </p>
       )}
     </section>
+  );
+}
+
+/** A quiet marker next to the name — never the resort's own pass-program branding, just a fact from `Mountain.passAffiliations`. */
+function EpicPassBadge({ mountain }: { mountain: Mountain }) {
+  if (!mountain.passAffiliations.includes('epic')) return null;
+  return (
+    <span className="chip chip-pass-epic" title="Included on the Epic Pass">
+      Epic Pass
+    </span>
   );
 }
 

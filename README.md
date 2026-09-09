@@ -525,6 +525,13 @@ a data change.
 demo profile, no pricing entry and no code path of its own, and gets a
 complete, scored, explained ski day back.
 
+The mountain profile panel (`ui/components/MountainProfilePanel.tsx`) reads
+`passAffiliations` directly to show a small "Epic Pass" badge next to the
+name — a fact from the data, not the resort's own pass-program branding, and
+it only ever checks for `'epic'` in the array, so Ikon/Mountain
+Collective/Indy/independent mountains render with no badge at all rather
+than a wrong one.
+
 ### Why the winner changes
 
 The demo data is tuned for *causal* differentiation, not variety for its own
@@ -863,6 +870,21 @@ unavailable" above.
   right now; `domain/mountainProfile.ts#ParkingInfo` exists so a real live
   source (a resort's own count, a parking-reservation API) could be plugged
   in per mountain later without changing any component.
+- **Food & drink is the same kind of researched reference data as parking,
+  not a live feed, and it deliberately does not pretend every mountain has
+  its own dining scene.** `domain/mountainProfile.ts#DiningInfo` carries a
+  handful of real, named restaurants/bars per mountain, compiled from web
+  search in September 2026 — a name and one line on what it's known for,
+  never a rating or a live wait time. For resorts with little or no real
+  base-area dining of their own (Wolf Creek, Monarch, Loveland, Eldora),
+  `dining.town` names the actual town people drive to afterward — Pagosa
+  Springs, Salida, Georgetown/Silverthorne, Nederland — instead of listing
+  padded-out picks at a mountain that doesn't really have them. Arapahoe
+  Basin and Purgatory both get a mix of their one genuine on-site option
+  (6th Alley; Purgy's/The Nugget) plus the real nearby town. Restaurants
+  close and rebrand far more often than parking policy changes, so treat
+  every name here as a starting point to confirm before a trip, not a
+  guarantee it's still open.
 
 ## What's intentionally still demo, and what's not built at all
 
