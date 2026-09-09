@@ -74,6 +74,40 @@ describe('MapScreen', () => {
     expect(screen.getByRole('button', { name: new RegExp(`^${nonEpicMountain.name}\\. Tap to view`, 'i') })).toBeInTheDocument();
   });
 
+  it('the list view button swaps the map for an alphabetized list, and back', async () => {
+    renderMap();
+    const vail = MOUNTAINS.find((m) => m.id === 'vail')!;
+    expect(screen.getByRole('button', { name: new RegExp(`^${vail.name}\\. Tap to view`, 'i') })).toBeInTheDocument();
+
+    await user().click(screen.getByRole('button', { name: /^list view$/i }));
+
+    // The map's own hidden mountain buttons are gone — the list replaces the map entirely.
+    expect(screen.queryByRole('button', { name: new RegExp(`^${vail.name}\\. Tap to view`, 'i') })).not.toBeInTheDocument();
+
+    const rows = screen.getAllByRole('button').map((button) => button.textContent ?? '');
+    const withMountainNames = rows.filter((text) => MOUNTAINS.some((m) => text.startsWith(m.name)));
+    expect(withMountainNames.length).toBe(MOUNTAINS.length);
+    // Alphabetical: Arapahoe Basin sorts before Vail.
+    const arapahoeIndex = rows.findIndex((text) => text.startsWith('Arapahoe Basin'));
+    const vailIndex = rows.findIndex((text) => text.startsWith('Vail'));
+    expect(arapahoeIndex).toBeGreaterThanOrEqual(0);
+    expect(arapahoeIndex).toBeLessThan(vailIndex);
+
+    await user().click(screen.getByRole('button', { name: new RegExp(`^${vail.name}`) }));
+    expect(await screen.findByRole('heading', { name: new RegExp(`^${vail.name}`) })).toBeInTheDocument();
+  });
+
+  it('re-shows the map after returning from a mountain opened from the list', async () => {
+    renderMap();
+    await user().click(screen.getByRole('button', { name: /^list view$/i }));
+    const vail = MOUNTAINS.find((m) => m.id === 'vail')!;
+    await user().click(screen.getByRole('button', { name: new RegExp(`^${vail.name}`) }));
+    await screen.findByRole('heading', { name: new RegExp(`^${vail.name}`) });
+
+    await user().click(screen.getByRole('button', { name: /^Map$/i }));
+    expect(screen.getByRole('button', { name: /^map view$/i })).toBeInTheDocument();
+  });
+
   it('opens the mountain profile in place when a mountain is selected, with drive time, distance and traffic', async () => {
     renderMap();
     const vail = MOUNTAINS.find((m) => m.id === 'vail')!;

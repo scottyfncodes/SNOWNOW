@@ -98,6 +98,82 @@
   gap: 8px;
 }
 
+.maphome-viewbar {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 14px;
+  padding-bottom: 10px;
+}
+
+.maphome-viewtoggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--ink-dim);
+  transition: background 150ms var(--ease), border-color 150ms var(--ease);
+}
+
+.maphome-viewtoggle:hover {
+  background: var(--surface-2);
+  border-color: var(--line-strong);
+}
+
+/* ------------------------------------------------------------ mountain list */
+
+.mountainlist {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mountainlist-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  text-align: left;
+  transition: background 150ms var(--ease), border-color 150ms var(--ease);
+}
+
+.mountainlist-row:hover {
+  background: var(--surface-2);
+  border-color: var(--line-strong);
+}
+
+.mountainlist-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+
+.mountainlist-meta {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--ink-faint);
+}
+
+.mountainlist-character {
+  font-size: 13px;
+  color: var(--ink-dim);
+}
+
 .mapscreen-planloading {
   margin-top: 14px;
 }

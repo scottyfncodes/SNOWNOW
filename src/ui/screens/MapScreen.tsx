@@ -20,6 +20,7 @@ import { Caveats } from '@/ui/components/Caveats';
 import { DataSources } from '@/ui/components/DataSources';
 import { DepartureWhatIf } from '@/ui/components/DepartureWhatIf';
 import { FactorBreakdown } from '@/ui/components/FactorBreakdown';
+import { MountainList } from '@/ui/components/MountainList';
 import { MountainMap, type MapRoutePreview } from '@/ui/components/MountainMap';
 import { MountainProfilePanel } from '@/ui/components/MountainProfilePanel';
 import { NavigateLinks } from '@/ui/components/NavigateLinks';
@@ -61,6 +62,7 @@ export function MapScreen({ registry, clock, origin, onOriginChange, preferences
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showFactors, setShowFactors] = useState(false);
   const [showSources, setShowSources] = useState(false);
+  const [homeView, setHomeView] = useState<'map' | 'list'>('map');
   // Undocumented: the O in the home screen's wordmark toggles this. See
   // Wordmark.tsx.
   const [epicOnly, setEpicOnly] = useState(false);
@@ -334,16 +336,32 @@ export function MapScreen({ registry, clock, origin, onOriginChange, preferences
         </div>
       </header>
 
-      <div className="screen-body shell maphome-body">
-        <MountainMap
-          mountains={homeMountains}
-          origin={origin}
-          selectedMountainId={null}
-          onSelectMountain={selectMountain}
-          route={null}
-          variant="home"
-        />
+      <div className="maphome-viewbar shell">
+        <button
+          type="button"
+          className="maphome-viewtoggle"
+          onClick={() => setHomeView((value) => (value === 'map' ? 'list' : 'map'))}
+        >
+          {homeView === 'map' ? 'List view' : 'Map view'}
+        </button>
       </div>
+
+      {homeView === 'map' ? (
+        <div className="screen-body shell maphome-body">
+          <MountainMap
+            mountains={homeMountains}
+            origin={origin}
+            selectedMountainId={null}
+            onSelectMountain={selectMountain}
+            route={null}
+            variant="home"
+          />
+        </div>
+      ) : (
+        <div className="screen-body shell">
+          <MountainList mountains={homeMountains} onSelectMountain={selectMountain} />
+        </div>
+      )}
     </div>
   );
 }
