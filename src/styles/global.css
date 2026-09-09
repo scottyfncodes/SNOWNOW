@@ -140,6 +140,17 @@ a {
   padding-bottom: 64px;
 }
 
+/* The home map fills whatever vertical space is left below the header —
+   it's the primary content of the home screen now, not a fixed-height box
+   sitting above a long scroll. No bottom padding: the map itself should
+   reach the bottom edge. */
+.maphome-body {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding-bottom: 0;
+}
+
 /* ------------------------------------------------------------- typography */
 
 .eyebrow {

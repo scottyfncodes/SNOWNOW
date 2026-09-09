@@ -100,7 +100,7 @@ describe('GPS location flow', () => {
 describe('the mountain profile', () => {
   it('answers with a mountain, a score and a verdict', async () => {
     await selectMountain('Vail');
-    expect(screen.getByRole('heading', { name: 'VAIL' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'VAIL', level: 2 })).toBeInTheDocument();
     expect(screen.getAllByText(/out of 10/i).length).toBeGreaterThan(0);
   });
 
@@ -148,12 +148,14 @@ describe('the mountain profile', () => {
 
   it('lets you close the profile and return to the map, then open a different mountain', async () => {
     await selectMountain('Vail');
-    await user().click(screen.getByRole('button', { name: /^close$/i }));
+    await user().click(screen.getByRole('button', { name: /map/i }));
     expect(screen.queryByRole('heading', { name: 'VAIL' })).not.toBeInTheDocument();
 
     const breck = MOUNTAINS.find((m) => m.id === 'breckenridge')!;
     await user().click(screen.getByRole('button', { name: new RegExp(`^${breck.name}\. Tap to view`, 'i') }));
-    await waitFor(() => expect(screen.getByRole('heading', { name: breck.shortName })).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { name: breck.shortName, level: 2 })).toBeInTheDocument(),
+    );
     expect(screen.queryByRole('heading', { name: 'VAIL' })).not.toBeInTheDocument();
   });
 });
@@ -188,7 +190,7 @@ describe('honest empty states', () => {
   async function selectVailWith(registry: ReturnType<typeof createDemoRegistry>) {
     render(<App registry={registry} />);
     await user().click(screen.getByRole('button', { name: /^Vail\. Tap to view/i }));
-    await waitFor(() => expect(screen.getByRole('heading', { name: 'VAIL' })).toBeInTheDocument(), {
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'VAIL', level: 2 })).toBeInTheDocument(), {
       timeout: 12_000,
     });
   }

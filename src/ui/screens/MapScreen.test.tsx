@@ -173,7 +173,7 @@ describe('MapScreen', () => {
       expect(screen.getByRole('heading', { name: new RegExp(`^${vail.name}`) })).toBeInTheDocument(),
     );
 
-    await user().click(screen.getByRole('button', { name: /^close$/i }));
+    await user().click(screen.getByRole('button', { name: /map/i }));
     expect(screen.queryByRole('heading', { name: new RegExp(`^${vail.name}`) })).not.toBeInTheDocument();
 
     await user().click(screen.getByRole('button', { name: new RegExp(`^${breck.name}\. Tap to view`, 'i') }));

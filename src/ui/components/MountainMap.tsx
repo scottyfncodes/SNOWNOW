@@ -27,6 +27,13 @@ export interface MountainMapProps {
   onSelectMountain: (mountainId: string) => void;
   /** `null` while nothing is selected or the route hasn't resolved; `'error'` when routing genuinely failed — never a guessed number. */
   route?: MapRoutePreview | 'loading' | 'error' | null;
+  /**
+   * 'home' (default): the full browsing map, tall enough to be the home
+   * screen's main event. 'compact': a smaller, subordinate map for use inside
+   * a mountain's full-screen profile — same real route/pin rendering, just
+   * not competing with the profile content below it for the screen.
+   */
+  variant?: 'home' | 'compact';
 }
 
 const toLatLng = (point: GeoPoint): L.LatLngTuple => [point.lat, point.lon];
@@ -230,6 +237,7 @@ export function MountainMap({
   selectedMountainId,
   onSelectMountain,
   route,
+  variant = 'home',
 }: MountainMapProps) {
   const selected = mountains.find((m) => m.id === selectedMountainId) ?? null;
   const isGps = origin.id === 'gps';
@@ -248,7 +256,7 @@ export function MountainMap({
   const homeBounds = useMemo(() => L.latLngBounds(mountains.map((m) => toLatLng(m.coordinates))), [mountains]);
 
   return (
-    <figure className="mountainmap">
+    <figure className={`mountainmap mountainmap-${variant}`}>
       <MapContainer
         bounds={homeBounds}
         className="mountainmap-leaflet"

@@ -29,13 +29,24 @@ mountain selector, not a screen reached from some other choice. It's a real,
 pannable, zoomable Leaflet map (`ui/components/MountainMap.tsx`), not a
 diagram: every supported mountain is a tappable marker at its real coordinate
 from `data/mountains.ts`, the same data the engine routes to, with no second
-copy anywhere. Tapping one (or its cluster, if it's bunched too close to
-neighbors to tap unambiguously at the current zoom — see "Known limitations")
-opens that mountain's profile in place: the day's verdict and score, snow and
-weather, the real driven route from wherever you're starting (GPS or a manual
-city) drawn on the map itself when the traffic proxy returns one, traffic,
-parking, the trail map, lift tickets, and any active alerts. There is no
-NOW/LATER choice standing between opening the app and getting an answer.
+copy anywhere. On the home screen the map is the whole point and fills the
+screen accordingly — no boxed card, no long scroll of content competing with
+it below.
+
+Tapping a mountain (or its cluster, if it's bunched too close to neighbors to
+tap unambiguously at the current zoom — see "Known limitations") is a full-
+screen takeover, not an in-place expansion: the map disappears behind a
+dedicated mountain screen (`ui/screens/MapScreen.tsx`'s `selectedMountain`
+branch) with its own header and a back button, so the profile — the day's
+verdict and score, snow and weather, the real driven route, traffic, parking,
+food and drink, the trail map, lift tickets, and any active alerts — is the
+primary thing on screen, not something you scroll down to underneath a still-
+huge map. The real driven-route visualization isn't lost in that move; it
+reappears at the top of the mountain screen as a small, subordinate map
+(`MountainMap`'s `variant="compact"`) — same real polyline/approximate-line
+logic as before, just sized as a supporting visual rather than the dominant
+element. There is no NOW/LATER choice standing between opening the app and
+getting an answer.
 
 The engine underneath still separates "today" from "a future date" —
 `buildPlan`/`planForMountain` for today, `future.ts`'s range projection for

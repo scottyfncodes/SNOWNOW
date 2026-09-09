@@ -47,6 +47,14 @@
   margin: 0;
 }
 
+.maphome-stat {
+  margin: -4px 0 0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--ink-faint);
+}
+
 .home-demo {
   display: flex;
   gap: 10px;
@@ -72,6 +80,63 @@
 
 .mapscreen-plan {
   margin-top: 16px;
+  gap: 16px;
+}
+
+/* ==================================================== mountain screen (full-screen takeover) */
+
+.mountainscreen {
+  animation: mountainscreen-in 0.22s var(--ease);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mountainscreen {
+    animation: none;
+  }
+}
+
+@keyframes mountainscreen-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.mountainscreen-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding-top: max(16px, env(safe-area-inset-top));
+  padding-bottom: 14px;
+}
+
+.mountainscreen-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  padding: 6px 4px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ice);
+}
+
+.mountainscreen-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: var(--ink-faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mountainscreen-body {
   gap: 16px;
 }
 
@@ -1623,10 +1688,26 @@
 }
 
 .mountainmap {
-  margin: 0 0 16px;
-  border: 1px solid var(--line);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  margin: 0;
   border-radius: var(--radius);
   background: var(--surface);
+}
+
+/* The home map is the whole point of the home screen now that a mountain's
+   profile lives on its own full-screen view — it fills whatever vertical
+   space its flex parent (`.maphome-body`) gives it, edge to edge, no boxed
+   card look. The compact variant is a subordinate supporting visual inside a
+   mountain's profile screen, so it stays small and keeps its own border. */
+.mountainmap-home {
+  flex: 1;
+  min-height: 0;
+}
+
+.mountainmap-compact {
+  border: 1px solid var(--line);
   padding: 8px 8px 10px;
 }
 
@@ -1634,10 +1715,18 @@
 
 .mountainmap-leaflet {
   width: 100%;
-  height: min(64vh, 520px);
-  min-height: 340px;
   border-radius: calc(var(--radius) - 4px);
   background: var(--bg-raise);
+}
+
+.mountainmap-home .mountainmap-leaflet {
+  flex: 1;
+  min-height: 260px;
+}
+
+.mountainmap-compact .mountainmap-leaflet {
+  height: min(28vh, 220px);
+  min-height: 180px;
 }
 
 /* Esri's World Dark Gray basemap ships as two stacked tile layers: an opaque
@@ -1819,6 +1908,22 @@
   padding: 0 6px;
   font-size: 11.5px;
   color: var(--ink-faint);
+}
+
+/* On the home map, the legend floats over the tiles as a small corner chip
+   instead of taking its own row below — the map is the whole screen now, so
+   nothing should compete with it for vertical space. */
+.mountainmap-home .mountainmap-legend {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  z-index: 500;
+  margin-top: 0;
+  padding: 6px 10px;
+  background: rgba(4, 6, 10, 0.72);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  backdrop-filter: blur(2px);
 }
 
 .mountainmap-legend-item {

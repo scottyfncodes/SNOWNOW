@@ -167,47 +167,29 @@ export function MapScreen({ registry, clock, origin, onOriginChange, preferences
     { enabled: selectedMountain !== null, minimumMs: 900 },
   );
 
-  return (
-    <div className="screen maphome">
-      <header className="maphome-head shell">
-        <h1>
-          <Wordmark size="sm" />
-          <span className="visually-hidden">SNOWNOW</span>
-        </h1>
-        <p className="home-tagline maphome-tagline">Colorado's mountains. Pick one.</p>
-        <OriginPicker onChange={onOriginChange} />
-        {usingDemoData ? (
-          <p className="home-demo">
-            <span className="chip chip-demo">DEMO DATA</span>
-            <span>
-              No live weather, traffic or lift feeds are connected. Every number below is
-              simulated — and labelled as such.
-            </span>
-          </p>
-        ) : (
-          <p className="home-note">
-            First traffic check in a while? It can take up to 15 seconds to wake up — that's
-            normal, not a bug. Give it a moment or check again if it says unavailable.
-          </p>
-        )}
-      </header>
+  if (selectedMountain) {
+    return (
+      <div className="screen mountainscreen">
+        <header className="mountainscreen-head shell">
+          <button type="button" className="mountainscreen-back" onClick={() => setSelectedId(null)}>
+            <span aria-hidden="true">←</span> Map
+          </button>
+          <h1 className="mountainscreen-title">{selectedMountain.shortName}</h1>
+        </header>
 
-      <div className="screen-body shell">
-        <MountainMap
-          mountains={MOUNTAINS}
-          origin={origin}
-          selectedMountainId={selectedId}
-          onSelectMountain={selectMountain}
-          route={mapRoute}
-        />
+        <div className="screen-body shell stack mountainscreen-body">
+          <MountainMap
+            mountains={MOUNTAINS}
+            origin={origin}
+            selectedMountainId={selectedId}
+            onSelectMountain={selectMountain}
+            route={mapRoute}
+            variant="compact"
+          />
 
-        {selectedMountain && (
           <section className="panel mapscreen-route" aria-live="polite">
             <header className="panel-head">
               <h2 className="section-title">Drive to {selectedMountain.shortName}</h2>
-              <button type="button" className="linkbutton" onClick={() => setSelectedId(null)}>
-                Close
-              </button>
             </header>
             {mapRoute === 'loading' && <p className="faint">Checking the route…</p>}
             {mapRoute === 'error' && (
@@ -242,72 +224,109 @@ export function MapScreen({ registry, clock, origin, onOriginChange, preferences
               />
             )}
           </section>
-        )}
 
-        {selectedMountain && (planState.status === 'loading' || planState.status === 'idle') && (
-          <p className="faint mapscreen-planloading" role="status">
-            Checking the mountain, the snow and the roads…
-          </p>
-        )}
-
-        {selectedMountain && planState.status === 'error' && (
-          <p className="mapscreen-route-error">
-            Couldn't put together a full recommendation for {selectedMountain.shortName} right now.{' '}
-            {planState.message}
-          </p>
-        )}
-
-        {selectedMountain && planState.status === 'ready' && planState.data && (
-          <div className="stack mapscreen-plan">
-            <p className="visually-hidden" role="status">
-              {planSummary(planState.data)}
+          {(planState.status === 'loading' || planState.status === 'idle') && (
+            <p className="faint mapscreen-planloading" role="status">
+              Checking the mountain, the snow and the roads…
             </p>
-            <AlertBanner alerts={planState.data.alerts} />
-            <RecommendationCard plan={planState.data} />
-            <SnowClockPanel
-              clock={planState.data.snowClock}
-              snowState={planState.data.snowState}
-              firstTurn={planState.data.departure?.firstTurn ?? null}
-              leaveAt={planState.data.return?.departure ?? null}
-              now={planState.data.isToday ? clock.now : null}
-            />
-            <Timeline events={planState.data.timeline} />
-            <DepartureWhatIf plan={planState.data} />
-            <ReturnPlanner plan={planState.data} now={planState.data.isToday ? clock.now : null} />
+          )}
 
-            <section className="panel">
-              <button
-                type="button"
-                className="disclosure"
-                onClick={() => setShowFactors((value) => !value)}
-                aria-expanded={showFactors}
-              >
-                <span className="section-title">How we got {planState.data.score.score.toFixed(1)}</span>
-                <span aria-hidden="true">{showFactors ? '−' : '+'}</span>
-              </button>
-              {showFactors && <FactorBreakdown score={planState.data.score} />}
-            </section>
+          {planState.status === 'error' && (
+            <p className="mapscreen-route-error">
+              Couldn't put together a full recommendation for {selectedMountain.shortName} right now.{' '}
+              {planState.message}
+            </p>
+          )}
 
-            <section className="panel">
-              <button
-                type="button"
-                className="disclosure"
-                onClick={() => setShowSources((value) => !value)}
-                aria-expanded={showSources}
-              >
-                <span className="section-title">Where this data came from</span>
-                <span aria-hidden="true">{showSources ? '−' : '+'}</span>
-              </button>
-              {showSources && <DataSources sources={planState.data.dataSources} />}
-            </section>
+          {planState.status === 'ready' && planState.data && (
+            <div className="stack mapscreen-plan">
+              <p className="visually-hidden" role="status">
+                {planSummary(planState.data)}
+              </p>
+              <AlertBanner alerts={planState.data.alerts} />
+              <RecommendationCard plan={planState.data} />
+              <SnowClockPanel
+                clock={planState.data.snowClock}
+                snowState={planState.data.snowState}
+                firstTurn={planState.data.departure?.firstTurn ?? null}
+                leaveAt={planState.data.return?.departure ?? null}
+                now={planState.data.isToday ? clock.now : null}
+              />
+              <Timeline events={planState.data.timeline} />
+              <DepartureWhatIf plan={planState.data} />
+              <ReturnPlanner plan={planState.data} now={planState.data.isToday ? clock.now : null} />
 
-            <Caveats items={planState.data.caveats} />
-          </div>
-        )}
+              <section className="panel">
+                <button
+                  type="button"
+                  className="disclosure"
+                  onClick={() => setShowFactors((value) => !value)}
+                  aria-expanded={showFactors}
+                >
+                  <span className="section-title">How we got {planState.data.score.score.toFixed(1)}</span>
+                  <span aria-hidden="true">{showFactors ? '−' : '+'}</span>
+                </button>
+                {showFactors && <FactorBreakdown score={planState.data.score} />}
+              </section>
 
-        {selectedMountain && (
+              <section className="panel">
+                <button
+                  type="button"
+                  className="disclosure"
+                  onClick={() => setShowSources((value) => !value)}
+                  aria-expanded={showSources}
+                >
+                  <span className="section-title">Where this data came from</span>
+                  <span aria-hidden="true">{showSources ? '−' : '+'}</span>
+                </button>
+                {showSources && <DataSources sources={planState.data.dataSources} />}
+              </section>
+
+              <Caveats items={planState.data.caveats} />
+            </div>
+          )}
+
           <MountainProfilePanel mountain={selectedMountain} profile={mountainProfileFor(selectedMountain.id)} />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="screen maphome">
+      <header className="maphome-head shell">
+        <h1>
+          <Wordmark size="sm" />
+          <span className="visually-hidden">SNOWNOW</span>
+        </h1>
+        <p className="home-tagline maphome-tagline">Colorado's mountains. Pick one.</p>
+        <p className="maphome-stat">{MOUNTAINS.length} resorts tracked</p>
+        <OriginPicker onChange={onOriginChange} />
+        {usingDemoData ? (
+          <p className="home-demo">
+            <span className="chip chip-demo">DEMO DATA</span>
+            <span>
+              No live weather, traffic or lift feeds are connected. Every number below is
+              simulated — and labelled as such.
+            </span>
+          </p>
+        ) : (
+          <p className="home-note">
+            First traffic check in a while? It can take up to 15 seconds to wake up — that's
+            normal, not a bug. Give it a moment or check again if it says unavailable.
+          </p>
         )}
+      </header>
+
+      <div className="screen-body shell maphome-body">
+        <MountainMap
+          mountains={MOUNTAINS}
+          origin={origin}
+          selectedMountainId={null}
+          onSelectMountain={selectMountain}
+          route={null}
+          variant="home"
+        />
       </div>
     </div>
   );
