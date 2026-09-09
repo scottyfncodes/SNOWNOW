@@ -335,7 +335,7 @@ export function MapScreen({ registry, clock, origin, onOriginChange, preferences
             ) : (
               <span className="chip chip-live">LIVE</span>
             )}
-            {epicOnly && <span className="chip chip-pass-epic">EPIC PASS ONLY</span>}
+            {epicOnly && <span className="chip chip-pass-epic">EPIC ONLY</span>}
             <button
               type="button"
               className="maphome-viewtoggle"

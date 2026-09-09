@@ -72,7 +72,10 @@ describe('GPS location flow', () => {
     const vail = MOUNTAINS.find((m) => m.id === 'vail')!;
     await user().click(screen.getByRole('button', { name: new RegExp(`^${vail.name}\. Tap to view`, 'i') }));
     await waitFor(() => expect(screen.getByText('Drive time')).toBeInTheDocument());
-    expect(screen.getAllByText(/your location/i).length).toBeGreaterThan(0);
+    // "your location" comes from the full day plan's origin label (RecommendationCard),
+    // a separate, slower fetch than the quick route preview awaited above — wait for it
+    // too instead of racing it.
+    await waitFor(() => expect(screen.getAllByText(/your location/i).length).toBeGreaterThan(0));
   });
 
   it('shows an actionable message and stays on the map when location permission is denied', async () => {

@@ -61,7 +61,7 @@ describe('MapScreen', () => {
     const toggle = screen.getByRole('button', { name: /show epic pass mountains only/i });
     await user().click(toggle);
 
-    expect(screen.getByText('EPIC PASS ONLY')).toBeInTheDocument();
+    expect(screen.getByText('EPIC ONLY')).toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: new RegExp(`^${nonEpicMountain.name}\\. Tap to view`, 'i') }),
     ).not.toBeInTheDocument();
@@ -70,7 +70,7 @@ describe('MapScreen', () => {
     }
 
     await user().click(screen.getByRole('button', { name: /showing epic pass mountains only/i }));
-    expect(screen.queryByText('EPIC PASS ONLY')).not.toBeInTheDocument();
+    expect(screen.queryByText('EPIC ONLY')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: new RegExp(`^${nonEpicMountain.name}\\. Tap to view`, 'i') })).toBeInTheDocument();
   });
 
