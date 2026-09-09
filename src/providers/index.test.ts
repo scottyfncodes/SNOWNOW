@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { at } from '@/domain/time';
 import { makeContext } from '@/engine/inputs';
 import {
@@ -104,11 +104,11 @@ describe('createLiveRegistry — every slot, every configuration', () => {
 
 describe('createProviderRegistry — the dispatcher', () => {
   it('missing environment configuration does not activate demo mode when dataMode is live', () => {
-    // Every optional knob left at its type default (empty/false) — the one
-    // thing that must NOT happen is silently falling back to demo.
+    // Every optional knob left at its type default (unconfigured/false) — the
+    // one thing that must NOT happen is silently falling back to demo.
     const registry = createProviderRegistry({
       dataMode: 'live',
-      trafficApiBaseUrl: '',
+      trafficApiBaseUrl: null,
       enableRoadConditions: false,
     });
     expectNoDemoInstances(registry);
@@ -118,11 +118,34 @@ describe('createProviderRegistry — the dispatcher', () => {
   it('still returns the real demo registry when dataMode is demo — this is the one legitimate path to it', () => {
     const registry = createProviderRegistry({
       dataMode: 'demo',
-      trafficApiBaseUrl: '',
+      trafficApiBaseUrl: null,
       enableRoadConditions: false,
     });
     expect(registry.weather).toBeInstanceOf(DemoWeatherProvider);
     expect(registry.usingDemoData).toBe(true);
+  });
+
+  it('treats an empty (same-origin) traffic base URL as configured, not as unset', async () => {
+    // The bug this guards against: '' and "not configured" used to collapse
+    // to the same falsy value, so a same-origin deployment (Vercel
+    // serverless functions at this app's own /api/*) reported traffic as
+    // permanently unavailable even though a real backend was right there.
+    const registry = createProviderRegistry({
+      dataMode: 'live',
+      trafficApiBaseUrl: '',
+      enableRoadConditions: false,
+    });
+    const route = testMountain().accessRoutes[0]!;
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('{"samples":[]}', { status: 200 })));
+    const result = await registry.traffic.getTravelCurve(route, 'outbound', makeContext('2026-01-17', '2026-01-17', at(5)));
+    vi.unstubAllGlobals();
+    // It actually tried to reach a backend (and got an honest "no samples"
+    // failure from the mock) rather than short-circuiting to unavailable
+    // without ever attempting a request.
+    expect(result.status).toBe('unavailable');
+    if (result.status === 'unavailable') {
+      expect(result.reason).not.toMatch(/no server is configured|not configured/i);
+    }
   });
 });
 

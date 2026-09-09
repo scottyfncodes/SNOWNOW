@@ -30,9 +30,7 @@ export default function App({ registry: injected }: AppProps = {}) {
   const clock = useClock();
   const [origin, setOrigin] = useState<Origin>(() => findOrigin(DEFAULT_PREFERENCES.originId));
 
-  // Give the traffic proxy's free-tier cold start a head start against the
-  // user's own dwell time on the map, rather than against the 15s timeout on
-  // the real request. See lib/warmup.ts.
+  // A cheap head start on the traffic backend's first request. See lib/warmup.ts.
   useEffect(() => {
     warmUpTrafficService(resolveEnvironment().trafficApiBaseUrl);
   }, []);

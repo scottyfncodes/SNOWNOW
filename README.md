@@ -67,7 +67,10 @@ npm run dev        # http://localhost:5173 — demo mode, zero setup
 npm test           # see the test output for the current count
 npm run build      # type-check + production bundle
 npm run preview    # serve the built app
-npm run server     # the traffic proxy (server/index.mjs) — only needed for live traffic
+npm run server     # local traffic proxy (server/index.mjs) — only for developing
+                   # against live traffic without the Vercel CLI; production
+                   # traffic runs as api/*.mjs Vercel functions instead, see
+                   # "Going live"
 ```
 
 Node 20+ required. **With no environment variables set, the app runs entirely
@@ -112,7 +115,7 @@ Day 0 is deliberately shaped into a storm day — the product story starts at
 |---|---|---|
 | **Weather** | Live | Nothing — Open-Meteo is free, keyless, CORS-enabled |
 | **Alerts** (NWS) | Live | Nothing — same deal, US mountains only |
-| **Traffic** | Live | `server/` deployed + `GOOGLE_ROUTES_API_KEY` + `VITE_API_BASE_URL`, else **unavailable** |
+| **Traffic** | Live | `GOOGLE_ROUTES_API_KEY` set on the deployment (Vercel: `api/*.mjs` serverless functions, same project — see below), else **unavailable** |
 | **Road closures** (CDOT/COtrip) | Live, unverified, on by default | `VITE_ENABLE_ROAD_CONDITIONS=false` to disable → **unavailable** |
 | **Lift ops, terrain** | Live where covered, else unavailable | Nothing — tries Liftie (third-party) automatically |
 | **Pricing** | Unavailable, always | Investigated, unverifiable — official purchase link shown instead |
@@ -129,10 +132,34 @@ read at runtime — switching modes means rebuilding, which is also what keeps
 demo mode the safe, can't-happen-by-accident default: there is no runtime
 toggle to flip on live data without a deliberate build.
 
-Full traffic integration needs `server/index.mjs` running somewhere with
-`GOOGLE_ROUTES_API_KEY` set (Render, Fly, a small VPS, anywhere Node runs —
-GitHub Pages cannot host it, since Pages serves static files only and has no
-way to hold a server-side secret). Every variable is documented in
+**Production traffic runs as Vercel serverless functions in this same
+project (`api/route-preview.mjs`, `api/travel-curve.mjs`, `api/health.mjs`,
+plus two GET diagnostics), not a standalone server.** `server/index.mjs` and
+`server/trafficCore.mjs` still exist and still work (`npm run server`) — that
+pair is now the *local development* story: a long-running `node:http`
+process for developing against `VITE_API_BASE_URL=http://localhost:8787`
+without needing the Vercel CLI. Both the local server and the Vercel
+functions import the exact same routing/caching/Google-calling logic from
+`server/trafficCore.mjs`, so there is one implementation, not two that can
+drift apart.
+
+This replaced an earlier setup where `server/index.mjs` ran as a standalone
+process on Render's free tier — confirmed, from that service's own
+production logs, to repeatedly spin down after ~15 minutes idle and cold-boot
+on the next request (see "Known limitations"). Vercel serverless functions
+don't have that sleep/wake cycle, which is what actually fixes "Road intel is
+offline" rather than only mitigating it. `VITE_API_BASE_URL=""` (the empty
+string, set in `vercel.json`, distinct from leaving the variable unset
+entirely — see `.env.example` and `config/env.ts#SnownowEnvironment`) tells
+the client to call this same deployment's own relative `/api/*` paths rather
+than an external host.
+
+**GitHub Pages is a separate deploy target that cannot host serverless
+functions at all** (Pages serves static files only). Its workflow
+(`.github/workflows/pages.yml`) still points `VITE_API_BASE_URL` at the
+now-legacy Render service, which is being kept alive for exactly that reason
+— retiring it would silently take traffic away from the GitHub Pages build
+without anyone deciding that on purpose. Every variable is documented in
 `.env.example`.
 
 ### Diagnosing the traffic proxy without exposing anything
@@ -156,7 +183,8 @@ structured `{ error: CODE, message }`, `CODE` one of `MISSING_API_KEY`,
 from "Google rejected this specific request" apart from "we couldn't reach
 Google in time" from a response body alone, without ever including the raw
 Google response, a stack trace, or the key (those go to the server's own
-console only — see `logRouteFetchFailure` in `server/index.mjs`).
+console only — see `logRouteFetchFailure` in `server/trafficCore.mjs`, shared
+by both the local dev server and the production Vercel functions).
 
 ### GPS-based routing
 
@@ -664,11 +692,17 @@ preserve that contract, not invent it.
 
 - **Client-side**: `React` re-renders don't re-fetch — `loadDayInputs` is
   called once per (mountain, date) and its result flows through props.
-- **Server-side** (`server/index.mjs`): every (corridor, direction, date)
-  travel curve is cached for `TRAFFIC_CACHE_TTL_SECONDS` (default 15 min) and
-  **shared across every visitor**, not per-session. The first person to ask
-  about Breck today pays the Google Routes calls; everyone else in the next 15
-  minutes gets the cached curve.
+- **Server-side** (`server/trafficCore.mjs`, imported by both the local dev
+  server and the production `api/*.mjs` Vercel functions): every (corridor,
+  direction, date) travel curve is cached for `TRAFFIC_CACHE_TTL_SECONDS`
+  (default 15 min). Under the old single long-running Render process this
+  was shared across every visitor; under Vercel's serverless functions the
+  cache is per-instance, so concurrent invocations on different instances
+  don't see each other's entries — still a real cost saving (a warm instance
+  serving several requests back-to-back reuses it), just not the
+  whole-deployment guarantee a single process gave. A real shared cache
+  (Redis/KV) would restore that; this build does not have one (see "Known
+  limitations").
 - **Open-Meteo and NWS** need no server-side cache to be cheap — both are
   free, keyless, rate-generous public APIs — but a production deployment
   fielding real traffic should still put a short (~5 min) cache in front of
@@ -683,7 +717,7 @@ cache cold):
 | Route preview (map tap) | 1 | `/api/route-preview` — one Google Routes call for the "right now" drive time shown immediately, see `providers/live/routePreview.ts` |
 | Open-Meteo forecast | 1 | One HTTP request, all hourly fields |
 | NWS alerts | 1 | One HTTP request |
-| Google Routes travel curve (server) | up to 20 per route | 9 outbound + 11 return departure-time samples — see `server/index.mjs`'s `OUTBOUND_MINUTES`/`RETURN_MINUTES`. A manual city with several hand-authored routes to that mountain pays this once per route; a GPS origin always synthesizes exactly one route (`engine/routing.ts`), so it's a flat ~20 calls regardless of how many routes a city origin would have used |
+| Google Routes travel curve (server) | up to 20 per route | 9 outbound + 11 return departure-time samples — see `server/trafficCore.mjs`'s `OUTBOUND_MINUTES`/`RETURN_MINUTES`. A manual city with several hand-authored routes to that mountain pays this once per route; a GPS origin always synthesizes exactly one route (`engine/routing.ts`), so it's a flat ~20 calls regardless of how many routes a city origin would have used |
 | CDOT (if enabled) | 1 per unique corridor | Unverified integration, off by default |
 
 This is the whole cost of the map's primary flow: tapping a mountain never
@@ -831,32 +865,29 @@ unavailable" above.
   "Ticket pricing: investigated, and genuinely unavailable" above. This is
   the one gap that isn't a "not yet verified" caveat: it's the documented
   conclusion of actually checking, not a placeholder for future work.
-- **"Road intel is offline" is a free-tier cold-start symptom, not a
-  per-mountain bug — confirmed against the real deployment's logs, not
-  guessed.** `snownow-traffic-proxy` runs on Render's free plan, which spins
-  the process down after idle and cold-boots it on the next request; the
-  service's own boot log (`SNOWNOW traffic proxy on :10000 — API key
-  present`) recurs every 10 minutes to a few hours in production — pulled
-  directly from Render's logs, not inferred — which is the process
-  restarting from idle, not crashing. Two mitigations are in place:
-  `lib/warmup.ts` fires a fire-and-forget ping at app load *and* again the
-  moment a mountain is tapped (`MapScreen`'s `selectMountain`), so a session
-  that lingers on the map before committing still gets a head start; and the
-  client timeouts on both traffic calls (`providers/live/routePreview.ts`,
-  `providers/live/googleRoutesTraffic.ts`) were raised from 10s/15s to 45s,
-  matching `warmup.ts`'s own documented 30-50s cold-boot window — the
-  original timeouts were throwing away genuine, if slow, successes during
-  exactly the boot window they existed to survive. Any mountain can hit
-  this; it isn't a Monarch-specific defect, it's whichever mountain gets
-  checked first after the proxy has gone back to sleep. These mitigate the
-  failure; they do not eliminate it, because the root cause is Render's free
-  tier itself, not application code. The two real structural fixes are: pay
-  for a Render tier that doesn't spin down, or move `server/index.mjs`'s two
-  endpoints into Vercel serverless functions in this same project (already
-  on Vercel, Hobby plan, no separate cold-start problem to inherit) and
-  retire the Render service entirely. Neither has been done — both are
-  infra decisions with cost/ownership implications, not something to change
-  silently.
+- **"Road intel is offline" was a free-tier cold-start symptom — confirmed
+  against the real deployment's logs, not guessed — and is fixed for the
+  Vercel deployment, still open for the GitHub Pages one.** The old
+  `snownow-traffic-proxy` Render service ran on Render's free plan, which
+  spins the process down after idle and cold-boots it on the next request;
+  its own boot log (`SNOWNOW traffic proxy on :10000 — API key present`)
+  recurred every 10 minutes to a few hours in production — pulled directly
+  from Render's logs, not inferred — which was the process restarting from
+  idle, not crashing. Two mitigations shipped first (`lib/warmup.ts`'s
+  fire-and-forget ping at app load and again on mountain-tap; the client
+  timeouts on `providers/live/routePreview.ts`/`googleRoutesTraffic.ts`
+  raised from 10s/15s to 45s to match the proxy's own documented 30-50s
+  cold-boot window), but neither eliminated the failure, because the root
+  cause was Render's free tier itself, not application code. The actual fix:
+  production traffic now runs as Vercel serverless functions in this same
+  project (`api/*.mjs`, see "Going live") — no sleep/wake cycle to survive in
+  the first place. Any mountain could hit the old failure; it was never a
+  Monarch-specific defect, just whichever mountain got checked first after
+  the proxy had gone back to sleep. **The GitHub Pages build still points at
+  the legacy Render service** (Pages can't host serverless functions itself),
+  so it still carries the original cold-start risk, mitigated but not
+  eliminated, until/unless that deploy target is retired or given its own
+  fix.
 - **Liftie coverage for Purgatory and Wolf Creek is unconfirmed**, so
   `data/resortSources.ts` leaves their `liftieSlug` unset rather than
   guessing one — both report `unavailable` for operations until a real

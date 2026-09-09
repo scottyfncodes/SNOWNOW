@@ -68,17 +68,19 @@ export function MapScreen({ registry, clock, origin, onOriginChange, preferences
   // Google Routes calls per tap for samples the map never shows. Demo mode
   // (and live mode with no traffic server configured) falls back to the
   // registry, which already handles both honestly and for free.
-  const useLivePreview = !registry.usingDemoData && Boolean(apiBaseUrl);
+  // `apiBaseUrl` is `null` only when no traffic backend is configured at
+  // all — `''` (same-origin) is a real, enabled value. See
+  // `config/env.ts#SnownowEnvironment.trafficApiBaseUrl`.
+  const useLivePreview = !registry.usingDemoData && apiBaseUrl != null;
 
   const selectMountain = (id: string) => {
     setSelectedId(id);
     setShowFactors(false);
     setShowSources(false);
     // The app-load warm-up (App.tsx) only helps a session that picks a
-    // mountain quickly. Someone who lingers on the map first lets the
-    // free-tier proxy fall back asleep, so a tap re-fires the same
-    // fire-and-forget ping right as the real requests are about to go out —
-    // a second head start against the cold start, not a guarantee against it.
+    // mountain quickly. Someone who lingers on the map first re-fires the
+    // same fire-and-forget ping right as the real requests are about to go
+    // out — a second head start, not a guarantee.
     warmUpTrafficService(apiBaseUrl);
   };
 
@@ -96,7 +98,10 @@ export function MapScreen({ registry, clock, origin, onOriginChange, preferences
           // driving destination (base area / parking, when that differs from
           // the map-pin coordinate) — not whichever `destinationPoint` a
           // hand-authored demo route happened to be tuned to.
-          const preview = await fetchRoutePreview(route.originPoint, routingDestinationFor(selectedMountain), apiBaseUrl);
+          // Non-null by construction: this branch only runs when
+          // `useLivePreview` is true, which itself requires `apiBaseUrl` to
+          // be non-null.
+          const preview = await fetchRoutePreview(route.originPoint, routingDestinationFor(selectedMountain), apiBaseUrl!);
           return {
             kind: 'ok',
             preview: {

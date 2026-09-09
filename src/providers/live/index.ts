@@ -21,7 +21,13 @@ export {
 };
 
 export interface LiveRegistryOptions {
-  /** Base URL of the traffic proxy server (see `server/index.mjs`). */
+  /**
+   * Base URL to prefix onto traffic-proxy requests. `undefined` — not
+   * configured, traffic reports `unavailable`. `''` — same-origin (this
+   * deployment's own `/api/*` serverless functions). A non-empty absolute
+   * URL — an external proxy. See `config/env.ts#SnownowEnvironment` for the
+   * full explanation of why `''` and "not configured" are different states.
+   */
   trafficApiBaseUrl?: string;
   /** CDOT/COtrip road conditions — on by default, see `config/env.ts`. */
   enableRoadConditions?: boolean;
@@ -51,7 +57,10 @@ export interface LiveRegistryOptions {
  * never returns a `Demo*Provider` instance in any slot.
  */
 export function createLiveRegistry(options: LiveRegistryOptions = {}): ProviderRegistry {
-  const hasTrafficServer = Boolean(options.trafficApiBaseUrl);
+  // Deliberately not `Boolean(...)`: `''` (same-origin) is a real, configured
+  // value, not a falsy "off" — only `undefined` means "not configured". See
+  // `LiveRegistryOptions.trafficApiBaseUrl`.
+  const hasTrafficServer = options.trafficApiBaseUrl !== undefined;
   const roadConditionsEnabled = options.enableRoadConditions ?? true;
 
   return {
