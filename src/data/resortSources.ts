@@ -109,6 +109,13 @@ export const RESORT_SOURCES: Record<string, ResortSource> = {
     // Pioneer, Safari, Tomichi), not a guessed slug.
     liftieSlug: 'monarch',
   },
+  telluride: {
+    officialOpsUrl: 'https://tellurideskiresort.com/lifts/',
+    officialPurchaseUrl: 'https://shop.tellurideskiresort.com/s/passes-and-tickets/winter-lift-tickets/',
+    // Confirmed real coverage — liftie.info/resort/telluride is a real,
+    // indexed page, not a guessed slug.
+    liftieSlug: 'telluride',
+  },
 };
 
 export const resortSourceFor = (mountainId: string): ResortSource => RESORT_SOURCES[mountainId] ?? {};

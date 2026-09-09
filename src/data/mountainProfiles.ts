@@ -515,6 +515,42 @@ export const MOUNTAIN_PROFILES: Record<string, MountainProfile> = {
     notes:
       'A figure of Dec 4, 2026 for 2026-27 opening appears only on third-party aggregators (in the same "projected openings" style flagged elsewhere in this file as unreliable), not a Monarch press release or its own site, so recorded as TBD rather than repeated as if confirmed. Webcam URL not confirmed on the resort\'s own site. The only trail-map URL found is a stale, year-stamped 2021-22 PDF — left null rather than linking an out-of-date map. Not fetch-verified.',
   },
+  telluride: {
+    officialWebsite: 'https://tellurideskiresort.com',
+    snowReportUrl: 'https://tellurideskiresort.com/snow-report-scrape/',
+    webcamUrl: 'https://tellurideskiresort.com/webcams/',
+    trailMapUrl: null,
+    ticketUrl: 'https://shop.tellurideskiresort.com/s/passes-and-tickets/winter-lift-tickets/',
+    passInfoUrl: 'https://www.epicpass.com',
+    phone: '970-728-6900',
+    address: '565 Mountain Village Blvd, Telluride, CO 81435',
+    openingDate: { date: '2026-11-26', status: 'projected' },
+    closingDate: { date: '2027-04-04', status: 'projected' },
+    parking: {
+      infoUrl: 'https://townofmountainvillage.com/explore/getting-around/parking/',
+      reservationRequired: false,
+      note: 'Station Village Parking Garage is free all day and runs a free gondola into Mountain Village; the Gondola Parking Structure is free 6:30am–2pm. The Gondola Parking Garage (after 2pm), Meadows Lot, and Heritage Parking Garage are paid.',
+    },
+    grub: {
+      picks: [
+        { name: 'Cosmopolitan', note: 'Inside the Hotel Columbia downtown — fusion menu with a daily 4–5pm happy hour.' },
+        { name: 'Alpino Vino', note: 'On-mountain at 11,966 feet — the highest fine-dining restaurant in North America.' },
+        { name: 'Gorrono Ranch', note: '"The Beach" — mid-mountain burgers, chili, and margaritas in Adirondack chairs.' },
+      ],
+      quickBreakfast: {
+        name: 'Baked in Telluride',
+        note: 'Cookies, doughnuts, bagels, and fresh croissants downtown — built for a fast handheld breakfast.',
+      },
+    },
+    brews: {
+      picks: [{ name: 'Smugglers Brewery and Pub', note: 'Downtown, right next to the gondola — the on-site brewery.' }],
+      distilleries: [
+        { name: 'Telluride Distilling Company', note: 'Vodka, gin, whiskey, and its famous Chairlift Warmer schnapps, distilled at 8,750 feet.' },
+      ],
+    },
+    notes:
+      'Telluride joined the Epic Pass for 2026-27 after leaving the Mountain Collective in 2018 — a real, recent change, confirmed by multiple ski-trade reports, not a guess. Opening (Nov 26, 2026) and closing (Apr 4, 2027) dates are reported consistently as the resort\'s "targeted"/"tentative" dates across ski-trade and lodging sources, but could not be traced to a direct Telluride Ski & Golf press release — treat with a little extra caution despite "projected" status. Trail-map URL: only a prior-season (2024-25) PDF could be confirmed, so left null rather than link an out-of-date map. Not fetch-verified — see module note.',
+  },
 };
 
 export const mountainProfileFor = (mountainId: string): MountainProfile | null =>
