@@ -87,6 +87,18 @@ describe('recommend', () => {
     expect(result.alternatives.length).toBe(result.all.length - 1);
   });
 
+  it('reaches every mountain from a manual city, even the ones with no hand-authored route (Purgatory from Denver)', async () => {
+    const result = await recommend(createDemoRegistry(), {
+      mountains: MOUNTAINS,
+      origin,
+      date: TODAY,
+      today: TODAY,
+      now: at(4, 47),
+    });
+    expect(result.all.length).toBe(MOUNTAINS.length);
+    expect(result.all.some((plan) => plan.mountain.id === 'purgatory')).toBe(true);
+  });
+
   it('explains why the winner won and what each alternative trades away', async () => {
     const result = await recommend(createDemoRegistry(), {
       mountains: MOUNTAINS,

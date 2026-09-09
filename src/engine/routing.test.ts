@@ -22,10 +22,22 @@ describe('resolveAccessRoutes — origin resolution', () => {
     }
   });
 
-  it('preserves an intentionally missing route for a manual city (Purgatory has none from Denver)', () => {
+  it('falls back to a real synthesized route when a manual city has no hand-authored one (Purgatory from Denver)', () => {
     const purgatory = findMountain('purgatory')!;
-    const routes = resolveAccessRoutes(purgatory, findOrigin('denver'));
-    expect(routes).toEqual([]);
+    const denver = findOrigin('denver');
+    const routes = resolveAccessRoutes(purgatory, denver);
+    expect(routes).toHaveLength(1);
+    expect(routes[0]!.originPoint).toEqual(denver.coordinates);
+    expect(routes[0]!.destinationPoint).toEqual(purgatory.coordinates);
+    expect(routes[0]!.distanceMiles).toBeGreaterThan(200);
+  });
+
+  it('still uses the exact hand-authored route when one exists, rather than the live fallback', () => {
+    const purgatory = findMountain('purgatory')!;
+    const durango = findOrigin('durango');
+    const routes = resolveAccessRoutes(purgatory, durango);
+    const authored = purgatory.accessRoutes.filter((route) => route.originId === 'durango');
+    expect(routes).toEqual(authored);
   });
 
   it('resolves a GPS origin to its exact coordinates, never snapped to the nearest city', () => {

@@ -9,15 +9,27 @@ import { haversineMiles } from '@/lib/geo';
  * `engine/plan.ts`, both traffic providers) already knows how to route.
  * Neither caller needs to know which kind of origin it received.
  *
- * Manual cities keep their exact, unmodified pre-authored routes (including
- * a mountain having *no* route from a given city — Purgatory has none from
- * Denver, deliberately). Any other origin — above all a GPS coordinate — has
- * no pre-authored data, so one direct route is synthesized from its actual
- * coordinates straight to the mountain. This is the one place a GPS fix
- * could be snapped to a city instead of routed from directly; it isn't.
+ * Manual cities keep their exact, unmodified pre-authored routes when one was
+ * curated for that (mountain, city) pair — those carry real corridor/weather
+ * modelling the demo curve uses. When a *real* mountain (one with genuine
+ * routing data to at least some other city) has no hand-authored route from
+ * a chosen city (a handful of far-flung resorts, e.g. Purgatory from
+ * Denver), the same live-route fallback a GPS fix gets kicks in instead of
+ * refusing to answer: a manual city has real, known coordinates too, and
+ * every mountain on the map is meant to be reachable from wherever the user
+ * says they're starting, not just the pairs someone happened to author by
+ * hand. A mountain with no routing data at all stays unreachable — there is
+ * nothing real to route to. Any origin that isn't one of the six cities —
+ * above all a GPS coordinate — always gets the live route regardless; that's
+ * also the one place a GPS fix could be snapped to a city instead of routed
+ * from directly, and it isn't.
  */
 export function resolveAccessRoutes(mountain: Mountain, origin: Origin): AccessRoute[] {
-  if (isManualCityOrigin(origin.id)) return routesFrom(mountain, origin.id);
+  if (isManualCityOrigin(origin.id)) {
+    const authored = routesFrom(mountain, origin.id);
+    if (authored.length > 0) return authored;
+    return mountain.accessRoutes.length > 0 ? [buildLiveRoute(mountain, origin)] : [];
+  }
   return [buildLiveRoute(mountain, origin)];
 }
 
