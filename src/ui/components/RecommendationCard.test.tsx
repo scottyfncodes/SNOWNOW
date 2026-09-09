@@ -53,6 +53,9 @@ describe('RecommendationCard — base/peak and snow timeline', () => {
     // Base/peak and the snow cycle are still shown — the point is an honest
     // "not today", not a blank screen.
     expect(screen.getByText('Base')).toBeInTheDocument();
+    // Ticket price isn't tied to "today" the way departure timing is — it
+    // should still show even while the mountain is closed for the season.
+    expect(screen.getByText('Lift ticket')).toBeInTheDocument();
   });
 });
 

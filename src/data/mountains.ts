@@ -113,7 +113,7 @@ export const MOUNTAINS: Mountain[] = [
   {
     id: 'breckenridge',
     name: 'Breckenridge',
-    shortName: 'BRECK',
+    shortName: 'BRECKENRIDGE',
     region: 'Summit County',
     snowRegion: 'i70-corridor',
     state: 'CO',
@@ -183,7 +183,7 @@ export const MOUNTAINS: Mountain[] = [
   {
     id: 'crested-butte',
     name: 'Crested Butte',
-    shortName: 'CB',
+    shortName: 'CRESTED BUTTE',
     region: 'Gunnison Valley',
     snowRegion: 'san-juans',
     state: 'CO',
@@ -218,7 +218,7 @@ export const MOUNTAINS: Mountain[] = [
   {
     id: 'winter-park',
     name: 'Winter Park',
-    shortName: 'WP',
+    shortName: 'WINTER PARK',
     region: 'Grand County',
     snowRegion: 'i70-corridor',
     state: 'CO',
@@ -252,7 +252,7 @@ export const MOUNTAINS: Mountain[] = [
   {
     id: 'purgatory',
     name: 'Purgatory',
-    shortName: 'PURG',
+    shortName: 'PURGATORY',
     region: 'San Juans',
     snowRegion: 'san-juans',
     state: 'CO',
@@ -349,7 +349,7 @@ export const MOUNTAINS: Mountain[] = [
   {
     id: 'arapahoe-basin',
     name: 'Arapahoe Basin',
-    shortName: 'A-BASIN',
+    shortName: 'ARAPAHOE BASIN',
     region: 'Summit County',
     snowRegion: 'i70-corridor',
     state: 'CO',

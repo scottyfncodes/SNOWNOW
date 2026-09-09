@@ -99,7 +99,7 @@ export interface RoutingDestination extends GeoPoint {
 export interface Mountain {
   id: string;
   name: string;
-  /** What we call it in copy: "BRECK", "VAIL". */
+  /** The all-caps display form used in headings, e.g. "BRECKENRIDGE", "VAIL" — the real name, never a shorthand or abbreviation. */
   shortName: string;
   /** Display region, e.g. "San Juans". */
   region: string;
