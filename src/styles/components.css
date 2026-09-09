@@ -56,7 +56,7 @@
    that relationship, which is what made the block read as an arbitrary
    stack rather than a deliberate one. */
 .maphome-head {
-  padding-top: max(22px, env(safe-area-inset-top));
+  padding-top: max(40px, calc(env(safe-area-inset-top) + 18px));
   /* Same rhythm as the 6px gap between the stacked status chips — now that
      the row above is bottom-aligned (see .maphome-actions), that gap applies
      evenly on both sides instead of only ever showing under one of them. */
