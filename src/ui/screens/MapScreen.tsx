@@ -308,20 +308,20 @@ export function MapScreen({ registry, clock, origin, onOriginChange, preferences
           <Wordmark size="lg" />
         </h1>
         <p className="home-tagline maphome-tagline">{MOUNTAINS.length} Colorado peaks.. so far</p>
-        <div className="maphome-meta">
-          {usingDemoData ? (
-            <span className="chip chip-demo">DEMO DATA</span>
-          ) : (
-            <span className="chip chip-live">LIVE</span>
-          )}
-        </div>
-        <OriginPicker onChange={onOriginChange} />
         {usingDemoData && (
           <p className="home-demo">
             No live weather, traffic or lift feeds are connected — every number below is
             simulated and labelled as such.
           </p>
         )}
+        <div className="maphome-actions">
+          {usingDemoData ? (
+            <span className="chip chip-demo">DEMO DATA</span>
+          ) : (
+            <span className="chip chip-live">LIVE</span>
+          )}
+          <OriginPicker onChange={onOriginChange} />
+        </div>
       </header>
 
       <div className="screen-body shell maphome-body">
