@@ -194,7 +194,7 @@ export function MapScreen({ registry, clock, origin, onOriginChange, preferences
 
           <section className="panel mapscreen-route" aria-live="polite">
             <header className="panel-head">
-              <h2 className="section-title">Drive to {selectedMountain.shortName}</h2>
+              <h2 className="section-title mapscreen-route-title">Drive to {selectedMountain.shortName}</h2>
             </header>
             {mapRoute === 'loading' && <p className="faint">Checking the route…</p>}
             {mapRoute === 'error' && (
