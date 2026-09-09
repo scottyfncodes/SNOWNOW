@@ -32,6 +32,26 @@ export interface MountainMapProps {
 const toLatLng = (point: GeoPoint): L.LatLngTuple => [point.lat, point.lon];
 
 /**
+ * Leaflet only applies a vector layer's `className` option once, at the
+ * moment its SVG `<path>` is first created (see `Renderer._initPath` in
+ * Leaflet's own source) — react-leaflet's declarative `pathOptions`,
+ * however, is applied a render tick later via `layer.setStyle(...)`, which
+ * updates stroke/weight/opacity/dashArray attributes directly but never
+ * touches `className` (`Renderer._updateStyle` doesn't set it). A
+ * `pathOptions={{ className: ... }}` prop is therefore silently ignored in
+ * practice — verified against the compiled Leaflet/react-leaflet source,
+ * not assumed — so the route lines are styled with real Leaflet path
+ * options here instead of a CSS class the DOM never receives.
+ */
+const REAL_ROUTE_STYLE: L.PathOptions = { color: 'var(--ice)', weight: 4, opacity: 0.85 };
+const APPROXIMATE_ROUTE_STYLE: L.PathOptions = {
+  color: 'var(--ink-faint)',
+  weight: 2,
+  opacity: 0.6,
+  dashArray: '2 10',
+};
+
+/**
  * A snow-capped peak, not a generic dot — big enough to read at a glance on a
  * phone, and colored (not just outlined) so it's visible against the map at
  * rest, not only on hover. Plain SVG shapes rather than an emoji glyph: an
@@ -193,12 +213,16 @@ function MapAccessibleLabel({ label }: { label: string }) {
 }
 
 /**
- * A real, pannable, zoomable Colorado map — CARTO's keyless dark basemap (no
- * API key, same "no secrets in the client" rule the traffic proxy already
- * follows), every mountain positioned at its real coordinates from the
- * canonical `Mountain` dataset. Selecting a mountain draws the real driven
- * route when one is available, and a clearly-marked approximate line — never
- * a route dressed up as real — when it isn't.
+ * A real, pannable, zoomable Colorado map — Esri's keyless World Dark Gray
+ * basemap (no API key, same "no secrets in the client" rule the traffic
+ * proxy already follows), rendered as its own dark cartography rather than a
+ * CSS filter faking one from light tiles (that was the OpenStreetMap
+ * fallback used after CARTO's free dark tiles started requiring a key — this
+ * reads noticeably cleaner: legible labels, no color-inversion artifacts).
+ * Every mountain sits at its real coordinates from the canonical `Mountain`
+ * dataset. Selecting a mountain draws the real driven route when one is
+ * available, and a clearly-marked approximate line — never a route dressed
+ * up as real — when it isn't.
  */
 export function MountainMap({
   mountains,
@@ -232,25 +256,25 @@ export function MountainMap({
         attributionControl
       >
         <TileLayer
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          maxZoom={19}
-          className="mountainmap-tiles"
+          url="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}"
+          attribution="Tiles &copy; Esri &mdash; Esri, HERE, Garmin, FAO, NOAA, USGS"
+          maxZoom={16}
+        />
+        <TileLayer
+          url="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}"
+          maxZoom={16}
         />
 
         <MapAccessibleLabel label={`Map of ${mountains.length} Colorado mountains relative to ${origin.name}`} />
         <MapFraming origin={origin} selectedMountain={selected} routePoints={routePoints} homeBounds={homeBounds} />
 
         {routePoints && routePoints.length > 1 && (
-          <Polyline
-            positions={routePoints.map(toLatLng)}
-            pathOptions={{ className: 'mm-route is-real' }}
-          />
+          <Polyline positions={routePoints.map(toLatLng)} pathOptions={REAL_ROUTE_STYLE} />
         )}
         {showApproximateLine && selected && (
           <Polyline
             positions={[toLatLng(origin.coordinates), toLatLng(selected.coordinates)]}
-            pathOptions={{ className: 'mm-route is-approximate', dashArray: '2 10' }}
+            pathOptions={APPROXIMATE_ROUTE_STYLE}
           />
         )}
 

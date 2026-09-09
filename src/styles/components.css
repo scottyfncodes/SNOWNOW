@@ -1660,14 +1660,11 @@
   background: var(--bg-raise);
 }
 
-/* OpenStreetMap's standard tiles are the one raster basemap that's reliably
-   free with no API key — CARTO's keyless "dark_all" tiles this used to point
-   at now return an API-key-required watermark tile in production. This
-   filter recolors the light OSM tiles to match the app's dark theme rather
-   than switching to a tile source that could start requiring a key too. */
-.mountainmap-tiles {
-  filter: invert(1) hue-rotate(180deg) brightness(0.95) contrast(0.9) saturate(0.65);
-}
+/* Esri's World Dark Gray basemap ships as two stacked tile layers: an opaque
+   base (the dark ground/terrain) and a transparent reference overlay (roads,
+   borders, and labels). Both render in Leaflet's tile pane, below the route
+   line and markers, in the order they're added below — base first, then
+   reference on top of it, exactly like the ground and its street labels. */
 
 /* Leaflet ships its own baseline CSS (imported alongside this file); these
    overrides only retheme it to match the app's dark, low-chrome aesthetic —
@@ -1828,19 +1825,9 @@
   display: none !important;
 }
 
-/* ---------------------------------------------------------------- route */
-
-.mm-route.is-real {
-  stroke: var(--ice) !important;
-  stroke-width: 4 !important;
-  stroke-opacity: 0.85 !important;
-}
-
-.mm-route.is-approximate {
-  stroke: var(--ink-faint) !important;
-  stroke-width: 2 !important;
-  stroke-opacity: 0.6 !important;
-}
+/* Route line color/weight/opacity/dash are set directly via Leaflet
+   `pathOptions` in MountainMap.tsx, not CSS — see the comment on
+   REAL_ROUTE_STYLE there for why a CSS class can't reach these paths. */
 
 /* ------------------------------------------------------------------ legend */
 

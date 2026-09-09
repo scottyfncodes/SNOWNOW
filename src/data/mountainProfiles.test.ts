@@ -72,4 +72,20 @@ describe('mountain profiles — data integrity', () => {
       expect(profile.closingDate.status).not.toBe('confirmed');
     }
   });
+
+  it('gives every mountain researched parking logistics, not a live feed', () => {
+    for (const mountain of MOUNTAINS) {
+      const profile = mountainProfileFor(mountain.id)!;
+      expect(profile.parking, `missing parking info for ${mountain.id}`).toBeDefined();
+      expect(profile.parking!.note, `${mountain.id} parking note`).toBeTruthy();
+    }
+  });
+
+  it('never fabricates a parking info URL — either a valid https URL or explicitly null', () => {
+    for (const mountain of MOUNTAINS) {
+      const url = mountainProfileFor(mountain.id)!.parking?.infoUrl;
+      if (url == null) continue;
+      expect(isValidHttpsUrl(url), `${mountain.id} parking.infoUrl`).toBe(true);
+    }
+  });
 });

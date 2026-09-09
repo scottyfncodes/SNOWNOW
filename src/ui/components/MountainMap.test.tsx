@@ -105,7 +105,12 @@ describe('MountainMap', () => {
         route="loading"
       />,
     );
-    expect(container.querySelector('.mm-route')).not.toBeInTheDocument();
+    // A route line is the only thing Leaflet ever draws into its own overlay
+    // pane here (markers are HTML div-icons, not vector shapes); its
+    // color/weight come from Leaflet pathOptions rather than a CSS class
+    // (see REAL_ROUTE_STYLE in MountainMap.tsx), so this checks for the
+    // element itself instead of a class that was never on it.
+    expect(container.querySelector('.leaflet-overlay-pane path')).not.toBeInTheDocument();
   });
 
   it('never labels a real route as approximate when the traffic proxy returned real geometry', () => {

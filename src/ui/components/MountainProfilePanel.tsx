@@ -77,11 +77,11 @@ export function MountainProfilePanel({ mountain, profile }: MountainProfilePanel
           </>
         ) : (
           <p className="profile-parking-note">
-            Live parking availability isn't currently available. Check{' '}
+            We haven't researched parking specifics for this mountain yet. Check{' '}
             <a href={profile.officialWebsite} target="_blank" rel="noreferrer">
               the mountain's own site
             </a>{' '}
-            before you go — we won't guess at open spots.
+            before you go — we won't guess at lots, fees, or reservations.
           </p>
         )}
       </section>

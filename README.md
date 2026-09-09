@@ -676,9 +676,13 @@ unavailable" above.
   `data/resortSources.ts` leaves their `liftieSlug` unset rather than
   guessing one — both report `unavailable` for operations until a real
   slug is confirmed and added to the registry.
-- **The map is a real, tile-based, pannable/zoomable Leaflet map** (CARTO's
-  keyless dark basemap — no API key, same "no secrets in the client" rule the
-  traffic proxy already follows), not a hand-drawn schematic. Every mountain
+- **The map is a real, tile-based, pannable/zoomable Leaflet map** (Esri's
+  keyless World Dark Gray basemap — no API key, same "no secrets in the
+  client" rule the traffic proxy already follows; switched from an earlier
+  CARTO-then-OpenStreetMap fallback chain — CARTO's free dark tiles started
+  requiring a key mid-project, and OSM's light tiles needed a CSS color
+  filter to fake a dark theme, which read worse than real dark cartography
+  does), not a hand-drawn schematic. Every mountain
   sits at its real coordinate from `data/mountains.ts`; there is no second
   location dataset anywhere in the map layer. Resorts close enough together
   (Summit County above all) to physically overlap at a statewide zoom are
@@ -688,13 +692,15 @@ unavailable" above.
   mountain; it either hits one unambiguous peak or a cluster that opens
   first. Zooming/panning further, as on any real map, gets every resort to
   full individual size.
-- **Parking is reference information, not a live feed, for every resort.**
-  No resort in `data/mountainProfiles.ts` has a confirmed live occupancy
-  source, so every mountain's profile says so honestly and links to the
-  resort's own site rather than showing a fabricated "spots available"
-  number. `domain/mountainProfile.ts#ParkingInfo` exists so a real source
-  (a resort's own live count, a parking-reservation API) can be plugged in
-  per mountain without changing any component.
+- **Parking is researched reference information, not a live feed, for every
+  resort.** All 13 mountains in `data/mountainProfiles.ts` carry real,
+  sourced parking logistics — which lots are free vs. paid, when (and
+  whether) a reservation is actually required, and when to show up before a
+  lot fills — researched from each resort's own parking page. None of it is
+  a live occupancy count, so nothing claims to know how many spots are open
+  right now; `domain/mountainProfile.ts#ParkingInfo` exists so a real live
+  source (a resort's own count, a parking-reservation API) could be plugged
+  in per mountain later without changing any component.
 
 ## What's intentionally still demo, and what's not built at all
 
@@ -709,6 +715,6 @@ enforces directly.
 
 Not yet built, by design and unrelated to this pass: accounts, saved
 mountains, notifications, a service worker (the manifest is in place but
-nothing is cached offline), webcams, chain requirements, parking, multi-day
-trips, and pass ownership — SNOWNOW shows what a day ticket costs but has no
-idea whether you already hold the pass.
+nothing is cached offline), webcams, live parking occupancy, chain
+requirements, multi-day trips, and pass ownership — SNOWNOW shows what a day
+ticket costs but has no idea whether you already hold the pass.
