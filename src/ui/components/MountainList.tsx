@@ -1,5 +1,4 @@
 import type { Mountain } from '@/domain/mountain';
-import { EpicPassBadge } from './EpicPassBadge';
 
 export interface MountainListProps {
   mountains: Mountain[];
@@ -21,10 +20,7 @@ export function MountainList({ mountains, onSelectMountain }: MountainListProps)
       {sorted.map((mountain) => (
         <li key={mountain.id}>
           <button type="button" className="mountainlist-row" onClick={() => onSelectMountain(mountain.id)}>
-            <span className="mountainlist-name">
-              {mountain.name}
-              <EpicPassBadge mountain={mountain} />
-            </span>
+            <span className="mountainlist-name">{mountain.name}</span>
             <span className="mountainlist-meta">
               {mountain.region} · {mountain.terrain.trails} trails · {mountain.elevations.verticalFt.toLocaleString()}′ vertical
             </span>

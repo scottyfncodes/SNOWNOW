@@ -32,14 +32,14 @@ describe('MountainList', () => {
     expect(onSelectMountain).toHaveBeenCalledWith('vail');
   });
 
-  it('shows an Epic Pass badge only for mountains that carry it', () => {
+  it('does not show an Epic Pass badge in the list — this view is names and stats, not pass status', () => {
     const mountains = [
       testMountain({ id: 'vail', name: 'Vail', passAffiliations: ['epic'] }),
       testMountain({ id: 'copper', name: 'Copper Mountain', passAffiliations: ['ikon'] }),
     ];
     render(<MountainList mountains={mountains} onSelectMountain={vi.fn()} />);
 
-    expect(screen.getAllByText('Epic Pass').length).toBe(1);
+    expect(screen.queryByText('Epic Pass')).not.toBeInTheDocument();
   });
 
   it('shows real profile detail — region, trail count, vertical — not just a bare name', () => {

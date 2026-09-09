@@ -253,10 +253,12 @@ a {
   border-style: dashed;
 }
 
-/* A fact from the data (Mountain.passAffiliations), not resort branding. */
+/* A fact from the data (Mountain.passAffiliations), not resort branding —
+   deliberately understated: a quiet metadata tag, not a highlight competing
+   with the mountain name or score next to it. */
 .chip-pass-epic {
-  color: var(--ice);
-  border-color: rgba(124, 231, 255, 0.35);
+  color: var(--ink-faint);
+  border-color: var(--line);
   font-size: 10px;
   padding: 3px 9px;
 }
