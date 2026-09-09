@@ -127,7 +127,7 @@ describe('MapScreen', () => {
     const body = JSON.parse((init as RequestInit).body as string);
     expect(body.destination).toEqual({ lat: steamboat.routingDestination!.lat, lon: steamboat.routingDestination!.lon });
 
-    const googleLink = screen.getByRole('link', { name: /navigate in google maps/i });
+    const googleLink = screen.getByRole('link', { name: /navigate to .* in google maps/i });
     expect(googleLink.getAttribute('href')).toContain(
       `destination=${steamboat.routingDestination!.lat}%2C${steamboat.routingDestination!.lon}`,
     );

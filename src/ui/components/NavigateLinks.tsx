@@ -26,8 +26,9 @@ export function NavigateLinks({ destination, destinationLabel, origin }: Navigat
           href={appleMapsDirectionsUrl(destination, origin)}
           target="_blank"
           rel="noreferrer"
+          aria-label={`Navigate to ${destinationLabel} in Apple Maps`}
         >
-          Navigate in Apple Maps ↗
+          Apple Maps ↗
         </a>
       )}
       <a
@@ -35,10 +36,10 @@ export function NavigateLinks({ destination, destinationLabel, origin }: Navigat
         href={googleMapsDirectionsUrl(destination, origin)}
         target="_blank"
         rel="noreferrer"
+        aria-label={`Navigate to ${destinationLabel} in Google Maps`}
       >
-        Navigate in Google Maps ↗
+        Google Maps ↗
       </a>
-      <p className="navigatelinks-note">to {destinationLabel}</p>
     </div>
   );
 }
