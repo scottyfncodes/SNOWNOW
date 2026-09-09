@@ -44,7 +44,12 @@ import { TBD_DATE } from '@/domain/mountainProfile';
  * in its own right, not just a lodge cafeteria. Breweries are almost never
  * on-site regardless of the resort — Keystone's Steep Brewing (River Run
  * Village) is the sole exception found — so `brews` picks skip the `town`
- * field and just say the distance inline instead.
+ * field and just say the distance inline instead. Each `picks` list targets
+ * 3-5 real entries — genuinely fewer where a town's scene doesn't support
+ * more (Wolf Creek/Pagosa Springs' breweries, Eldora/Nederland's, Steamboat's
+ * beyond Storm Peak — Butcherknife and Mahogany Ridge turned up conflicting
+ * open/closed signals during research and were left out rather than guessed
+ * into the list), never padded with a weak or irrelevant pick just to hit 5.
  */
 export const MOUNTAIN_PROFILES: Record<string, MountainProfile> = {
   vail: {
@@ -76,7 +81,11 @@ export const MOUNTAIN_PROFILES: Record<string, MountainProfile> = {
       },
     },
     brews: {
-      picks: [{ name: 'Vail Brewing Co.', note: 'Vail Village taproom — lagers, ales, and stouts a short walk from the lifts.' }],
+      picks: [
+        { name: 'Vail Brewing Co.', note: 'Vail Village taproom — lagers, ales, and stouts a short walk from the lifts.' },
+        { name: '7 Hermits Brews, Wine & Cocktails', note: "Vail Village taproom-and-wine-bar hybrid, a locals' pick." },
+        { name: 'Eagle River Brewing Company', note: 'Veteran-owned brewpub in Gypsum with a wood-fired pizza station, about 30-35 minutes down the valley.' },
+      ],
       distilleries: [{ name: '10th Mountain Whiskey & Spirit Co.', note: "Vail Village tasting room, upstairs from Loaded Joe's." }],
     },
     notes:
@@ -103,6 +112,8 @@ export const MOUNTAIN_PROFILES: Record<string, MountainProfile> = {
         { name: 'Coyote Café', note: 'A Village staple since 1983 — Tex-Mex and American classics, the default après stop.' },
         { name: 'Broken Arrow Café', note: 'Laid-back base scene at Arrowhead — burgers, cocktails, live music on weekends.' },
         { name: "Beano's Cabin", note: 'Snowcat-access dinner at the base of Larkspur Bowl — five courses, reservations required.' },
+        { name: 'Splendido at the Chateau', note: "Beaver Creek's white-tablecloth farm-to-table room, dinner nightly." },
+        { name: 'Grouse Mountain Grill', note: 'Pines Lodge institution, nearly 30 years AAA Four Diamond — the pretzel-crusted pork chop is the signature.' },
       ],
       quickBreakfast: {
         name: 'Avon Bakery & Deli',
@@ -110,7 +121,11 @@ export const MOUNTAIN_PROFILES: Record<string, MountainProfile> = {
       },
     },
     brews: {
-      picks: [{ name: 'Vail Brewing Co. (Eagle-Vail)', note: "The closer of Vail Brewing's two taprooms, about 10 minutes from the base." }],
+      picks: [
+        { name: 'Vail Brewing Co. (Eagle-Vail)', note: "The closer of Vail Brewing's two taprooms, about 10 minutes from the base." },
+        { name: '7 Hermits Brews, Wine & Cocktails', note: 'Vail Village taproom, about 20 minutes away.' },
+        { name: 'Eagle River Brewing Company', note: 'Gypsum brewpub with a wood-fired pizza station, about 25 minutes down the valley.' },
+      ],
     },
     notes:
       'Opening date per Vail Resorts’ 8/18/2026 press release. Webcam/trail-map URLs could not be confirmed from a distinct source and are left null rather than guessed from Vail’s page template. Not fetch-verified.',
@@ -136,6 +151,8 @@ export const MOUNTAIN_PROFILES: Record<string, MountainProfile> = {
         { name: 'T-Bar', note: 'On-mountain deck that has become one of the highest-energy après spots in the country.' },
         { name: "Robbie's Tavern", note: 'At the Grand Colorado on Peak 8 — DJ, food, and a locals-favorite après crowd.' },
         { name: "Downstairs at Eric's", note: 'Family-friendly pub — 30 beers on tap, wings, pizza, comfort food.' },
+        { name: 'Rootstalk', note: 'Main Street tasting-menu room from a 2024 James Beard Award-winning chef.' },
+        { name: 'Whiskey Star Smokehouse', note: 'Texas-style BBQ with two bars, 80 craft beers, and 101 whiskeys on the wall.' },
       ],
       quickBreakfast: {
         name: 'The Crown',
@@ -143,7 +160,11 @@ export const MOUNTAIN_PROFILES: Record<string, MountainProfile> = {
       },
     },
     brews: {
-      picks: [{ name: 'Breckenridge Brewery', note: "The town's own brewery, a straightforward post-ski beer stop." }],
+      picks: [
+        { name: 'Breckenridge Brewery', note: "The town's own brewery, a straightforward post-ski beer stop." },
+        { name: 'Broken Compass Brewing', note: 'Airport Road brewery running 10+ years — the Coconut Porter is the one to try.' },
+        { name: 'Highside Brewing', note: 'BBQ-and-beer taproom near the gondola.' },
+      ],
       distilleries: [{ name: 'Breckenridge Distillery', note: 'Award-winning bourbon with a full tour and tasting program — reservations recommended.' }],
     },
     notes:
@@ -170,6 +191,8 @@ export const MOUNTAIN_PROFILES: Record<string, MountainProfile> = {
         { name: "9280' Sake House", note: 'River Run base, huge deck — ramen and rice bowls, a top après pick.' },
         { name: 'Kickapoo Tavern', note: 'River Run Village — nachos, loaded burgers, wings, laid-back vibe.' },
         { name: 'Montezuma Roadhouse', note: 'River Run Village sit-down dinner, quieter than the base bars.' },
+        { name: 'Bighorn Bistro & Bar', note: 'Keystone Lodge & Spa dining room — steaks, prime rib, and Keystone Lake views.' },
+        { name: 'Pizza 101', note: 'Sundance Plaza take-out spot for brick-oven pizza — a River Run après-day staple.' },
       ],
       quickBreakfast: {
         name: 'New Moon Cafe',
@@ -177,7 +200,11 @@ export const MOUNTAIN_PROFILES: Record<string, MountainProfile> = {
       },
     },
     brews: {
-      picks: [{ name: 'Steep Brewing & Coffee Co.', note: 'On-site brewery and taproom in River Run Village, steps from the gondola.' }],
+      picks: [
+        { name: 'Steep Brewing & Coffee Co.', note: 'On-site brewery and taproom in River Run Village, steps from the gondola.' },
+        { name: 'Broken Compass Brewing', note: 'Breckenridge brewery, about 20 minutes away — the Coconut Porter is the one to try.' },
+        { name: 'Angry James Brewery', note: "Silverthorne taproom, about 20 minutes away — 'Angry Hour' specials, live trivia." },
+      ],
     },
     notes:
       'Vail Resorts’ 8/18/2026 release says Keystone is targeting "as soon as possible in October 2026" with no specific date, so no date is recorded despite the target being real. Trail-map URL not confirmed. Not fetch-verified.',
@@ -202,6 +229,8 @@ export const MOUNTAIN_PROFILES: Record<string, MountainProfile> = {
       picks: [
         { name: "Uley's Cabin", note: 'On-mountain Colorado-inspired lunch, plus an ice bar for cocktails.' },
         { name: 'Butte 66 Bar & Grille', note: 'Base-area BBQ and a lively après deck.' },
+        { name: 'Bonez Tequila Bar & Grill', note: 'Elk Ave tequila bar with a big agave selection and Mexican fare.' },
+        { name: 'A Bar Above', note: 'Cozy, low-lit base-area spot for cocktails, quick bites, and live music.' },
       ],
       quickBreakfast: {
         name: 'Gas Cafe One Stop',
@@ -209,7 +238,11 @@ export const MOUNTAIN_PROFILES: Record<string, MountainProfile> = {
       },
     },
     brews: {
-      picks: [{ name: 'Bruhaus', note: 'Downtown on Elk Ave — a German-style beer hall with dozens of rotating craft taps rather than a brewery of its own.' }],
+      picks: [
+        { name: 'The Eldo Brewery', note: 'Downtown on Elk Ave — the real on-site brewery, brewing ten beers in-house since 1996.' },
+        { name: 'Bruhaus', note: 'Downtown on Elk Ave — a German-style beer hall with dozens of rotating craft taps rather than a brewery of its own.' },
+        { name: 'Irwin Brewing Co. Public House', note: 'Elk Ave taproom and live-music venue, sister spot to the mountain-based Irwin Brewing.' },
+      ],
     },
     notes:
       'Opening date per Vail Resorts’ 8/18/2026 press release (one secondary source suggested Nov 23 instead — the press release date is treated as authoritative). Not fetch-verified.',
@@ -235,6 +268,8 @@ export const MOUNTAIN_PROFILES: Record<string, MountainProfile> = {
         { name: 'Lime', note: 'In the resort village — tacos, burritos, margaritas, a lively après crowd.' },
         { name: "Deno's Mountain Bistro", note: 'Upscale American/Mediterranean — steaks, ribs, seafood.' },
         { name: 'Crooked Creek Saloon', note: 'Down the road in Fraser — down-home cooking and live music.' },
+        { name: 'Tabernash Tavern', note: 'Fine-dining wine bar five minutes from the resort — a repeat "Best Restaurant in Grand County" winner.' },
+        { name: "Randi's Grill & Pub", note: 'Downtown Irish pub with hearty comfort food and a social après bar.' },
       ],
       quickBreakfast: {
         name: "Wake N' Bacon",
@@ -242,7 +277,11 @@ export const MOUNTAIN_PROFILES: Record<string, MountainProfile> = {
       },
     },
     brews: {
-      picks: [{ name: 'Big Trout Brewing Company', note: 'Downtown Winter Park brewpub — award-winning IPAs, stouts, and lagers.' }],
+      picks: [
+        { name: 'Big Trout Brewing Company', note: 'Downtown Winter Park brewpub — award-winning IPAs, stouts, and lagers.' },
+        { name: 'Hideaway Park Brewery', note: 'Main Street Winter Park, pouring small-batch beers since 2014.' },
+        { name: 'Vicious Cycle Brewing Company', note: 'Fraser bike-path taproom with food trucks and a dog-friendly patio.' },
+      ],
       distilleries: [{ name: 'Fraser Valley Distilling Co.', note: 'Family-owned distillery and restaurant in downtown Fraser.' }],
     },
     notes:
@@ -270,6 +309,8 @@ export const MOUNTAIN_PROFILES: Record<string, MountainProfile> = {
         { name: "Purgy's Slopeside", note: 'The one restaurant right at the base — fine for lunch, not the real scene.' },
         { name: 'The Nugget', note: 'An old miner\'s cabin half a mile south of the resort — a genuine après institution.' },
         { name: "The Sow's Ear", note: 'Durango steakhouse, known for its pepper-crusted filet.' },
+        { name: 'Ore House', note: 'Old West-style steakhouse on historic Main Avenue in Durango.' },
+        { name: 'Switchback', note: 'Durango local favorite for Mexican-inspired street tacos on Main Ave.' },
       ],
       quickBreakfast: {
         name: '81301 Coffee House and Roasters',
@@ -277,7 +318,12 @@ export const MOUNTAIN_PROFILES: Record<string, MountainProfile> = {
       },
     },
     brews: {
-      picks: [{ name: 'Ska Brewing Company', note: "Durango's best brewery for 15+ years running — full taproom and outdoor patio, about 25 miles south." }],
+      picks: [
+        { name: 'Ska Brewing Company', note: "Durango's best brewery for 15+ years running — full taproom and outdoor patio, about 25 miles south." },
+        { name: 'Steamworks Brewing Company', note: 'Durango brewery since 1996, multiple GABF and World Beer Cup medals for its Steam Engine Lager.' },
+        { name: 'Carver Brewing Co.', note: "Durango's original brewpub, on Main Avenue since 1988." },
+      ],
+      distilleries: [{ name: 'Durango Craft Spirits', note: "Durango's first grain-to-glass distillery since Prohibition — vodka, moonshine, bourbon." }],
     },
     notes:
       'FLAG FOR HUMAN REVIEW: current web search results for Purgatory resolve almost entirely to purgatory.ski rather than purgatoryresort.com (a possible rebrand/redirect). This could not be confirmed without working fetch access, so the previously-established purgatoryresort.com domain is kept here rather than switching on an unverified signal — a human with normal browser access should check which domain is now canonical. Webcam/trail-map/pass URLs, phone, and a parking infoUrl are left null for the same reason rather than guessed at the uncertain domain. No 2026-27 opening date found.',
@@ -303,6 +349,8 @@ export const MOUNTAIN_PROFILES: Record<string, MountainProfile> = {
         { name: "JJ's Tavern", note: 'Upscale tavern in Center Village — steaks in a casual setting.' },
         { name: "Downhill Duke's", note: 'Opens at 11am, front-row view of the American Eagle lift — the popular après pick.' },
         { name: 'CB Grille', note: "Copper's most upscale option — small plates, steaks, seafood." },
+        { name: 'Kemosabe at Silverheels', note: '35+-year Frisco fixture blending a log-cabin steakhouse with an American-fusion sushi bar.' },
+        { name: 'Tavern West', note: 'Frisco Main Street tavern with a year-round Mt. Royal-view deck and rotating craft beers.' },
       ],
       quickBreakfast: {
         name: 'Camp Hale Coffee',
@@ -310,7 +358,12 @@ export const MOUNTAIN_PROFILES: Record<string, MountainProfile> = {
       },
     },
     brews: {
-      picks: [{ name: 'Outer Range Brewing', note: "A short drive in Frisco — Copper's default après-ski brewery, set in a yurt." }],
+      picks: [
+        { name: 'Outer Range Brewing', note: "A short drive in Frisco — Copper's default après-ski brewery, set in a yurt." },
+        { name: 'Highside Brewing', note: 'Pub-fare-and-BBQ taproom right on Frisco Main Street.' },
+        { name: 'Angry James Brewery', note: 'Silverthorne taproom, about 15 minutes away.' },
+      ],
+      distilleries: [{ name: 'Pullman Distillery', note: 'Frisco Main Street, housed in a restored 1800s railcar.' }],
     },
     notes:
       'No 2026-27 opening date announced as of research. No officially confirmed street address surfaced (left null rather than guessed at the commonly-cited Copper Mountain, CO 80443). Not fetch-verified.',
@@ -336,6 +389,7 @@ export const MOUNTAIN_PROFILES: Record<string, MountainProfile> = {
       picks: [
         { name: "Kip's", note: 'Baja-style tacos and wild-game burgers — a popular post-ski stop downtown.' },
         { name: 'Alley House', note: 'Downtown fine dining in a restored 1912 cottage — steak, lamb, elk, seafood.' },
+        { name: 'Meander Eatery', note: 'Pagosa Springs restaurant named to the New York Times\' 2024 list of 50 best restaurants in the US.' },
       ],
       quickBreakfast: {
         name: 'Root House',
@@ -343,7 +397,10 @@ export const MOUNTAIN_PROFILES: Record<string, MountainProfile> = {
       },
     },
     brews: {
-      picks: [{ name: 'Riff Raff Brewing Co.', note: 'On the San Juan River in Pagosa Springs — house brewery with a real food menu.' }],
+      picks: [
+        { name: 'Riff Raff Brewing Co.', note: 'On the San Juan River in Pagosa Springs — house brewery with a real food menu.' },
+        { name: 'The Break Room Brewing Company', note: "Pagosa Springs' other working craft brewery, live music on weekends." },
+      ],
       distilleries: [{ name: 'Woodshed Distilling', note: 'Small-batch spirits, right in Pagosa Springs.' }],
     },
     notes:
@@ -369,6 +426,8 @@ export const MOUNTAIN_PROFILES: Record<string, MountainProfile> = {
       picks: [
         { name: '6th Alley Bar & Grill', note: "The one restaurant right at the base — big deck, Colorado craft beer, the famed Bacon Bloody Mary." },
         { name: 'Timberline Craft Kitchen & Cocktails', note: 'In Silverthorne — Colorado-sourced, globally-inspired menu.' },
+        { name: 'Bistro North', note: 'Silverthorne/Dillon chef-driven modern American, craft cocktails, a popular Sunday brunch.' },
+        { name: 'Kúcu Tequila Bistro', note: 'Silverthorne Southwestern bistro and tequila bar with 200+ tequilas, mezcals, and sotols.' },
       ],
       quickBreakfast: {
         name: 'Sunshine Café',
@@ -376,7 +435,12 @@ export const MOUNTAIN_PROFILES: Record<string, MountainProfile> = {
       },
     },
     brews: {
-      picks: [{ name: 'Dillon Dam Brewery', note: 'About 15 minutes down US-6 in Dillon — the go-to for a real dinner and a beer.' }],
+      picks: [
+        { name: 'Dillon Dam Brewery', note: 'About 15 minutes down US-6 in Dillon — the go-to for a real dinner and a beer.' },
+        { name: 'Angry James Brewery', note: 'Silverthorne taproom, about 15 minutes away.' },
+        { name: 'Highside Brewing', note: 'Frisco taproom, about 20-25 minutes away.' },
+      ],
+      distilleries: [{ name: 'Pullman Distillery', note: 'Frisco Main Street, housed in a restored 1800s railcar, about 20 minutes away.' }],
     },
     notes:
       'A-Basin’s own materials describe 2026-27 opening as explicitly TBD, pending sufficient snow. No confirmed trail-map URL. Not fetch-verified.',
@@ -402,6 +466,8 @@ export const MOUNTAIN_PROFILES: Record<string, MountainProfile> = {
       picks: [
         { name: 'Timberline Craft Kitchen & Cocktails', note: 'In Silverthorne, over the tunnel — Colorado-sourced, globally-inspired menu.' },
         { name: 'Sauce on the Blue', note: 'Silverthorne — Italian-focused, lunch and dinner.' },
+        { name: "Cooper's on the Creek", note: "Georgetown comfort food with creative small plates, right on the historic town's main drag." },
+        { name: "Scooter's Smokehouse BBQ", note: 'Georgetown favorite for Texas-style dry-rub smoked meats and sides.' },
       ],
       quickBreakfast: {
         name: 'The Happy Cooker',
@@ -409,7 +475,11 @@ export const MOUNTAIN_PROFILES: Record<string, MountainProfile> = {
       },
     },
     brews: {
-      picks: [{ name: 'Dillon Dam Brewery', note: "Dillon's own brewpub, a reliable stop either direction." }],
+      picks: [
+        { name: 'Dillon Dam Brewery', note: "Dillon's own brewpub, a reliable stop either direction." },
+        { name: 'Cabin Creek Brewing', note: 'Lakeside Georgetown brewpub on Georgetown Lake — the closest brewery to the east-side approach.' },
+        { name: 'Angry James Brewery', note: 'Silverthorne taproom, over the tunnel.' },
+      ],
     },
     notes:
       'Resort materials describe targeting "mid-October to early November 2026" with snowmaking starting late September — vague, so recorded as TBD rather than an invented specific date. Independent (Powder Alliance reciprocity, not Epic/Ikon). No confirmed trail-map URL. Not fetch-verified.',
@@ -435,6 +505,8 @@ export const MOUNTAIN_PROFILES: Record<string, MountainProfile> = {
       picks: [
         { name: 'Crosscut Pizzeria and Taphouse', note: 'Colorado-milled, three-day-fermented pizza dough.' },
         { name: 'Kathmandu Restaurant', note: 'Indian and Nepalese buffet.' },
+        { name: 'Backcountry Pizza', note: 'Nederland institution for handmade NY-style pizza and wings.' },
+        { name: 'Salto Coffee Works', note: 'Nederland coffee-and-wine bar with a real food menu.' },
       ],
       quickBreakfast: {
         name: 'New Moon Bakery and Cafe',
@@ -442,10 +514,10 @@ export const MOUNTAIN_PROFILES: Record<string, MountainProfile> = {
       },
     },
     brews: {
-      picks: [{ name: 'Mountain Sun Pub & Brewery', note: 'Nederland brewery with a smokehouse menu — the default post-ski stop.' }],
+      picks: [{ name: 'Very Nice Brewing Company', note: 'Nederland taproom on Hwy 119 — dog-friendly, with live music.' }],
     },
     notes:
-      'No official 2026-27 opening date found (a Nov 27, 2026 figure appears only on a third-party aggregator’s algorithmic projection, not an Eldora announcement, so not recorded). Not fetch-verified.',
+      'No official 2026-27 opening date found (a Nov 27, 2026 figure appears only on a third-party aggregator’s algorithmic projection, not an Eldora announcement, so not recorded). CORRECTED: this entry previously listed "Mountain Sun Pub & Brewery" as a Nederland brewery — Mountain Sun has no Nederland location, only Boulder (1535 Pearl St) and its Southern Sun sibling, so that was a factual error. Replaced with Very Nice Brewing Company, the real Nederland taproom. Not fetch-verified.',
   },
   steamboat: {
     officialWebsite: 'https://www.steamboat.com',
@@ -502,6 +574,7 @@ export const MOUNTAIN_PROFILES: Record<string, MountainProfile> = {
       picks: [
         { name: 'Quincys Steak & Spirits', note: 'A Salida steakhouse, a short drive from the mountain.' },
         { name: 'The Hunger Trailer', note: 'Order-at-the-window stop in Maysville, right on the way up to Monarch.' },
+        { name: 'Currents Steak & Seafood', note: "Salida's steakhouse-with-a-view, the largest wine list in town." },
       ],
       quickBreakfast: {
         name: "Mo' Burrito",
@@ -509,7 +582,11 @@ export const MOUNTAIN_PROFILES: Record<string, MountainProfile> = {
       },
     },
     brews: {
-      picks: [{ name: 'Soulcraft Brewing', note: "Downtown Salida's brewery, food truck on site." }],
+      picks: [
+        { name: 'Soulcraft Brewing', note: "Downtown Salida's brewery, food truck on site." },
+        { name: "Amica's Pizza & Microbrewery", note: 'Long-running, employee-owned downtown pizza-and-tap-house institution.' },
+        { name: 'Elevation Beer Company', note: "Salida-area craft brewery whose beer is poured all over town." },
+      ],
       distilleries: [{ name: "Wood's High Mountain Distillery", note: 'Downtown Salida — handcrafted spirits from local ingredients since 2012.' }],
     },
     notes:
@@ -536,6 +613,7 @@ export const MOUNTAIN_PROFILES: Record<string, MountainProfile> = {
         { name: 'Cosmopolitan', note: 'Inside the Hotel Columbia downtown — fusion menu with a daily 4–5pm happy hour.' },
         { name: 'Alpino Vino', note: 'On-mountain at 11,966 feet — the highest fine-dining restaurant in North America.' },
         { name: 'Gorrono Ranch', note: '"The Beach" — mid-mountain burgers, chili, and margaritas in Adirondack chairs.' },
+        { name: '221 South Oak', note: 'Intimate, chef-owned New American fine dining in a converted historic home near the gondola.' },
       ],
       quickBreakfast: {
         name: 'Baked in Telluride',
@@ -543,7 +621,10 @@ export const MOUNTAIN_PROFILES: Record<string, MountainProfile> = {
       },
     },
     brews: {
-      picks: [{ name: 'Smugglers Brewery and Pub', note: 'Downtown, right next to the gondola — the on-site brewery.' }],
+      picks: [
+        { name: 'Smugglers Brewery and Pub', note: 'Downtown, right next to the gondola — the on-site brewery.' },
+        { name: 'Stronghouse Brew Pub', note: 'Downtown brewery-restaurant in a historic 1892 stone building — a USA Today Top 5 Brewpub pick.' },
+      ],
       distilleries: [
         { name: 'Telluride Distilling Company', note: 'Vodka, gin, whiskey, and its famous Chairlift Warmer schnapps, distilled at 8,750 feet.' },
       ],
