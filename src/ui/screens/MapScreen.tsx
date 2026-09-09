@@ -332,19 +332,16 @@ export function MapScreen({ registry, clock, origin, onOriginChange, preferences
               <span className="chip chip-live">LIVE</span>
             )}
             {epicOnly && <span className="chip chip-pass-epic">EPIC PASS ONLY</span>}
+            <button
+              type="button"
+              className="maphome-viewtoggle"
+              onClick={() => setHomeView((value) => (value === 'map' ? 'list' : 'map'))}
+            >
+              {homeView === 'map' ? 'List view' : 'Map view'}
+            </button>
           </div>
         </div>
       </header>
-
-      <div className="maphome-viewbar shell">
-        <button
-          type="button"
-          className="maphome-viewtoggle"
-          onClick={() => setHomeView((value) => (value === 'map' ? 'list' : 'map'))}
-        >
-          {homeView === 'map' ? 'List view' : 'Map view'}
-        </button>
-      </div>
 
       {homeView === 'map' ? (
         <div className="screen-body shell maphome-body">

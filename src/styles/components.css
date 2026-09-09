@@ -113,13 +113,6 @@
   gap: 6px;
 }
 
-.maphome-viewbar {
-  display: flex;
-  justify-content: flex-end;
-  padding-top: 14px;
-  padding-bottom: 10px;
-}
-
 .maphome-viewtoggle {
   display: inline-flex;
   align-items: center;
