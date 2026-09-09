@@ -306,11 +306,13 @@ export const MOUNTAIN_PROFILES: Record<string, MountainProfile> = {
     grub: {
       town: 'Durango, about 25 miles south',
       picks: [
-        { name: "Purgy's Slopeside", note: 'The one restaurant right at the base — fine for lunch, not the real scene.' },
+        { name: "Purgy's Slopeside", note: 'Base village restaurant and bar — the sit-down option right at the bottom of the lifts.' },
+        { name: 'The Powderhouse', note: 'On-mountain cafeteria-and-deck-grill near the base of Lift 1/Lift 2 — soups, hot dogs, sandwiches.' },
+        { name: "Dante's", note: "On the mountain's backside, reached via Lift 8 (or the Lift 5 midway unload) — noodle bar, fresh-Mex, grill, and espresso, with San Juan views." },
+        { name: 'Paradise Pizza', note: 'Village Center — pizza and ice cream.' },
+        { name: 'Village Market & Deli', note: 'Village Center — breakfast burritos, deli sandwiches, soups, and snacks.' },
         { name: 'The Nugget', note: 'An old miner\'s cabin half a mile south of the resort — a genuine après institution.' },
         { name: "The Sow's Ear", note: 'Durango steakhouse, known for its pepper-crusted filet.' },
-        { name: 'Ore House', note: 'Old West-style steakhouse on historic Main Avenue in Durango.' },
-        { name: 'Switchback', note: 'Durango local favorite for Mexican-inspired street tacos on Main Ave.' },
       ],
       quickBreakfast: {
         name: '81301 Coffee House and Roasters',
@@ -326,7 +328,7 @@ export const MOUNTAIN_PROFILES: Record<string, MountainProfile> = {
       distilleries: [{ name: 'Durango Craft Spirits', note: "Durango's first grain-to-glass distillery since Prohibition — vodka, moonshine, bourbon." }],
     },
     notes:
-      'FLAG FOR HUMAN REVIEW: current web search results for Purgatory resolve almost entirely to purgatory.ski rather than purgatoryresort.com (a possible rebrand/redirect). This could not be confirmed without working fetch access, so the previously-established purgatoryresort.com domain is kept here rather than switching on an unverified signal — a human with normal browser access should check which domain is now canonical. Webcam/trail-map/pass URLs, phone, and a parking infoUrl are left null for the same reason rather than guessed at the uncertain domain. No 2026-27 opening date found.',
+      'FLAG FOR HUMAN REVIEW: current web search results for Purgatory resolve almost entirely to purgatory.ski rather than purgatoryresort.com (a possible rebrand/redirect). This could not be confirmed without working fetch access, so the previously-established purgatoryresort.com domain is kept here rather than switching on an unverified signal — a human with normal browser access should check which domain is now canonical. Webcam/trail-map/pass URLs, phone, and a parking infoUrl are left null for the same reason rather than guessed at the uncertain domain. No 2026-27 opening date found. CORRECTED (firsthand report, cross-checked against Durango Herald/The Journal): removed Ore House (caught fire and has been closed for an extended rebuild since) and Switchback (permanently closed March 2026, replaced on-site by The Wilds Tavern under the same owners). Added the on-mountain/village options that were missing entirely — The Powderhouse (Lift 1/2), Dante\'s (Lift 8, or the Lift 5 midway unload), Paradise Pizza and Village Market & Deli (both Village Center) — so the mountain itself isn\'t made to look like it only has Purgy\'s.',
   },
   copper: {
     officialWebsite: 'https://www.coppercolorado.com',
