@@ -560,7 +560,7 @@ export const MOUNTAIN_PROFILES: Record<string, MountainProfile> = {
   monarch: {
     officialWebsite: 'https://skimonarch.com',
     snowReportUrl: 'https://skimonarch.com/conditions/',
-    webcamUrl: null,
+    webcamUrl: 'https://skimonarch.com/conditions/cams/',
     trailMapUrl: null,
     ticketUrl: 'https://skimonarch.com/tickets/',
     passInfoUrl: 'https://skimonarch.com/season-passes/',
@@ -576,8 +576,7 @@ export const MOUNTAIN_PROFILES: Record<string, MountainProfile> = {
     grub: {
       town: 'Salida, about 20 miles east',
       picks: [
-        { name: 'Quincys Steak & Spirits', note: 'A Salida steakhouse, a short drive from the mountain.' },
-        { name: 'The Hunger Trailer', note: 'Order-at-the-window stop in Maysville, right on the way up to Monarch.' },
+        { name: 'The Hunger Trailer', note: 'Order-at-the-window stop in Poncha Springs, right on the way up to Monarch.' },
         { name: 'Currents Steak & Seafood', note: "Salida's steakhouse-with-a-view, the largest wine list in town." },
       ],
       quickBreakfast: {
@@ -594,7 +593,7 @@ export const MOUNTAIN_PROFILES: Record<string, MountainProfile> = {
       distilleries: [{ name: "Wood's High Mountain Distillery", note: 'Downtown Salida — handcrafted spirits from local ingredients since 2012.' }],
     },
     notes:
-      'A figure of Dec 4, 2026 for 2026-27 opening appears only on third-party aggregators (in the same "projected openings" style flagged elsewhere in this file as unreliable), not a Monarch press release or its own site, so recorded as TBD rather than repeated as if confirmed. Webcam URL not confirmed on the resort\'s own site. The only trail-map URL found is a stale, year-stamped 2021-22 PDF — left null rather than linking an out-of-date map. Not fetch-verified.',
+      'A figure of Dec 4, 2026 for 2026-27 opening appears only on third-party aggregators (in the same "projected openings" style flagged elsewhere in this file as unreliable), not a Monarch press release or its own site, so recorded as TBD rather than repeated as if confirmed. The only trail-map URL found is a stale, year-stamped 2021-22 PDF — left null rather than linking an out-of-date map. Independent — not on Epic or Ikon — but Monarch passholders get reciprocal days at Powder Alliance-style partner resorts (skimonarch.com/season-pass-partner-resorts-26-27/), so "no major pass affiliation" would undersell it. UPDATED: removed Quincys Steak & Spirits (its Salida location is closed, per current listings; other Quincy\'s locations elsewhere are unrelated and still open). The Hunger Trailer corrected from Maysville to Poncha Springs, where it actually operates (now under "The Hunger Trailer at Poncha Lodge"), still on Hwy 50 en route to the mountain. Grub is down to 2 picks after that removal — genuinely fewer for now rather than padding with an unverified name; Salida likely has more worth adding on a future pass. Added a real webcam URL (skimonarch.com/conditions/cams/, listed under the resort\'s own Conditions section) — found via search indexing rather than a direct render, since skimonarch.com blocks this environment\'s fetch tool, so still worth a quick manual click-through to confirm. Not fetch-verified.',
   },
   telluride: {
     officialWebsite: 'https://tellurideskiresort.com',
