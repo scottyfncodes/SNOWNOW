@@ -288,20 +288,20 @@ export const MOUNTAIN_PROFILES: Record<string, MountainProfile> = {
       'Resort’s own materials describe 2026-27 opening as "as soon as possible" with no fixed date — recorded as TBD rather than turning that into an invented date. Not fetch-verified.',
   },
   purgatory: {
-    officialWebsite: 'https://www.purgatoryresort.com',
-    snowReportUrl: 'https://www.purgatoryresort.com/mountain/mountain-report/',
-    webcamUrl: null,
+    officialWebsite: 'https://www.purgatory.ski',
+    snowReportUrl: 'https://www.purgatory.ski/mountain/weather-conditions-webcams/snow-weather/',
+    webcamUrl: 'https://www.purgatory.ski/mountain/mountain-webcams/',
     trailMapUrl: null,
-    ticketUrl: 'https://www.purgatoryresort.com/lift-tickets/',
-    passInfoUrl: null,
-    phone: null,
-    address: '#1 Skier Place, Durango, CO 81301',
+    ticketUrl: 'https://www.purgatory.ski/mountain/lift-tickets/',
+    passInfoUrl: 'https://www.thepowerpass.ski/purgatory-passes',
+    phone: '970-247-9000',
+    address: '1 Skier Place, Durango, CO 81301',
     openingDate: TBD_DATE,
     closingDate: TBD_DATE,
     parking: {
-      infoUrl: null,
+      infoUrl: 'https://www.purgatory.ski/transportation-and-shuttle-services/',
       reservationRequired: false,
-      note: 'Free parking in the Main Village Lot and Overflow Lot. A free shuttle runs between the lots and the base 8am–5pm on operating days.',
+      note: "Free parking throughout, but the Main Village Lot is carpool-only (4+ people) during peak operations to preserve space. Upper/Lower Columbine lots, the Columbine beginners-area lot, and the Gelande overflow lot (recently expanded by 150 spaces) cover everyone else, with a free shuttle to all of them 8:30am–5pm.",
     },
     grub: {
       town: 'Durango, about 25 miles south',
@@ -328,7 +328,7 @@ export const MOUNTAIN_PROFILES: Record<string, MountainProfile> = {
       distilleries: [{ name: 'Durango Craft Spirits', note: "Durango's first grain-to-glass distillery since Prohibition — vodka, moonshine, bourbon." }],
     },
     notes:
-      'FLAG FOR HUMAN REVIEW: current web search results for Purgatory resolve almost entirely to purgatory.ski rather than purgatoryresort.com (a possible rebrand/redirect). This could not be confirmed without working fetch access, so the previously-established purgatoryresort.com domain is kept here rather than switching on an unverified signal — a human with normal browser access should check which domain is now canonical. Webcam/trail-map/pass URLs, phone, and a parking infoUrl are left null for the same reason rather than guessed at the uncertain domain. No 2026-27 opening date found. CORRECTED (firsthand report, cross-checked against Durango Herald/The Journal): removed Ore House (caught fire and has been closed for an extended rebuild since) and Switchback (permanently closed March 2026, replaced on-site by The Wilds Tavern under the same owners). Added the on-mountain/village options that were missing entirely — The Powderhouse (Lift 1/2), Dante\'s (Lift 8, or the Lift 5 midway unload), Paradise Pizza and Village Market & Deli (both Village Center) — so the mountain itself isn\'t made to look like it only has Purgy\'s.',
+      "CONFIRMED (human, previously flagged for review here): purgatory.ski is the resort's real, current domain — not a guess, verified by the site owner. officialWebsite, snowReportUrl, webcamUrl, ticketUrl, passInfoUrl (Power Pass, the resort's own program — thepowerpass.ski), phone, and the parking infoUrl are all updated to it, each landing on a real page confirmed via search. Address corrected to drop a stray '#' (matches the resort's own listing: '1 Skier Place'). Trail-map URL still left null — only a prior-season (2024-25) PDF could be found, matching this file's policy of not linking an out-of-date map. No 2026-27 opening date recorded — a Nov 27, 2026 figure appears on ski-news aggregators but reads like the same kind of algorithmic season-over-season projection flagged elsewhere in this file, not a resort announcement. Parking note updated: the Main Village Lot is now carpool-only (4+) during peak operations per the resort's own transportation page — a real, current policy detail this entry was missing. CORRECTED (firsthand report, cross-checked against Durango Herald/The Journal): removed Ore House (caught fire and has been closed for an extended rebuild since) and Switchback (permanently closed March 2026, replaced on-site by The Wilds Tavern under the same owners). Added the on-mountain/village options that were missing entirely — The Powderhouse (Lift 1/2), Dante's (Lift 8, or the Lift 5 midway unload), Paradise Pizza and Village Market & Deli (both Village Center) — so the mountain itself isn't made to look like it only has Purgy's.",
   },
   copper: {
     officialWebsite: 'https://www.coppercolorado.com',
