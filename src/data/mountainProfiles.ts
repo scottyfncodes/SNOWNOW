@@ -89,7 +89,7 @@ export const MOUNTAIN_PROFILES: Record<string, MountainProfile> = {
       distilleries: [{ name: '10th Mountain Whiskey & Spirit Co.', note: "Vail Village tasting room, upstairs from Loaded Joe's." }],
     },
     notes:
-      'Opening date is Vail Resorts’ own published 2026-27 "target" (8/18/2026 press release), not yet confirmed. Not fetch-verified — see module note.',
+      'Opening date is Vail Resorts’ own published 2026-27 "target" (8/18/2026 press release), not yet confirmed. FLAG FOR NEXT SEASON: The Red Lion\'s owner has confirmed he won\'t renew the lease — it\'s expected to operate through 2026-27 as-is, then close for redevelopment starting spring 2027, so it\'s accurate for this season but should be reconsidered before the following one. Not fetch-verified — see module note.',
   },
   'beaver-creek': {
     officialWebsite: 'https://www.beavercreek.com',
@@ -105,7 +105,7 @@ export const MOUNTAIN_PROFILES: Record<string, MountainProfile> = {
     parking: {
       infoUrl: 'https://www.beavercreek.com/travel-guide/where-to-park-at-beaver-creek.aspx',
       reservationRequired: false,
-      note: 'Elk and Bear lots are free after 1pm (paid before then) with a free shuttle into the Village; village garages are free for 4 hours after 4pm. Ford Hall and Villa Montane garages are paid any time.',
+      note: 'Elk and Bear lots are free after 1pm (paid before then) with a free shuttle into the Village. At the village structures (Ford Hall and Villa Montane), the first hour is always free before 5pm, tiered paid rates apply beyond that (up to $35 for 4+ hours), and parking is free for up to 2 hours after 5pm.',
     },
     grub: {
       picks: [
@@ -128,7 +128,7 @@ export const MOUNTAIN_PROFILES: Record<string, MountainProfile> = {
       ],
     },
     notes:
-      'Opening date per Vail Resorts’ 8/18/2026 press release. Webcam/trail-map URLs could not be confirmed from a distinct source and are left null rather than guessed from Vail’s page template. Not fetch-verified.',
+      'Opening date per Vail Resorts’ 8/18/2026 press release. Webcam/trail-map URLs could not be confirmed from a distinct source and are left null rather than guessed from Vail’s page template. CORRECTED: the parking note previously implied the village garages (Ford Hall, Villa Montane) had a separate free-hours policy from Ford Hall/Villa Montane themselves — they are the same structures. Replaced with the resort\'s actual tiered rate policy. Not fetch-verified.',
   },
   breckenridge: {
     officialWebsite: 'https://www.breckenridge.com',
@@ -267,7 +267,7 @@ export const MOUNTAIN_PROFILES: Record<string, MountainProfile> = {
       picks: [
         { name: 'Lime', note: 'In the resort village — tacos, burritos, margaritas, a lively après crowd.' },
         { name: "Deno's Mountain Bistro", note: 'Upscale American/Mediterranean — steaks, ribs, seafood.' },
-        { name: 'Crooked Creek Saloon', note: 'Down the road in Fraser — down-home cooking and live music.' },
+        { name: "Fisher's Bar", note: 'Down the road in Fraser — down-home cooking and live music, in the space Crooked Creek Saloon occupied before a 2025 remodel and rename.' },
         { name: 'Tabernash Tavern', note: 'Fine-dining wine bar five minutes from the resort — a repeat "Best Restaurant in Grand County" winner.' },
         { name: "Randi's Grill & Pub", note: 'Downtown Irish pub with hearty comfort food and a social après bar.' },
       ],
@@ -285,7 +285,7 @@ export const MOUNTAIN_PROFILES: Record<string, MountainProfile> = {
       distilleries: [{ name: 'Fraser Valley Distilling Co.', note: 'Family-owned distillery and restaurant in downtown Fraser.' }],
     },
     notes:
-      'Resort’s own materials describe 2026-27 opening as "as soon as possible" with no fixed date — recorded as TBD rather than turning that into an invented date. Not fetch-verified.',
+      'Resort’s own materials describe 2026-27 opening as "as soon as possible" with no fixed date — recorded as TBD rather than turning that into an invented date. CORRECTED: Crooked Creek Saloon in Fraser changed hands and was rebranded to Fisher\'s Bar (same address/phone, new owners) — updated to the current name. Not fetch-verified.',
   },
   purgatory: {
     officialWebsite: 'https://www.purgatory.ski',
@@ -339,7 +339,7 @@ export const MOUNTAIN_PROFILES: Record<string, MountainProfile> = {
     passInfoUrl: 'https://www.coppercolorado.com/tickets-passes/season-passes/ikon-pass/',
     phone: '866-841-2481',
     address: null,
-    openingDate: TBD_DATE,
+    openingDate: { date: '2026-11-06', status: 'projected' },
     closingDate: TBD_DATE,
     parking: {
       infoUrl: 'https://www.visitcoppermountain.com/transportation',
@@ -368,7 +368,7 @@ export const MOUNTAIN_PROFILES: Record<string, MountainProfile> = {
       distilleries: [{ name: 'Pullman Distillery', note: 'Frisco Main Street, housed in a restored 1800s railcar.' }],
     },
     notes:
-      'No 2026-27 opening date announced as of research. No officially confirmed street address surfaced (left null rather than guessed at the commonly-cited Copper Mountain, CO 80443). Not fetch-verified.',
+      'UPDATED: opening date was on file as TBD at initial research; Copper announced Nov 6, 2026 as its 2026-27 opening day on Sept 8, 2026 — recorded as projected, same convention as every other resort\'s own announced target in this file. No officially confirmed street address surfaced (left null rather than guessed at the commonly-cited Copper Mountain, CO 80443). Not fetch-verified.',
   },
   'wolf-creek': {
     officialWebsite: 'https://wolfcreekski.com',
@@ -390,7 +390,7 @@ export const MOUNTAIN_PROFILES: Record<string, MountainProfile> = {
       town: 'Pagosa Springs, about 25 miles west',
       picks: [
         { name: "Kip's", note: 'Baja-style tacos and wild-game burgers — a popular post-ski stop downtown.' },
-        { name: 'Alley House', note: 'Downtown fine dining in a restored 1912 cottage — steak, lamb, elk, seafood.' },
+        { name: 'Alley House Grille', note: 'Downtown fine dining in a restored 1912 cottage — steak, lamb, elk, seafood.' },
         { name: 'Meander Eatery', note: 'Pagosa Springs restaurant named to the New York Times\' 2024 list of 50 best restaurants in the US.' },
       ],
       quickBreakfast: {
@@ -422,7 +422,7 @@ export const MOUNTAIN_PROFILES: Record<string, MountainProfile> = {
     parking: {
       infoUrl: 'https://www.parkabasin.com/parkingbasics',
       reservationRequired: null,
-      note: 'Reservations ($20 most lots, $40 Admin Lot) are required Jan 17–May 3, weekends only, 6am–1pm; free and open after 1pm on weekends and anytime on weekdays. Free carpool parking (4+ people) in Easy Riser, High Noon, Last Chance, and Upper Last Chance.',
+      note: 'Reservations ($20 most lots) are required Jan 2–May 2, weekends only, 6am–1pm; free and open after 1pm on weekends and anytime on weekdays. The Admin Lot runs $40 every day of the season, not just on reservation days. Free carpool parking (4+ people) in Easy Riser, High Noon, Last Chance, and Upper Last Chance.',
     },
     grub: {
       picks: [
@@ -433,7 +433,7 @@ export const MOUNTAIN_PROFILES: Record<string, MountainProfile> = {
       ],
       quickBreakfast: {
         name: 'Sunshine Café',
-        note: "Dillon's best breakfast for 30+ years — omelets, griddle cakes, and burritos, on the way in from Hwy 6.",
+        note: "Silverthorne's best breakfast for 30+ years — omelets, griddle cakes, and burritos, on the way in from Hwy 6.",
       },
     },
     brews: {
@@ -445,7 +445,7 @@ export const MOUNTAIN_PROFILES: Record<string, MountainProfile> = {
       distilleries: [{ name: 'Pullman Distillery', note: 'Frisco Main Street, housed in a restored 1800s railcar, about 20 minutes away.' }],
     },
     notes:
-      'A-Basin’s own materials describe 2026-27 opening as explicitly TBD, pending sufficient snow. No confirmed trail-map URL. Not fetch-verified.',
+      'A-Basin’s own materials describe 2026-27 opening as explicitly TBD, pending sufficient snow. No confirmed trail-map URL. UPDATED: parking reservation window shifted to Jan 2–May 2, 2027 (was Jan 17–May 3) — A-Basin adjusted its reservation program for the season that also brought unlimited access to the full Ikon Pass; also clarified the Admin Lot\'s $40 fee applies every day, not just weekend reservation days. Sunshine Café corrected to Silverthorne (every current listing places it there, not Dillon). Not fetch-verified.',
   },
   loveland: {
     officialWebsite: 'https://www.skiloveland.com',
@@ -507,7 +507,6 @@ export const MOUNTAIN_PROFILES: Record<string, MountainProfile> = {
       picks: [
         { name: 'Crosscut Pizzeria and Taphouse', note: 'Colorado-milled, three-day-fermented pizza dough.' },
         { name: 'Kathmandu Restaurant', note: 'Indian and Nepalese buffet.' },
-        { name: 'Backcountry Pizza', note: 'Nederland institution for handmade NY-style pizza and wings.' },
         { name: 'Salto Coffee Works', note: 'Nederland coffee-and-wine bar with a real food menu.' },
       ],
       quickBreakfast: {
@@ -516,10 +515,13 @@ export const MOUNTAIN_PROFILES: Record<string, MountainProfile> = {
       },
     },
     brews: {
-      picks: [{ name: 'Very Nice Brewing Company', note: 'Nederland taproom on Hwy 119 — dog-friendly, with live music.' }],
+      picks: [
+        { name: 'Very Nice Brewing Company', note: 'Nederland taproom, dog-friendly with live music — reopened at 26 S Hwy 119 after a 2025 fire destroyed its original space.' },
+        { name: 'Busey Brews Smokehouse & Brewery', note: 'Nederland brewery and smokehouse, 22 taps of house-brewed beer.' },
+      ],
     },
     notes:
-      'No official 2026-27 opening date found (a Nov 27, 2026 figure appears only on a third-party aggregator’s algorithmic projection, not an Eldora announcement, so not recorded). CORRECTED: this entry previously listed "Mountain Sun Pub & Brewery" as a Nederland brewery — Mountain Sun has no Nederland location, only Boulder (1535 Pearl St) and its Southern Sun sibling, so that was a factual error. Replaced with Very Nice Brewing Company, the real Nederland taproom. Not fetch-verified.',
+      'No official 2026-27 opening date found (a Nov 27, 2026 figure appears only on a third-party aggregator’s algorithmic projection, not an Eldora announcement, so not recorded). CORRECTED: this entry previously listed "Mountain Sun Pub & Brewery" as a Nederland brewery — Mountain Sun has no Nederland location, only Boulder (1535 Pearl St) and its Southern Sun sibling, so that was a factual error. Replaced with Very Nice Brewing Company, the real Nederland taproom. UPDATED: removed Backcountry Pizza — it permanently closed in Aug 2025 (labor/housing cost pressures, per the owner). Added Busey Brews Smokehouse & Brewery, a second real Nederland brewery. Very Nice Brewing\'s original taproom was itself destroyed in an Oct 2025 fire that hit the same shopping center Backcountry Pizza was in — it has since reopened at a new address (26 S Hwy 119, Suite 7), still on Hwy 119 as originally described. Not fetch-verified.',
   },
   steamboat: {
     officialWebsite: 'https://www.steamboat.com',
@@ -535,7 +537,7 @@ export const MOUNTAIN_PROFILES: Record<string, MountainProfile> = {
     parking: {
       infoUrl: 'https://www.steamboat.com/plan-your-trip/getting-here-and-around',
       reservationRequired: null,
-      note: 'Meadows Lot is free Monday–Thursday; Upper Knoll is paid ($20–22/day) with prepay reservations via the ParkMobile app due by 10pm the night before. Both lots go free after 1pm, and for carpools of 3+ (Knoll still needs an advance carpool reservation).',
+      note: 'New for 2026-27: Meadows Lot is free Monday–Thursday but now $15/day on Fridays, weekends, and peak periods; Upper Knoll is $20/day Monday–Thursday and $25/day Fridays, weekends, and peak periods, with prepay reservations via the ParkMobile app due by 10pm the night before. Both lots go free after 1pm, and for carpools of 3+ (Knoll still needs an advance carpool reservation).',
     },
     grub: {
       picks: [
@@ -553,7 +555,7 @@ export const MOUNTAIN_PROFILES: Record<string, MountainProfile> = {
       distilleries: [{ name: 'Mythology Distillery', note: 'Elk River Rd — whiskey, gin, and vodka with a tasting room and restaurant.' }],
     },
     notes:
-      'Nov 20, 2026 target is reported consistently by ski-trade outlets but could not be traced to a direct Alterra/Steamboat press release — a reputable secondary source, not a confirmed primary one, so treat with a little extra caution despite "projected" status. Not fetch-verified.',
+      'Nov 20, 2026 target is reported consistently by ski-trade outlets but could not be traced to a direct Alterra/Steamboat press release — a reputable secondary source, not a confirmed primary one, so treat with a little extra caution despite "projected" status. UPDATED: Steamboat introduced paid weekend/peak-period parking at both Meadows and Upper Knoll for 2026-27 (previously Meadows read as free apart from the Mon-Thu note, and Knoll was a flat $20-22) — parking note rewritten to the new tiered pricing. The Butcherknife Brewing / Mahogany Ridge ambiguity from earlier research is resolved: Butcherknife closed for good in 2020 (Mythology Distillery now occupies its former building) and Mahogany Ridge is separately confirmed closed — both correctly excluded from brews picks. Not fetch-verified.',
   },
   monarch: {
     officialWebsite: 'https://skimonarch.com',
@@ -612,7 +614,6 @@ export const MOUNTAIN_PROFILES: Record<string, MountainProfile> = {
     },
     grub: {
       picks: [
-        { name: 'Cosmopolitan', note: 'Inside the Hotel Columbia downtown — fusion menu with a daily 4–5pm happy hour.' },
         { name: 'Alpino Vino', note: 'On-mountain at 11,966 feet — the highest fine-dining restaurant in North America.' },
         { name: 'Gorrono Ranch', note: '"The Beach" — mid-mountain burgers, chili, and margaritas in Adirondack chairs.' },
         { name: '221 South Oak', note: 'Intimate, chef-owned New American fine dining in a converted historic home near the gondola.' },
@@ -624,7 +625,7 @@ export const MOUNTAIN_PROFILES: Record<string, MountainProfile> = {
     },
     brews: {
       picks: [
-        { name: 'Smugglers Brewery and Pub', note: 'Downtown, right next to the gondola — the on-site brewery.' },
+        { name: 'Smuggler Union Restaurant & Brewery', note: 'Downtown, right next to the gondola — the on-site brewery.' },
         { name: 'Stronghouse Brew Pub', note: 'Downtown brewery-restaurant in a historic 1892 stone building — a USA Today Top 5 Brewpub pick.' },
       ],
       distilleries: [
@@ -632,7 +633,7 @@ export const MOUNTAIN_PROFILES: Record<string, MountainProfile> = {
       ],
     },
     notes:
-      'Telluride joined the Epic Pass for 2026-27 after leaving the Mountain Collective in 2018 — a real, recent change, confirmed by multiple ski-trade reports, not a guess. Opening (Nov 26, 2026) and closing (Apr 4, 2027) dates are reported consistently as the resort\'s "targeted"/"tentative" dates across ski-trade and lodging sources, but could not be traced to a direct Telluride Ski & Golf press release — treat with a little extra caution despite "projected" status. Trail-map URL: only a prior-season (2024-25) PDF could be confirmed, so left null rather than link an out-of-date map. Not fetch-verified — see module note.',
+      'CORRECTED: this entry previously said Telluride "joined the Epic Pass for 2026-27" — that was wrong. Telluride and Vail Resorts jointly announced Telluride joining Epic Pass on Jan 29, 2018, effective the 2018-19 season (the same year it left Mountain Collective), with the partnership extended via a separate press release in Oct 2022. The Epic Pass affiliation itself is still correct today, just not a 2026-27 change — there was no evidence for that date, it was a fabricated detail that slipped into an earlier pass. Opening (Nov 26, 2026) and closing (Apr 4, 2027) dates can now be sourced directly to Telluride Ski & Golf\'s own FAQ page ("Telluride\'s targeted opening day is November 26, 2026... with a closing day of April 4, 2027"), not just secondary ski-trade coverage — still explicitly "targeted" by the resort itself, so "projected" status stays accurate. Trail-map URL: only a prior-season (2024-25) PDF could be confirmed, so left null rather than link an out-of-date map. Removed Cosmopolitan (Hotel Columbia) from Grub — it closed after 29 years around April 2025, and Hotel Columbia itself is closed for renovation until late 2027, so there\'s no restaurant there to list for this season. Smugglers Brewery and Pub renamed to its current name, Smuggler Union Restaurant & Brewery (same address, same on-site brewery). Not fetch-verified — see module note.',
   },
 };
 
