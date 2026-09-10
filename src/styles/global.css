@@ -140,6 +140,17 @@ a {
   padding-bottom: 64px;
 }
 
+/* The home map fills whatever vertical space is left below the header —
+   it's the primary content of the home screen now, not a fixed-height box
+   sitting above a long scroll. No bottom padding: the map itself should
+   reach the bottom edge. */
+.maphome-body {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding-bottom: 0;
+}
+
 /* ------------------------------------------------------------- typography */
 
 .eyebrow {
@@ -240,6 +251,16 @@ a {
   color: var(--ink-faint);
   border-color: var(--line);
   border-style: dashed;
+}
+
+/* A fact from the data (Mountain.passAffiliations), not resort branding —
+   deliberately understated: a quiet metadata tag, not a highlight competing
+   with the mountain name or score next to it. */
+.chip-pass-epic {
+  color: var(--ink-faint);
+  border-color: var(--line);
+  font-size: 10px;
+  padding: 3px 9px;
 }
 
 /* ------------------------------------------------------------ scrollables */

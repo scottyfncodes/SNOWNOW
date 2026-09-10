@@ -1,9 +1,8 @@
 import { useState } from 'react';
-import { GPS_ORIGIN_ID, ORIGINS, findOrigin, gpsOrigin } from '@/data/origins';
+import { gpsOrigin } from '@/data/origins';
 import type { Origin } from '@/domain/mountain';
 
 export interface OriginPickerProps {
-  origin: Origin;
   onChange: (origin: Origin) => void;
 }
 
@@ -34,7 +33,7 @@ function useLocate(onChange: (origin: Origin) => void) {
     if (!navigator.geolocation) {
       setState({
         status: 'error',
-        message: "This browser can't share your location. Choose a starting city instead.",
+        message: "This browser can't share your location.",
       });
       return;
     }
@@ -45,23 +44,37 @@ function useLocate(onChange: (origin: Origin) => void) {
         setState({ status: 'found' });
       },
       (error) => {
+        // The browser reports the same PERMISSION_DENIED code whether this is
+        // the first time or the tenth — there's no API to tell those apart
+        // before asking, so one message has to cover both. What it can't
+        // leave out is *where* to fix it: the setting isn't inside the page
+        // at all but under Settings → Safari → Location (or, for an
+        // installed Home Screen app, Settings → [App Name] → Location).
         if (error.code === error.PERMISSION_DENIED) {
           setState({
             status: 'denied',
-            message: 'Location access is off. Choose a starting city instead.',
+            message:
+              'Location access is off for SNOWNOW. Enable it in Settings → Safari → Location (or Settings → SNOWNOW → Location if you added it to your Home Screen), then try again.',
           });
           return;
         }
         if (error.code === error.TIMEOUT) {
           setState({
             status: 'error',
-            message: "Location took too long to find. Choose a starting city instead.",
+            message: 'Location took too long to find. Try again.',
+          });
+          return;
+        }
+        if (error.code === error.POSITION_UNAVAILABLE) {
+          setState({
+            status: 'error',
+            message: "Your device couldn't get a location fix right now — try again somewhere with a clearer view of the sky.",
           });
           return;
         }
         setState({
           status: 'error',
-          message: "Couldn't determine your location. Choose a starting city instead.",
+          message: "Couldn't determine your location. Try again.",
         });
       },
       GEOLOCATION_OPTIONS,
@@ -71,39 +84,16 @@ function useLocate(onChange: (origin: Origin) => void) {
   return { state, locate };
 }
 
-/** Minimal typing: where you're starting from is a tap, not a text field. */
-export function OriginPicker({ origin, onChange }: OriginPickerProps) {
+/**
+ * GPS is the only way to set where you're starting from — no manual city
+ * list. A location fix is either the real thing or nothing; "closest to
+ * Denver" was never a substitute worth offering once the real one works.
+ */
+export function OriginPicker({ onChange }: OriginPickerProps) {
   const { state, locate } = useLocate(onChange);
-  const isGps = origin.id === GPS_ORIGIN_ID;
 
   return (
     <div className="originpicker">
-      <div className="originpicker-row">
-        <label className="originpicker-label" htmlFor="origin-select">
-          Starting from
-        </label>
-        <div className="originpicker-control">
-          <select
-            id="origin-select"
-            value={isGps ? '' : origin.id}
-            onChange={(event) => onChange(findOrigin(event.target.value))}
-          >
-            {isGps && (
-              <option value="" disabled>
-                Your current location
-              </option>
-            )}
-            {ORIGINS.map((city) => (
-              <option key={city.id} value={city.id}>
-                {city.name}
-              </option>
-            ))}
-          </select>
-          <span aria-hidden="true" className="originpicker-chevron">
-            ▾
-          </span>
-        </div>
-      </div>
       <button
         type="button"
         className="originpicker-locate"
@@ -111,12 +101,14 @@ export function OriginPicker({ origin, onChange }: OriginPickerProps) {
         disabled={state.status === 'locating'}
         aria-busy={state.status === 'locating'}
       >
-        <span aria-hidden="true">📍</span>
-        {state.status === 'locating' ? 'Finding your location…' : 'Use my current location'}
+        <span className="originpicker-icon" aria-hidden="true">📍</span>
+        {state.status === 'locating'
+          ? 'Finding your location…'
+          : state.status === 'found'
+            ? 'Current location'
+            : 'Use my current location'}
+        {state.status === 'found' && <span className="originpicker-using">(using)</span>}
       </button>
-      {state.status === 'found' && (
-        <p className="originpicker-locate-status">Using your current location</p>
-      )}
       {(state.status === 'denied' || state.status === 'error') && (
         <p className="originpicker-locate-status">{state.message}</p>
       )}

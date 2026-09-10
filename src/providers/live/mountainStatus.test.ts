@@ -4,12 +4,7 @@ import { makeContext } from '@/engine/inputs';
 import { testMountain } from '@/test/fixtures';
 import { LiveMountainProvider } from './mountainStatus';
 
-// A real Saturday and a real Tuesday, so weekend/weekday behaviour is exact
-// rather than incidental.
 const SATURDAY = '2026-01-17';
-const TUESDAY = '2026-01-20';
-// New Year's Day: a real US holiday `holidayName` recognizes.
-const NEW_YEARS = '2026-01-01';
 
 const mountain = testMountain();
 
@@ -50,26 +45,5 @@ describe('LiveMountainProvider — operations (tiered: Tier 1 unimplemented, Tie
     expect(result.provenance.provider).toBe('liftie');
     expect(result.provenance.attribution).toMatch(/liftie/i);
     expect(result.provenance.attribution).toMatch(/not the resort/i);
-  });
-});
-
-describe('LiveMountainProvider — crowds (heuristic retired)', () => {
-  it('always reports unavailable — no calendar heuristic pretending to be a live signal', async () => {
-    const provider = new LiveMountainProvider();
-    const saturday = await provider.getCrowdForecast(mountain, makeContext(SATURDAY, SATURDAY, at(5)));
-    const holiday = await provider.getCrowdForecast(mountain, makeContext(NEW_YEARS, NEW_YEARS, at(5)));
-    expect(saturday.status).toBe('unavailable');
-    expect(holiday.status).toBe('unavailable');
-    if (saturday.status === 'unavailable') expect(saturday.reason.length).toBeGreaterThan(0);
-  });
-
-  it('never varies by weekday, holiday, or popularity — there is no live path left to react to them', async () => {
-    const provider = new LiveMountainProvider();
-    const popular = testMountain({ popularity: 1 });
-    const quiet = testMountain({ popularity: 0.1 });
-    const a = await provider.getCrowdForecast(popular, makeContext(SATURDAY, SATURDAY, at(5)));
-    const b = await provider.getCrowdForecast(quiet, makeContext(TUESDAY, TUESDAY, at(5)));
-    expect(a.status).toBe('unavailable');
-    expect(b.status).toBe('unavailable');
   });
 });

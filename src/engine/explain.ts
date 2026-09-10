@@ -110,7 +110,7 @@ export function reasonsFor(inputs: DayInputs, clock: SnowClock, score: DayScore)
   };
 
   const ranked = [...score.factors]
-    .filter((factor) => ['wind', 'roads', 'crowds', 'operations'].includes(factor.key))
+    .filter((factor) => ['wind', 'roads', 'operations'].includes(factor.key))
     .sort((a, b) => a.value - b.value);
   for (const factor of ranked) {
     if (factor.value < 62) speak(factor.key);
@@ -138,7 +138,6 @@ const FACTOR_PHRASES: Record<ScoreFactorKey, { better: string; worse: string }> 
   travel: { better: 'Shorter drive.', worse: 'Longer drive.' },
   traffic: { better: 'Cleaner traffic.', worse: 'Worse traffic.' },
   roads: { better: 'Better roads.', worse: 'Dicier roads.' },
-  crowds: { better: 'Quieter.', worse: 'More crowded.' },
   usableTime: { better: 'More time on snow.', worse: 'Less time on snow.' },
   ticket: { better: 'Cheaper ticket.', worse: 'Pricier ticket.' },
 };
@@ -211,8 +210,6 @@ const describeEdge = (factor: ScoreFactor): string => {
       return 'a shorter drive';
     case 'traffic':
       return 'easier traffic';
-    case 'crowds':
-      return 'fewer people';
     case 'terrain':
       return 'more terrain open';
     case 'wind':

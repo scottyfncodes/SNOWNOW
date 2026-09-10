@@ -26,5 +26,20 @@ export default defineConfig({
     setupFiles: ['./src/test/setup.ts'],
     css: false,
     include: ['src/**/*.test.{ts,tsx}'],
+    // The server tests spin up a real `node:http` server and talk to it over
+    // real sockets — a node environment, not jsdom, and no DOM test setup
+    // (src/test/setup.ts reaches for `window`, which doesn't exist here).
+    // Vitest's `projects` runs both configs as one `vitest run`/`npm test`.
+    projects: [
+      { extends: true },
+      {
+        test: {
+          name: 'server',
+          globals: true,
+          environment: 'node',
+          include: ['server/**/*.test.mjs'],
+        },
+      },
+    ],
   },
 });

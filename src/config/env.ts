@@ -14,8 +14,23 @@ export type DataMode = 'demo' | 'live';
 
 export interface SnownowEnvironment {
   dataMode: DataMode;
-  /** Base URL of the traffic proxy server. Empty = traffic stays demo. */
-  trafficApiBaseUrl: string;
+  /**
+   * Base URL to prefix onto traffic-proxy requests.
+   *
+   * `null` — no traffic backend configured; live mode reports traffic
+   * `unavailable` rather than reaching for one. `''` (empty string, not
+   * absent) — same-origin: the proxy is this same deployment's own `/api/*`
+   * serverless functions (see `api/route-preview.mjs`, `api/travel-curve.mjs`
+   * — this is what production actually runs on Vercel). A non-empty absolute
+   * URL points at an external proxy, e.g. `http://localhost:8787` for local
+   * dev against `npm run server`.
+   *
+   * The `null` vs `''` distinction is deliberate and load-bearing: both used
+   * to collapse to the same falsy empty string, which made "not configured"
+   * indistinguishable from "configured, same origin" — exactly the bug that
+   * made this a two-value type instead of one.
+   */
+  trafficApiBaseUrl: string | null;
   /**
    * CDOT/COtrip road conditions. On by default in live mode — the provider
    * fails safe (`unavailable`) on any response it doesn't recognize, so
@@ -41,7 +56,7 @@ export function resolveEnvironment(): SnownowEnvironment {
   const dataMode = env.VITE_DATA_MODE === 'live' ? 'live' : 'demo';
   return {
     dataMode,
-    trafficApiBaseUrl: typeof env.VITE_API_BASE_URL === 'string' ? env.VITE_API_BASE_URL : '',
+    trafficApiBaseUrl: typeof env.VITE_API_BASE_URL === 'string' ? env.VITE_API_BASE_URL : null,
     enableRoadConditions: env.VITE_ENABLE_ROAD_CONDITIONS !== 'false',
   };
 }

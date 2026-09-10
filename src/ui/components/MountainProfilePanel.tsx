@@ -1,5 +1,6 @@
 import type { Mountain } from '@/domain/mountain';
 import type { MountainProfile, SeasonDate } from '@/domain/mountainProfile';
+import { EpicPassBadge } from './EpicPassBadge';
 
 export interface MountainProfilePanelProps {
   mountain: Mountain;
@@ -18,8 +19,9 @@ export function MountainProfilePanel({ mountain, profile }: MountainProfilePanel
   if (!profile) {
     return (
       <section className="panel profile-panel" aria-labelledby="profile-heading">
-        <h2 id="profile-heading" className="section-title">
+        <h2 id="profile-heading" className="section-title profile-title">
           {mountain.name}
+          <EpicPassBadge mountain={mountain} />
         </h2>
         <p className="profile-unavailable">
           We don't have a researched profile for this mountain yet — not currently available.
@@ -31,8 +33,9 @@ export function MountainProfilePanel({ mountain, profile }: MountainProfilePanel
   return (
     <section className="panel profile-panel" aria-labelledby="profile-heading">
       <header className="panel-head">
-        <h2 id="profile-heading" className="section-title">
+        <h2 id="profile-heading" className="section-title profile-title">
           {mountain.name}
+          <EpicPassBadge mountain={mountain} />
         </h2>
         <a className="profile-website" href={profile.officialWebsite} target="_blank" rel="noreferrer">
           Official site ↗
@@ -54,6 +57,100 @@ export function MountainProfilePanel({ mountain, profile }: MountainProfilePanel
           }
         />
       </dl>
+
+      <section className="profile-parking" aria-labelledby="profile-parking-heading">
+        <h3 id="profile-parking-heading" className="eyebrow">
+          Parking
+        </h3>
+        {profile.parking?.note || profile.parking?.infoUrl ? (
+          <>
+            {profile.parking.note && <p className="profile-parking-note">{profile.parking.note}</p>}
+            {profile.parking.reservationRequired != null && (
+              <p className="profile-parking-note">
+                {profile.parking.reservationRequired
+                  ? 'A paid or reserved space is required.'
+                  : 'No reservation is required.'}
+              </p>
+            )}
+            {profile.parking.infoUrl && (
+              <a href={profile.parking.infoUrl} target="_blank" rel="noreferrer">
+                Parking details ↗
+              </a>
+            )}
+          </>
+        ) : (
+          <p className="profile-parking-note">
+            We haven't researched parking specifics for this mountain yet. Check{' '}
+            <a href={profile.officialWebsite} target="_blank" rel="noreferrer">
+              the mountain's own site
+            </a>{' '}
+            before you go — we won't guess at lots, fees, or reservations.
+          </p>
+        )}
+      </section>
+
+      <section className="profile-dining" aria-labelledby="profile-grub-heading">
+        <h3 id="profile-grub-heading" className="eyebrow profile-dining-heading">
+          Grub
+        </h3>
+        {profile.grub ? (
+          <>
+            {profile.grub.town && (
+              <p className="profile-dining-note">
+                There's little to no base-area dining here — most people eat in {profile.grub.town}.
+              </p>
+            )}
+            {profile.grub.quickBreakfast && (
+              <p className="profile-dining-note">
+                <strong className="profile-dining-label profile-dining-label-bright">Best quick breakfast:</strong>{' '}
+                {profile.grub.quickBreakfast.name} — {profile.grub.quickBreakfast.note}
+              </p>
+            )}
+            <ul className="profile-dining-list">
+              {profile.grub.picks.map((pick) => (
+                <li key={pick.name}>
+                  <strong>{pick.name}</strong> — {pick.note}
+                </li>
+              ))}
+            </ul>
+          </>
+        ) : (
+          <p className="profile-dining-note">We haven't researched restaurants for this mountain yet.</p>
+        )}
+      </section>
+
+      <section className="profile-dining" aria-labelledby="profile-brews-heading">
+        <h3 id="profile-brews-heading" className="eyebrow profile-dining-heading">
+          Brews
+        </h3>
+        {profile.brews ? (
+          <>
+            <ul className="profile-dining-list">
+              {profile.brews.picks.map((pick) => (
+                <li key={pick.name}>
+                  <strong>{pick.name}</strong> — {pick.note}
+                </li>
+              ))}
+            </ul>
+            {profile.brews.distilleries && profile.brews.distilleries.length > 0 && (
+              <>
+                <p className="profile-dining-note">
+                  <strong className="profile-dining-label">Bonus — distilleries:</strong>
+                </p>
+                <ul className="profile-dining-list">
+                  {profile.brews.distilleries.map((pick) => (
+                    <li key={pick.name}>
+                      <strong>{pick.name}</strong> — {pick.note}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </>
+        ) : (
+          <p className="profile-dining-note">We haven't researched breweries for this mountain yet.</p>
+        )}
+      </section>
 
       <ul className="profile-links">
         <ProfileLink label="Snow report" href={profile.snowReportUrl} />

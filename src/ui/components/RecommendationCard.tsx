@@ -1,9 +1,11 @@
 import type { SkiDayPlan } from '@/domain/plan';
 import { SNOW_STATE_LABEL } from '@/engine/snowState';
+import { estimatedRangeFor } from '@/data/pricing';
 import { formatPrice, savingsVsWindow } from '@/domain/pricing';
 import { formatClock, formatDuration, formatWindowLabel } from '@/domain/time';
 import { BasePeakConditions } from './BasePeakConditions';
 import { ConfidencePill, DataBadge } from './DataBadge';
+import { EpicPassBadge } from './EpicPassBadge';
 import { ScoreDial } from './ScoreDial';
 import { SnowTimeline } from './SnowTimeline';
 
@@ -60,11 +62,15 @@ export function RecommendationCard({ plan, why, projected = false, onCompare }: 
       <div className="reccard-top">
         <div className="reccard-identity">
           {projected && <p className="eyebrow">Projected</p>}
-          <h1 id="reccard-name" className="reccard-name">
+          <h2 id="reccard-name" className="reccard-name">
             {plan.mountain.shortName}
-          </h1>
-          {/* "BECK" needs no gloss; "WP" does. Only spell it out when the
-              short name isn't already the mountain's name. */}
+          </h2>
+          {/* "VAIL" needs no gloss; "COPPER" (for Copper Mountain) or
+              "LOVELAND" (Loveland Ski Area) do — real, common informal names,
+              just not the whole legal one. `shortName` is never a truncation
+              or an abbreviation like the old "WP"/"CB"/"PURG" — those were
+              cryptic on their own, so they were replaced with the real name
+              outright rather than leaning on this gloss to explain them. */}
           {plan.mountain.name.toUpperCase() !== plan.mountain.shortName.toUpperCase() && (
             <p className="reccard-fullname">
               {plan.mountain.name} · {plan.mountain.region}
@@ -74,12 +80,15 @@ export function RecommendationCard({ plan, why, projected = false, onCompare }: 
             {offSeason ? offSeason.line : plan.verdict}
           </p>
         </div>
-        {!offSeason && (
-          <div className="reccard-scorewrap">
-            <ScoreDial score={plan.score.score} label={`${plan.mountain.name} day score`} />
-            <p className="reccard-scorelabel">Day score</p>
-          </div>
-        )}
+        <div className="reccard-topright">
+          <EpicPassBadge mountain={plan.mountain} />
+          {!offSeason && (
+            <div className="reccard-scorewrap">
+              <ScoreDial score={plan.score.score} label={`${plan.mountain.name} day score`} />
+              <p className="reccard-scorelabel">Day score</p>
+            </div>
+          )}
+        </div>
       </div>
 
       <p className="reccard-headline">{offSeason ? offSeason.detail : plan.headline}</p>
@@ -136,32 +145,45 @@ export function RecommendationCard({ plan, why, projected = false, onCompare }: 
         <p className="reccard-notiming">We can't time this day — see the notes below.</p>
       )}
 
-      {!offSeason &&
-        (ticket ? (
-          <p className="reccard-ticket">
-            <span className="reccard-ticket-label">Lift ticket</span>
-            <span className="reccard-ticket-price numeral">
-              {formatPrice(ticket.adultDay, ticket.currency)}
-            </span>
-            <span className="reccard-ticket-note">
-              {savingsVsWindow(ticket) > 8
-                ? `${formatPrice(savingsVsWindow(ticket), ticket.currency)} under the window rate`
-                : ticket.note}
-            </span>
-          </p>
-        ) : (
-          plan.ticketPurchaseUrl && (
+      {/* Unlike departure/return timing, a ticket price isn't tied to
+          "today" — it's worth showing even off-season, so someone checking
+          in September still knows roughly what a day here will cost. */}
+      {ticket ? (
+        <p className="reccard-ticket">
+          <span className="reccard-ticket-label">Lift ticket</span>
+          <span className="reccard-ticket-price numeral">
+            {formatPrice(ticket.adultDay, ticket.currency)}
+          </span>
+          <span className="reccard-ticket-note">
+            {savingsVsWindow(ticket) > 8
+              ? `${formatPrice(savingsVsWindow(ticket), ticket.currency)} under the window rate`
+              : ticket.note}
+          </span>
+        </p>
+      ) : (
+        (() => {
+          const range = estimatedRangeFor(plan.mountain.id);
+          return (
             <p className="reccard-ticket">
               <span className="reccard-ticket-label">Lift ticket</span>
+              <span className="reccard-ticket-price numeral">
+                {formatPrice(range.low, range.currency)}–{formatPrice(range.high, range.currency)}
+              </span>
               <span className="reccard-ticket-note">
-                Current price unavailable —{' '}
-                <a href={plan.ticketPurchaseUrl} target="_blank" rel="noreferrer">
-                  buy at the resort
-                </a>
+                Ballpark estimate, not a live quote
+                {plan.ticketPurchaseUrl && (
+                  <>
+                    {' — '}
+                    <a href={plan.ticketPurchaseUrl} target="_blank" rel="noreferrer">
+                      buy at the resort
+                    </a>
+                  </>
+                )}
               </span>
             </p>
-          )
-        ))}
+          );
+        })()
+      )}
 
       <div className="reccard-why">
         <h2 className="eyebrow">Why {plan.mountain.shortName}</h2>

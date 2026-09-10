@@ -22,10 +22,22 @@ describe('resolveAccessRoutes — origin resolution', () => {
     }
   });
 
-  it('preserves an intentionally missing route for a manual city (Purgatory has none from Denver)', () => {
+  it('falls back to a real synthesized route when a manual city has no hand-authored one (Purgatory from Denver)', () => {
     const purgatory = findMountain('purgatory')!;
-    const routes = resolveAccessRoutes(purgatory, findOrigin('denver'));
-    expect(routes).toEqual([]);
+    const denver = findOrigin('denver');
+    const routes = resolveAccessRoutes(purgatory, denver);
+    expect(routes).toHaveLength(1);
+    expect(routes[0]!.originPoint).toEqual(denver.coordinates);
+    expect(routes[0]!.destinationPoint).toEqual(purgatory.coordinates);
+    expect(routes[0]!.distanceMiles).toBeGreaterThan(200);
+  });
+
+  it('still uses the exact hand-authored route when one exists, rather than the live fallback', () => {
+    const purgatory = findMountain('purgatory')!;
+    const durango = findOrigin('durango');
+    const routes = resolveAccessRoutes(purgatory, durango);
+    const authored = purgatory.accessRoutes.filter((route) => route.originId === 'durango');
+    expect(routes).toEqual(authored);
   });
 
   it('resolves a GPS origin to its exact coordinates, never snapped to the nearest city', () => {
@@ -63,5 +75,25 @@ describe('resolveAccessRoutes — origin resolution', () => {
     const routes = resolveAccessRoutes(vail, kansas);
     expect(routes).toHaveLength(1);
     expect(routes[0]!.distanceMiles).toBeGreaterThan(300);
+  });
+
+  it('routes a live GPS fix to the mountain\'s real routing destination, not just its map-pin coordinate', () => {
+    // Steamboat's `coordinates` (the map pin) sits ~1.5 miles from the real
+    // base area — a `routingDestination` override exists specifically so a
+    // live route request lands at the real arrival point.
+    const steamboat = findMountain('steamboat')!;
+    const gps = gpsOrigin(40.0, -105.3);
+    const routes = resolveAccessRoutes(steamboat, gps);
+    expect(routes).toHaveLength(1);
+    expect(routes[0]!.destinationPoint).toEqual({ lat: steamboat.routingDestination!.lat, lon: steamboat.routingDestination!.lon });
+    expect(routes[0]!.destinationPoint).not.toEqual(steamboat.coordinates);
+  });
+
+  it('falls back to a mountain\'s plain coordinates when no routingDestination override is set', () => {
+    const vail = findMountain('vail')!;
+    expect(vail.routingDestination).toBeUndefined();
+    const gps = gpsOrigin(39.6, -106.3);
+    const routes = resolveAccessRoutes(vail, gps);
+    expect(routes[0]!.destinationPoint).toEqual(vail.coordinates);
   });
 });

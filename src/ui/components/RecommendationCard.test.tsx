@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import { estimatedRangeFor } from '@/data/pricing';
+import { formatPrice } from '@/domain/pricing';
 import { buildPlan } from '@/engine/plan';
-import { testInputs, testOperations, testWeather } from '@/test/fixtures';
+import { testInputs, testMountain, testOperations, testWeather } from '@/test/fixtures';
 import { RecommendationCard } from './RecommendationCard';
 
 describe('RecommendationCard — base/peak and snow timeline', () => {
@@ -51,5 +53,48 @@ describe('RecommendationCard — base/peak and snow timeline', () => {
     // Base/peak and the snow cycle are still shown — the point is an honest
     // "not today", not a blank screen.
     expect(screen.getByText('Base')).toBeInTheDocument();
+    // Ticket price isn't tied to "today" the way departure timing is — it
+    // should still show even while the mountain is closed for the season.
+    expect(screen.getByText('Lift ticket')).toBeInTheDocument();
+  });
+});
+
+describe('RecommendationCard — Epic Pass badge', () => {
+  it('shows the badge in the top-right corner for a mountain on the Epic Pass', () => {
+    const plan = buildPlan(testInputs({ mountain: testMountain({ passAffiliations: ['epic'] }) }));
+    render(<RecommendationCard plan={plan} />);
+    expect(screen.getByText('Epic Pass')).toBeInTheDocument();
+  });
+
+  it('still shows the badge off-season, when the day-score dial is not rendered', () => {
+    const plan = buildPlan(
+      testInputs({
+        mountain: testMountain({ passAffiliations: ['epic'] }),
+        operations: testOperations({ status: 'closed' }),
+      }),
+    );
+    render(<RecommendationCard plan={plan} />);
+    expect(screen.getByText('Epic Pass')).toBeInTheDocument();
+  });
+
+  it('shows no badge for a mountain on a different pass', () => {
+    const plan = buildPlan(testInputs({ mountain: testMountain({ passAffiliations: ['ikon'] }) }));
+    render(<RecommendationCard plan={plan} />);
+    expect(screen.queryByText('Epic Pass')).not.toBeInTheDocument();
+  });
+});
+
+describe('RecommendationCard — ticket price', () => {
+  it('shows a ballpark range, clearly not a live quote, when no live price is available', () => {
+    const mountain = testMountain({ id: 'vail', name: 'Vail' });
+    const plan = buildPlan(testInputs({ mountain, ticket: 'unavailable' }));
+    render(<RecommendationCard plan={plan} />);
+
+    const range = estimatedRangeFor('vail');
+    expect(
+      screen.getByText(`${formatPrice(range.low, range.currency)}–${formatPrice(range.high, range.currency)}`),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Ballpark estimate, not a live quote/)).toBeInTheDocument();
+    expect(screen.queryByText(/Current price unavailable/)).not.toBeInTheDocument();
   });
 });

@@ -23,6 +23,60 @@ export interface SeasonDate {
 
 export const TBD_DATE: SeasonDate = { date: null, status: 'tbd' };
 
+/**
+ * What we actually know about parking, kept separate from live conditions
+ * because none of it comes from a real-time feed — it is reference
+ * information a human could confirm by visiting the page themselves.
+ * Every field is `null` rather than guessed when it hasn't been confirmed
+ * from the resort's own pages: a blank parking section is honest, a made-up
+ * "spots available" count is not.
+ */
+export interface ParkingInfo {
+  /** The resort's own parking/arrival-guidance page, when distinct from `officialWebsite`. */
+  infoUrl: string | null;
+  /** Whether the resort is known to require a paid or reserved space. `null` when not confirmed. */
+  reservationRequired: boolean | null;
+  /** Short, sourced note — fees, shuttle, restrictions. Never invented to fill space. */
+  note: string | null;
+}
+
+/** One researched pick — a name and what it's actually known for, never a review score or a live wait time. */
+export interface DiningPick {
+  name: string;
+  note: string;
+}
+
+/**
+ * Restaurants around the mountain, researched the same way as parking: real,
+ * named places, never a live availability feed. Several of these resorts
+ * (Wolf Creek, Monarch, Loveland, Arapahoe Basin, Eldora) have little or no
+ * real base village of their own — for those, `town` names the actual town
+ * skiers eat in afterward (Pagosa Springs, Salida, Silverthorne/Dillon,
+ * Nederland) instead of pretending the mountain itself has a dining scene.
+ * `quickBreakfast` is a single deliberate pick, not a fourth item padded
+ * onto `picks` — the one place worth naming for someone who needs to eat and
+ * be on the lift in ten minutes.
+ */
+export interface GrubInfo {
+  /** Set only when the real scene is a nearby town rather than the base area. */
+  town?: string;
+  picks: DiningPick[];
+  quickBreakfast?: DiningPick;
+}
+
+/**
+ * Breweries around the mountain — same research standard as `GrubInfo`.
+ * Almost none of these resorts have an on-site brewery (Keystone's Steep
+ * Brewing, right in River Run Village, is the one exception); the rest are a
+ * short, named drive, and each pick's own note says how far. `distilleries`
+ * is a bonus list, present only where a real one was actually found nearby —
+ * never padded in to look complete.
+ */
+export interface BrewsInfo {
+  picks: DiningPick[];
+  distilleries?: DiningPick[];
+}
+
 export interface MountainProfile {
   officialWebsite: string;
   /** `null` when no official snow-report page could be confirmed distinct from `officialWebsite`. */
@@ -36,6 +90,12 @@ export interface MountainProfile {
   address: string | null;
   openingDate: SeasonDate;
   closingDate: SeasonDate;
+  /** Absent when parking specifics haven't been confirmed for this resort — render as "not currently available", never fabricated. */
+  parking?: ParkingInfo;
+  /** Absent when restaurants haven't been researched for this resort yet. */
+  grub?: GrubInfo;
+  /** Absent when breweries haven't been researched for this resort yet. */
+  brews?: BrewsInfo;
   /** Provenance/uncertainty notes — never shown as fact, only as a caveat for whoever maintains this data. */
   notes?: string;
 }

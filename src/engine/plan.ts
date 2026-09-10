@@ -51,10 +51,7 @@ export function buildPlan(inputs: DayInputs, options: PlanOptions = {}): SkiDayP
   const weights = options.weights ?? DEFAULT_WEIGHTS;
 
   const snowClock = buildSnowClock(inputs, {
-    preferences: {
-      powderPreference: preferences.powderPreference,
-      crowdTolerance: preferences.crowdTolerance,
-    },
+    preferences: { powderPreference: preferences.powderPreference },
   });
 
   const optimized = optimizeDay(inputs, snowClock, { preferences, weights });
@@ -164,11 +161,8 @@ function collectCaveats(inputs: DayInputs, timingReason: string | null): string[
   if (inputs.operations.status === 'unavailable') {
     caveats.push("Lift report isn't talking. Terrain and opening times are assumptions.");
   }
-  if (inputs.crowds.status === 'unavailable') {
-    caveats.push('No crowd signal for this mountain.');
-  }
   if (inputs.ticket.status === 'unavailable') {
-    caveats.push("Ticket pricing isn't loading, so the cost of the day is missing.");
+    caveats.push("Ticket pricing isn't loading — the price shown is a ballpark estimate, not today's actual rate.");
   }
   if (inputs.closedCorridors.length > 0) {
     caveats.push(`${inputs.closedCorridors.join(', ')} closed. Routing around it wasn't possible from here today.`);
@@ -180,7 +174,7 @@ function collectCaveats(inputs: DayInputs, timingReason: string | null): string[
       (inputs.inbound.status === 'unavailable' && timeoutPattern.test(inputs.inbound.reason));
     caveats.push(
       isSlowWake
-        ? "Road intel is offline. We'll show the mountain, but we're not going to fake the drive. (Our traffic service naps when it's quiet and can take ~15 seconds to wake up — try again in a moment.)"
+        ? "Road intel is offline. We'll show the mountain, but we're not going to fake the drive. (Our traffic service naps when it's quiet and can take up to 45 seconds to wake up — we already waited that long, so it should be warm now. Try again in a moment.)"
         : "Road intel is offline. We'll show the mountain, but we're not going to fake the drive.",
     );
   } else if (timingReason) {
@@ -316,6 +310,32 @@ export async function recommend(
     usingDemoData: registry.usingDemoData,
     caveats,
   };
+}
+
+/** ---- Single-mountain plan ------------------------------------------------ */
+
+export interface PlanForMountainOptions extends PlanOptions {
+  mountain: Mountain;
+  origin: Origin;
+  date: DateKey;
+  today: DateKey;
+  now: MinuteOfDay;
+}
+
+/**
+ * The whole-day answer for exactly one mountain — the mountain the user
+ * actually tapped on the map, never the other twelve. This is what powers
+ * the mountain profile: it costs the same one mountain's worth of provider
+ * calls as `recommend()` spends on its single winner, without paying for
+ * every candidate's calls just to throw the losers away.
+ */
+export async function planForMountain(
+  registry: ProviderRegistry,
+  options: PlanForMountainOptions,
+): Promise<SkiDayPlan> {
+  const context = makeContext(options.date, options.today, options.now);
+  const inputs = await loadDayInputs(registry, options.mountain, options.origin, context);
+  return buildPlan(inputs, options);
 }
 
 /** ---- Stay or go --------------------------------------------------------- */

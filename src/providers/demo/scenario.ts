@@ -29,8 +29,6 @@ export interface MountainProfile {
   wind: number;
   /** Multiplier on lift/terrain reliability, >1 is more dependable. */
   operations: number;
-  /** Multiplier on crowding. */
-  crowds: number;
   /** How much of the open terrain gets groomed overnight, 0..1. */
   grooming: number;
   /** Typical avalanche-control delay on a big storm, minutes. */
@@ -51,22 +49,21 @@ export interface MountainProfile {
  *  Wolf Creek    the most snow in the state  · four and a half hours from Denver
  */
 const PROFILES: Record<string, MountainProfile> = {
-  vail: { snow: 1.34, wind: 1.3, operations: 0.96, crowds: 1.06, grooming: 0.78, controlDelay: 35 },
-  'beaver-creek': { snow: 0.78, wind: 0.5, operations: 1.06, crowds: 0.58, grooming: 0.88, controlDelay: 10 },
-  breckenridge: { snow: 1.14, wind: 1.5, operations: 0.94, crowds: 1.0, grooming: 0.74, controlDelay: 40 },
-  keystone: { snow: 0.7, wind: 0.62, operations: 1.14, crowds: 0.86, grooming: 0.95, controlDelay: 10 },
-  'crested-butte': { snow: 1.5, wind: 1.12, operations: 0.86, crowds: 0.34, grooming: 0.6, controlDelay: 45 },
-  'winter-park': { snow: 1.2, wind: 1.08, operations: 0.98, crowds: 0.78, grooming: 0.8, controlDelay: 30 },
-  purgatory: { snow: 1.0, wind: 0.45, operations: 1.12, crowds: 0.26, grooming: 0.9, controlDelay: 8 },
-  copper: { snow: 0.95, wind: 1.3, operations: 0.95, crowds: 0.92, grooming: 0.84, controlDelay: 35 },
-  'wolf-creek': { snow: 1.75, wind: 1.02, operations: 1.08, crowds: 0.5, grooming: 0.66, controlDelay: 25 },
+  vail: { snow: 1.34, wind: 1.3, operations: 0.96, grooming: 0.78, controlDelay: 35 },
+  'beaver-creek': { snow: 0.78, wind: 0.5, operations: 1.06, grooming: 0.88, controlDelay: 10 },
+  breckenridge: { snow: 1.14, wind: 1.5, operations: 0.94, grooming: 0.74, controlDelay: 40 },
+  keystone: { snow: 0.7, wind: 0.62, operations: 1.14, grooming: 0.95, controlDelay: 10 },
+  'crested-butte': { snow: 1.5, wind: 1.12, operations: 0.86, grooming: 0.6, controlDelay: 45 },
+  'winter-park': { snow: 1.2, wind: 1.08, operations: 0.98, grooming: 0.8, controlDelay: 30 },
+  purgatory: { snow: 1.0, wind: 0.45, operations: 1.12, grooming: 0.9, controlDelay: 8 },
+  copper: { snow: 0.95, wind: 1.3, operations: 0.95, grooming: 0.84, controlDelay: 35 },
+  'wolf-creek': { snow: 1.75, wind: 1.02, operations: 1.08, grooming: 0.66, controlDelay: 25 },
 };
 
 const NEUTRAL_PROFILE: MountainProfile = {
   snow: 1,
   wind: 1,
   operations: 1,
-  crowds: 1,
   grooming: 0.8,
   controlDelay: 20,
 };

@@ -36,6 +36,8 @@ export const TICKET_PRICING: Record<string, TicketPricingProfile> = {
   loveland: { mountainId: 'loveland', currency: 'USD', windowRate: 109, advanceFloor: 79, dynamicRange: 0.25 },
   eldora: { mountainId: 'eldora', currency: 'USD', windowRate: 149, advanceFloor: 89, dynamicRange: 0.6 },
   steamboat: { mountainId: 'steamboat', currency: 'USD', windowRate: 239, advanceFloor: 139, dynamicRange: 0.9 },
+  monarch: { mountainId: 'monarch', currency: 'USD', windowRate: 99, advanceFloor: 65, dynamicRange: 0.4 },
+  telluride: { mountainId: 'telluride', currency: 'USD', windowRate: 269, advanceFloor: 149, dynamicRange: 0.88 },
 };
 
 /** A mountain with no published profile still gets a plausible, clearly-generic rate. */
@@ -48,3 +50,20 @@ export const DEFAULT_PRICING: Omit<TicketPricingProfile, 'mountainId'> = {
 
 export const pricingFor = (mountainId: string): TicketPricingProfile =>
   TICKET_PRICING[mountainId] ?? { mountainId, ...DEFAULT_PRICING };
+
+/**
+ * A ballpark walk-up range for when there is no live quote, drawn from this
+ * same profile — the advance floor and window rate a season of watching this
+ * mountain's pricing would lead you to expect. Not a quote for any specific
+ * date, and never presented as one.
+ */
+export interface EstimatedPriceRange {
+  low: number;
+  high: number;
+  currency: Currency;
+}
+
+export const estimatedRangeFor = (mountainId: string): EstimatedPriceRange => {
+  const profile = pricingFor(mountainId);
+  return { low: profile.advanceFloor, high: profile.windowRate, currency: profile.currency };
+};

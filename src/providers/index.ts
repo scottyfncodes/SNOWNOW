@@ -18,7 +18,10 @@ import type { ProviderRegistry } from './types';
 export function createProviderRegistry(env: SnownowEnvironment = resolveEnvironment()): ProviderRegistry {
   if (env.dataMode === 'demo') return createDemoRegistry();
   return createLiveRegistry({
-    trafficApiBaseUrl: env.trafficApiBaseUrl || undefined,
+    // `null` (not configured) becomes `undefined` here; `''` (same-origin)
+    // passes through as a real, configured value. See
+    // `config/env.ts#SnownowEnvironment.trafficApiBaseUrl`.
+    trafficApiBaseUrl: env.trafficApiBaseUrl ?? undefined,
     enableRoadConditions: env.enableRoadConditions,
   });
 }

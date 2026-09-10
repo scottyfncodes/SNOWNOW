@@ -7,8 +7,8 @@ export interface ControlPoint {
 
 /**
  * Piecewise-linear sampling of a control-point curve. Everything time-varying
- * in SNOWNOW (traffic congestion, crowding, snowfall rate) is expressed this
- * way so it can be reasoned about, charted and tested as plain data.
+ * in SNOWNOW (traffic congestion, snowfall rate) is expressed this way so it
+ * can be reasoned about, charted and tested as plain data.
  */
 export function sampleCurve(points: ControlPoint[], minute: MinuteOfDay): number {
   if (points.length === 0) return 0;
@@ -27,7 +27,7 @@ export function sampleCurve(points: ControlPoint[], minute: MinuteOfDay): number
   return last.value;
 }
 
-/** Smooth bell used for storm intensity and crowd build. */
+/** Smooth bell used for storm intensity, daylight, and warmth curves. */
 export function bell(minute: MinuteOfDay, center: MinuteOfDay, width: number): number {
   if (width <= 0) return 0;
   const z = (minute - center) / width;

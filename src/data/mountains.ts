@@ -113,7 +113,7 @@ export const MOUNTAINS: Mountain[] = [
   {
     id: 'breckenridge',
     name: 'Breckenridge',
-    shortName: 'BRECK',
+    shortName: 'BRECKENRIDGE',
     region: 'Summit County',
     snowRegion: 'i70-corridor',
     state: 'CO',
@@ -183,7 +183,7 @@ export const MOUNTAINS: Mountain[] = [
   {
     id: 'crested-butte',
     name: 'Crested Butte',
-    shortName: 'CB',
+    shortName: 'CRESTED BUTTE',
     region: 'Gunnison Valley',
     snowRegion: 'san-juans',
     state: 'CO',
@@ -218,7 +218,7 @@ export const MOUNTAINS: Mountain[] = [
   {
     id: 'winter-park',
     name: 'Winter Park',
-    shortName: 'WP',
+    shortName: 'WINTER PARK',
     region: 'Grand County',
     snowRegion: 'i70-corridor',
     state: 'CO',
@@ -252,7 +252,7 @@ export const MOUNTAINS: Mountain[] = [
   {
     id: 'purgatory',
     name: 'Purgatory',
-    shortName: 'PURG',
+    shortName: 'PURGATORY',
     region: 'San Juans',
     snowRegion: 'san-juans',
     state: 'CO',
@@ -349,7 +349,7 @@ export const MOUNTAINS: Mountain[] = [
   {
     id: 'arapahoe-basin',
     name: 'Arapahoe Basin',
-    shortName: 'A-BASIN',
+    shortName: 'ARAPAHOE BASIN',
     region: 'Summit County',
     snowRegion: 'i70-corridor',
     state: 'CO',
@@ -453,6 +453,14 @@ export const MOUNTAINS: Mountain[] = [
     state: 'CO',
     country: 'US',
     coordinates: { lat: 40.4572, lon: -106.8045 },
+    // `coordinates` above sits ~1.5 miles south of the actual base area —
+    // verified against Steamboat's own published resort coordinates
+    // (40°28'35"N 106°49'36"W) and the Wild Blue Gondola's address (2305 Mt.
+    // Werner Circle). Kept `coordinates` unchanged (it feeds the map pin,
+    // weather, and every hand-authored demo route's distance/time, already
+    // tuned to it) and added the real arrival point here instead, for live
+    // routing and navigation only. See `domain/mountain.ts#routingDestinationFor`.
+    routingDestination: { lat: 40.4764, lon: -106.8267, label: 'Wild Blue Gondola base area' },
     elevations: { baseFt: 6900, summitFt: 10568, verticalFt: 3668 },
     operations: {
       weekdayOpen: at(8, 30),
@@ -475,6 +483,84 @@ export const MOUNTAINS: Mountain[] = [
     passAffiliations: ['ikon'],
     popularity: 0.75,
     character: 'Champagne Powder and a real Western town, three hours from anywhere else.',
+  },
+  {
+    id: 'monarch',
+    name: 'Monarch Mountain',
+    shortName: 'MONARCH',
+    region: 'Sawatch Range',
+    snowRegion: 'san-juans',
+    state: 'CO',
+    country: 'US',
+    coordinates: { lat: 38.5125, lon: -106.3325 },
+    elevations: { baseFt: 10790, summitFt: 11960, verticalFt: 1170 },
+    operations: {
+      weekdayOpen: at(9, 0),
+      weekendOpen: at(9, 0),
+      lastChair: at(16, 0),
+      upperMountainOpenOffset: 20,
+    },
+    lifts: { total: 7, highSpeed: 0, windExposed: 2 },
+    terrain: { trails: 63, acres: 800, aboveTreelineShare: 0.12, lateOpeningShare: 0.2 },
+    weatherLocation: {
+      point: { lat: 38.5125, lon: -106.3325 },
+      forecastElevationFt: 11200,
+      // Sits directly astride the Continental Divide at Monarch Pass — not a
+      // guess: the pass, and the mountain, are named for exactly this.
+      aspect: 'divide',
+    },
+    accessRoutes: buildRoutes('monarch', { lat: 38.5125, lon: -106.3325 }, [
+      { originId: 'denver', label: 'US-285 to US-50 over Monarch Pass', corridorId: 'us50-monarch', miles: 158, freeFlow: 175, stormPenalty: 30, weatherSensitivity: 0.75, primary: true },
+      { originId: 'boulder', label: 'US-285 to US-50 over Monarch Pass', corridorId: 'us50-monarch', miles: 178, freeFlow: 195, stormPenalty: 30, weatherSensitivity: 0.75 },
+      { originId: 'fort-collins', label: 'I-25 to US-285 to US-50', corridorId: 'us50-monarch', miles: 215, freeFlow: 230, stormPenalty: 32, weatherSensitivity: 0.73 },
+      { originId: 'colorado-springs', label: 'US-24 to US-285 to US-50', corridorId: 'us24-buena-vista', miles: 120, freeFlow: 140, stormPenalty: 26, weatherSensitivity: 0.7 },
+      { originId: 'frisco', label: 'CO-91 to US-24 to US-50', corridorId: 'us24-buena-vista', miles: 105, freeFlow: 120, stormPenalty: 22, weatherSensitivity: 0.72 },
+      { originId: 'durango', label: 'US-550 to US-50 east', corridorId: 'us550-durango', miles: 120, freeFlow: 155, stormPenalty: 28, weatherSensitivity: 0.75 },
+    ]),
+    passAffiliations: ['independent'],
+    popularity: 0.4,
+    character: "No high-speed lifts, no lines, and Mirkwood Basin's 130 hike-to acres for whoever's willing to earn the extra 300 vertical feet.",
+  },
+  {
+    id: 'telluride',
+    name: 'Telluride',
+    shortName: 'TELLURIDE',
+    region: 'San Juans',
+    snowRegion: 'san-juans',
+    state: 'CO',
+    country: 'US',
+    coordinates: { lat: 37.9364, lon: -107.8203 },
+    // Wikipedia's infobox figures: 13,150 ft summit is Palmyra Peak, reached
+    // by a bootpack from the Gold Hill lift, not lift-served directly — the
+    // 4,425 ft vertical is the resort's own headline number, hike-to
+    // included, same as it's reported everywhere else.
+    elevations: { baseFt: 8725, summitFt: 13150, verticalFt: 4425 },
+    operations: {
+      weekdayOpen: at(9, 0),
+      weekendOpen: at(9, 0),
+      lastChair: at(16, 0),
+      upperMountainOpenOffset: 30,
+    },
+    lifts: { total: 18, highSpeed: 7, windExposed: 6 },
+    terrain: { trails: 127, acres: 2000, aboveTreelineShare: 0.3, lateOpeningShare: 0.35 },
+    weatherLocation: {
+      point: { lat: 37.9364, lon: -107.8203 },
+      forecastElevationFt: 10500,
+      aspect: 'east-facing',
+    },
+    accessRoutes: buildRoutes('telluride', { lat: 37.9364, lon: -107.8203 }, [
+      { originId: 'denver', label: 'US-285 to US-50 over Monarch Pass, then CO-62 & CO-145', corridorId: 'us50-monarch', miles: 330, freeFlow: 405, stormPenalty: 40, weatherSensitivity: 0.8, primary: true },
+      { originId: 'boulder', label: 'US-285 to US-50 over Monarch Pass, then CO-62 & CO-145', corridorId: 'us50-monarch', miles: 352, freeFlow: 427, stormPenalty: 40, weatherSensitivity: 0.8 },
+      { originId: 'fort-collins', label: 'I-25 to US-285 to US-50', corridorId: 'us50-monarch', miles: 388, freeFlow: 462, stormPenalty: 42, weatherSensitivity: 0.78 },
+      { originId: 'colorado-springs', label: 'US-24 to US-285 to US-50', corridorId: 'us50-monarch', miles: 292, freeFlow: 365, stormPenalty: 38, weatherSensitivity: 0.78 },
+      { originId: 'frisco', label: 'CO-91 to US-24 to US-50', corridorId: 'us24-buena-vista', miles: 278, freeFlow: 346, stormPenalty: 36, weatherSensitivity: 0.76 },
+      // Part of the real San Juan Skyway loop this corridor already models —
+      // Lizard Head Pass (10,222 ft) is the exposed, weather-sensitive point.
+      { originId: 'durango', label: 'US-160 to CO-145 over Lizard Head Pass', corridorId: 'us550-durango', miles: 111, freeFlow: 150, stormPenalty: 35, weatherSensitivity: 0.85 },
+    ]),
+    passAffiliations: ['epic'],
+    popularity: 0.45,
+    character: 'A box canyon at the end of a dead-end road, extreme terrain off Gold Hill and Palmyra Peak, and Alpino Vino — the highest restaurant in North America — waiting at the bottom of it.',
   },
 ];
 

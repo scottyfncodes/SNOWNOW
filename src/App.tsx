@@ -7,20 +7,18 @@ import { warmUpTrafficService } from '@/lib/warmup';
 import { createProviderRegistry } from '@/providers';
 import type { ProviderRegistry } from '@/providers/types';
 import { useClock } from '@/ui/hooks/useClock';
-import { HomeScreen } from '@/ui/screens/HomeScreen';
-import { LaterScreen } from '@/ui/screens/LaterScreen';
 import { MapScreen } from '@/ui/screens/MapScreen';
-import { NowScreen } from '@/ui/screens/NowScreen';
-
-type Mode = 'home' | 'now' | 'later' | 'map';
 
 /**
- * SNOWNOW.
+ * SNOWNOW opens directly onto the Colorado map — the map *is* the homepage
+ * and the mountain selector, not a companion screen reached from a NOW/LATER
+ * choice. Tapping a mountain opens its profile in place; there is no separate
+ * "primary navigation" for the user to get through first.
  *
- * The provider registry is created once and injected downward: the screens
- * know they are talking to *a* weather/traffic/mountain provider, never which
- * one. Swapping the demo bundle for live integrations happens on this line and
- * nowhere else.
+ * The provider registry is created once and injected downward: the screen
+ * knows it is talking to *a* weather/traffic/mountain provider, never which
+ * one. Swapping the demo bundle for live integrations happens on this line
+ * and nowhere else.
  */
 export interface AppProps {
   /** Injectable so tests (and, later, a live bundle) can supply their own providers. */
@@ -30,12 +28,9 @@ export interface AppProps {
 export default function App({ registry: injected }: AppProps = {}) {
   const registry = useMemo(() => injected ?? createProviderRegistry(), [injected]);
   const clock = useClock();
-  const [mode, setMode] = useState<Mode>('home');
   const [origin, setOrigin] = useState<Origin>(() => findOrigin(DEFAULT_PREFERENCES.originId));
 
-  // Give the traffic proxy's free-tier cold start a head start against the
-  // user's own dwell time on the homepage, rather than against the 15s
-  // timeout on the real request. See lib/warmup.ts.
+  // A cheap head start on the traffic backend's first request. See lib/warmup.ts.
   useEffect(() => {
     warmUpTrafficService(resolveEnvironment().trafficApiBaseUrl);
   }, []);
@@ -45,41 +40,13 @@ export default function App({ registry: injected }: AppProps = {}) {
     [origin.id],
   );
 
-  if (mode === 'now') {
-    return (
-      <NowScreen
-        registry={registry}
-        clock={clock}
-        origin={origin}
-        preferences={preferences}
-        onBack={() => setMode('home')}
-      />
-    );
-  }
-
-  if (mode === 'later') {
-    return (
-      <LaterScreen
-        registry={registry}
-        clock={clock}
-        origin={origin}
-        preferences={preferences}
-        onBack={() => setMode('home')}
-      />
-    );
-  }
-
-  if (mode === 'map') {
-    return <MapScreen registry={registry} clock={clock} origin={origin} onBack={() => setMode('home')} />;
-  }
-
   return (
-    <HomeScreen
+    <MapScreen
+      registry={registry}
+      clock={clock}
       origin={origin}
       onOriginChange={setOrigin}
-      onNow={() => setMode('now')}
-      onLater={() => setMode('later')}
-      onMap={() => setMode('map')}
+      preferences={preferences}
       usingDemoData={registry.usingDemoData}
     />
   );

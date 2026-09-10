@@ -1,5 +1,4 @@
 import type {
-  CrowdCurve,
   DailySnowfall,
   HourlyWeather,
   MountainWeather,
@@ -250,14 +249,6 @@ export function testRoadStatus(overrides: Partial<RoadStatus> = {}): RoadStatus 
   };
 }
 
-export function testCrowds(level = 0.4): CrowdCurve {
-  return {
-    samples: minuteRange(at(7), at(17), 15).map((minute) => ({ minute, crowding: level })),
-    dayFactor: level * 2,
-    drivers: ['Fixture'],
-  };
-}
-
 export interface TravelSpec {
   direction: 'outbound' | 'return';
   /** Duration in minutes at each departure minute. */
@@ -301,7 +292,6 @@ export interface InputsSpec {
   mountain?: Mountain;
   weather?: MountainWeather | 'unavailable';
   operations?: OperationsReport | 'unavailable';
-  crowds?: CrowdCurve | 'unavailable';
   ticket?: TicketPrice | 'unavailable';
   alerts?: WeatherAlert[] | 'unavailable';
   outbound?: TravelCurve | 'unavailable';
@@ -332,7 +322,6 @@ export function testInputs(spec: InputsSpec = {}): DayInputs {
     isToday: (spec.horizonDays ?? 0) === 0,
     weather: wrap(spec.weather ?? testWeather(), 'No forecast.'),
     operations: wrap(spec.operations ?? testOperations(), 'No lift report.'),
-    crowds: wrap(spec.crowds ?? testCrowds(), 'No crowd data.'),
     ticket: wrap(spec.ticket ?? testTicket(), 'No ticket pricing.'),
     alerts: wrap(spec.alerts ?? [], 'No alert feed.'),
     outbound: wrap(outbound, spec.outboundReason ?? 'No route data.'),

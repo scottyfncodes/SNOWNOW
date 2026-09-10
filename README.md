@@ -22,15 +22,40 @@ Head home 2:42 PM · Home 4:28 PM
 
 ---
 
-## The two modes
+## The map
 
-| | Means | Answers |
-|---|---|---|
-| **NOW** | Decision mode. Today. | "I want to ski today — where, and when do I leave?" |
-| **LATER** | Planning mode. A future date or range. | "What would my ski day look like on Saturday?" |
+SNOWNOW opens straight onto a Colorado map — the map *is* the homepage and the
+mountain selector, not a screen reached from some other choice. It's a real,
+pannable, zoomable Leaflet map (`ui/components/MountainMap.tsx`), not a
+diagram: every supported mountain is a tappable marker at its real coordinate
+from `data/mountains.ts`, the same data the engine routes to, with no second
+copy anywhere. On the home screen the map is the whole point and fills the
+screen accordingly — no boxed card, no long scroll of content competing with
+it below.
 
-Both ask the same question and share the same engine. LATER differs only in how
-much certainty it is willing to claim.
+Tapping a mountain (or its cluster, if it's bunched too close to neighbors to
+tap unambiguously at the current zoom — see "Known limitations") is a full-
+screen takeover, not an in-place expansion: the map disappears behind a
+dedicated mountain screen (`ui/screens/MapScreen.tsx`'s `selectedMountain`
+branch) with its own header and a back button, so the profile — the day's
+verdict and score, snow and weather, the real driven route, traffic, parking,
+food and drink, the trail map, lift tickets, and any active alerts — is the
+primary thing on screen, not something you scroll down to underneath a still-
+huge map. The real driven-route visualization isn't lost in that move; it
+reappears at the top of the mountain screen as a small, subordinate map
+(`MountainMap`'s `variant="compact"`) — same real polyline/approximate-line
+logic as before, just sized as a supporting visual rather than the dominant
+element. There is no NOW/LATER choice standing between opening the app and
+getting an answer.
+
+The engine underneath still separates "today" from "a future date" —
+`buildPlan`/`planForMountain` for today, `future.ts`'s range projection for
+later, with the same honesty budget either way — but that split is an
+implementation detail the engine cares about, not something the UI makes you
+choose. Selecting a mountain always asks for today's plan; the underlying
+`recommend()`/`projectRange()` machinery that ranks *every* reachable mountain
+still exists (and is still tested) for whatever wants that comparison, it just
+isn't what the map calls.
 
 ---
 
@@ -39,10 +64,13 @@ much certainty it is willing to claim.
 ```bash
 npm install
 npm run dev        # http://localhost:5173 — demo mode, zero setup
-npm test           # 289 tests
+npm test           # see the test output for the current count
 npm run build      # type-check + production bundle
 npm run preview    # serve the built app
-npm run server     # the traffic proxy (server/index.mjs) — only needed for live traffic
+npm run server     # local traffic proxy (server/index.mjs) — only for developing
+                   # against live traffic without the Vercel CLI; production
+                   # traffic runs as api/*.mjs Vercel functions instead, see
+                   # "Going live"
 ```
 
 Node 20+ required. **With no environment variables set, the app runs entirely
@@ -87,10 +115,9 @@ Day 0 is deliberately shaped into a storm day — the product story starts at
 |---|---|---|
 | **Weather** | Live | Nothing — Open-Meteo is free, keyless, CORS-enabled |
 | **Alerts** (NWS) | Live | Nothing — same deal, US mountains only |
-| **Traffic** | Live | `server/` deployed + `GOOGLE_ROUTES_API_KEY` + `VITE_API_BASE_URL`, else **unavailable** |
+| **Traffic** | Live | `GOOGLE_ROUTES_API_KEY` set on the deployment (Vercel: `api/*.mjs` serverless functions, same project — see below), else **unavailable** |
 | **Road closures** (CDOT/COtrip) | Live, unverified, on by default | `VITE_ENABLE_ROAD_CONDITIONS=false` to disable → **unavailable** |
 | **Lift ops, terrain** | Live where covered, else unavailable | Nothing — tries Liftie (third-party) automatically |
-| **Crowds** | Unavailable, always | No trustworthy live source exists — retired, see below |
 | **Pricing** | Unavailable, always | Investigated, unverifiable — official purchase link shown instead |
 | **Places** | Unavailable, always | No live implementation exists for this pass |
 
@@ -105,27 +132,131 @@ read at runtime — switching modes means rebuilding, which is also what keeps
 demo mode the safe, can't-happen-by-accident default: there is no runtime
 toggle to flip on live data without a deliberate build.
 
-Full traffic integration needs `server/index.mjs` running somewhere with
-`GOOGLE_ROUTES_API_KEY` set (Render, Fly, a small VPS, anywhere Node runs —
-GitHub Pages cannot host it, since Pages serves static files only and has no
-way to hold a server-side secret). Every variable is documented in
+**Production traffic runs as Vercel serverless functions in this same
+project (`api/route-preview.mjs`, `api/travel-curve.mjs`, `api/health.mjs`,
+plus two GET diagnostics), not a standalone server.** `server/index.mjs` and
+`server/trafficCore.mjs` still exist and still work (`npm run server`) — that
+pair is now the *local development* story: a long-running `node:http`
+process for developing against `VITE_API_BASE_URL=http://localhost:8787`
+without needing the Vercel CLI. Both the local server and the Vercel
+functions import the exact same routing/caching/Google-calling logic from
+`server/trafficCore.mjs`, so there is one implementation, not two that can
+drift apart.
+
+This replaced an earlier setup where `server/index.mjs` ran as a standalone
+process on Render's free tier — confirmed, from that service's own
+production logs, to repeatedly spin down after ~15 minutes idle and cold-boot
+on the next request (see "Known limitations"). Vercel serverless functions
+don't have that sleep/wake cycle, which is what actually fixes "Road intel is
+offline" rather than only mitigating it. `VITE_API_BASE_URL=""` (the empty
+string, set in `vercel.json`, distinct from leaving the variable unset
+entirely — see `.env.example` and `config/env.ts#SnownowEnvironment`) tells
+the client to call this same deployment's own relative `/api/*` paths rather
+than an external host.
+
+**GitHub Pages is a separate deploy target that cannot host serverless
+functions at all** (Pages serves static files only). Its workflow
+(`.github/workflows/pages.yml`) still points `VITE_API_BASE_URL` at the
+now-legacy Render service, which is being kept alive for exactly that reason
+— retiring it would silently take traffic away from the GitHub Pages build
+without anyone deciding that on purpose. Every variable is documented in
 `.env.example`.
+
+### Diagnosing the traffic proxy without exposing anything
+
+`GET /api/health` reports `{ ok, googleRoutesConfigured, cacheSize, time }` —
+enough to confirm from a browser or `curl` that a deployment has the key
+configured at all, never the key itself.
+
+`GET /api/test-route-preview` (optionally `?originLat=&originLon=&destLat=&destLon=`,
+defaulting to Denver → Keystone — this project's own product requirement)
+runs one real single-call route preview and reports `hasPolyline: true/false`
+alongside the duration/distance/polyline it got back, so whether a
+deployment's Google Routes integration is really returning route geometry is
+a URL a person can open, not something that needs a POST client or reading
+server logs. `GET /api/test-drive` does the same for the day-curve endpoint.
+
+Every failure from `/api/route-preview` and `/api/travel-curve` is a
+structured `{ error: CODE, message }`, `CODE` one of `MISSING_API_KEY`,
+`MALFORMED_REQUEST`, `GOOGLE_ROUTES_ERROR`, `NO_ROUTE_FOUND`, `TIMEOUT`, or
+`SERVER_ERROR` — distinct enough to tell "you forgot to set the key" apart
+from "Google rejected this specific request" apart from "we couldn't reach
+Google in time" from a response body alone, without ever including the raw
+Google response, a stack trace, or the key (those go to the server's own
+console only — see `logRouteFetchFailure` in `server/trafficCore.mjs`, shared
+by both the local dev server and the production Vercel functions).
 
 ### GPS-based routing
 
+**GPS is now the only way to set where you're starting from.** Once exact-GPS
+routing worked end to end, the six-city dropdown in `OriginPicker.tsx` was
+removed entirely — "📍 Use my current location" is the whole "starting from"
+UI, with no manual fallback. The six cities (`data/origins.ts#ORIGINS`)
+still exist and are still exercised — the demo registry's hand-authored
+corridor routes are keyed to them, `npm run dev` with no env vars still uses
+one as its initial origin before any location is granted, and the engine
+test suite still uses them as fixtures — but a live user can no longer pick
+one from the app itself. Every "manual city" comparison below (cache-pooling,
+hand-authored vs. synthesized routes) describes that underlying data model
+and demo mode, not a reachable part of the live UI.
+
 "📍 Use my current location" sends the browser's exact `navigator.geolocation`
-coordinates to the same `/api/travel-curve` endpoint the six manual cities
-already use — `origin`/`destination` there were always plain `{ lat, lon }`,
-never a place name or an address, so **no new Google API and no geocoding
-service were added**. The Google Routes `computeRoutes` call this project
-already makes accepts an arbitrary coordinate as `origin.location.latLng` the
-same way it accepts one of the six cities'; that capability was already
-present in the existing `GOOGLE_ROUTES_API_KEY`; this feature only stopped
-throwing the GPS fix away before it reached that call
-(`ui/components/OriginPicker.tsx` used to look up the *nearest of the six
-cities* and route from there instead — see `engine/routing.ts` for the
-replacement). Geocoding (reverse or forward) was deliberately not added: the
-UI never needs to show a street address, only "Using your current location".
+coordinates straight through as the routing origin — `origin`/`destination`
+were always plain `{ lat, lon }`, never a place name or an address, so **no
+new Google API and no geocoding service were added**. The Google Routes
+`computeRoutes` call this project already makes accepts an arbitrary
+coordinate as `origin.location.latLng` the same way it accepts one of the six
+cities'; that capability was already present in the existing
+`GOOGLE_ROUTES_API_KEY`; this feature only stopped throwing the GPS fix away
+before it reached that call (`ui/components/OriginPicker.tsx` used to look up
+the *nearest of the six cities* and route from there instead — see
+`engine/routing.ts` for the replacement). Geocoding (reverse or forward) was
+deliberately not added: the UI never needs to show a street address, only
+"Using your current location".
+
+Two separate server endpoints exist for two separate jobs, and a GPS origin
+goes through both exactly like a manual city does:
+
+- **`/api/route-preview`** — one Google Routes call, no departure grid,
+  traffic-aware for *right now*. The map uses this, and only for the one
+  mountain the user tapped, never all fifteen (`ui/screens/MapScreen.tsx`).
+- **`/api/travel-curve`** — up to 20 departure-time samples across the day.
+  NOW/LATER's recommendation engine uses this, unchanged, through the same
+  `TrafficProvider` interface it always has.
+
+`navigator.geolocation.getCurrentPosition` is only ever called from the
+"Use my current location" tap handler — never on page load — and its three
+error codes are handled distinctly (`ui/components/OriginPicker.tsx`):
+`PERMISSION_DENIED` tells the user specifically where to re-enable it
+(Settings → Safari → Location, or Settings → *app name* → Location for a
+Home Screen install — "choose a city instead" alone strands an iPhone user,
+since the toggle isn't reachable from inside the page at all), while
+`POSITION_UNAVAILABLE` and `TIMEOUT` each get their own plain-language
+message rather than collapsing into one generic failure.
+
+**The real driving destination isn't always the map-pin coordinate.**
+`domain/mountain.ts#RoutingDestination` is an optional per-mountain override
+for the small number of resorts where `Mountain.coordinates` (which also
+drives the map pin, distance math, and every hand-authored demo route's
+tuned numbers — left untouched) sits meaningfully away from the actual base
+area. `routingDestinationFor(mountain)` resolves to the override when one
+exists, otherwise `coordinates` itself; both the live map route-preview and
+the "Navigate" action use it, so a mountain like Steamboat — whose
+`coordinates` sit about 1.5 miles from the Wild Blue Gondola base, verified
+against Steamboat's own published resort coordinates — actually gets routed
+to the right arrival point. Every other mountain was spot-checked the same
+way and its existing coordinate kept as-is once confirmed close enough.
+
+**"Navigate" hands the destination to Apple/Google Maps — SNOWNOW never
+implements turn-by-turn itself.** Once a route resolves, two universal links
+(`lib/navigationLinks.ts`) appear: Apple Maps only on Apple platforms
+(detected from `navigator.userAgent`/`platform`, not shown to Android/
+Windows/Linux visitors) and Google Maps always, both carrying the exact same
+origin and destination coordinates SNOWNOW already resolved — never a
+re-geocoded address. Universal links (`maps.apple.com`/`google.com/maps/dir`)
+were chosen over a custom URL scheme (`comgooglemaps://`) specifically
+because a missing native app degrades to a working web page instead of a
+silent failure a web page has no way to detect.
 
 One real cost implication: the server's travel-curve cache key is rounded to
 three decimal degrees (~300 ft) and shared across every visitor asking about
@@ -135,6 +266,16 @@ for nearly every visitor, so GPS requests mostly miss that shared cache and
 each pay their own Google Routes calls. This is an inherent cost of routing
 from someone's actual location rather than a bug — see "Caching and API
 cost" below for the numbers.
+
+**The map draws the real route, not a decoration.** `/api/route-preview`'s
+`X-Goog-FieldMask` also asks for `routes.polyline.encodedPolyline` — Google
+returns this with the same call, no extra request or billing — and
+`lib/polyline.ts` decodes it into real lat/lon points using Google's own
+published encoding algorithm (tested against Google's documented example).
+`MountainMap` draws that as a solid line; when no real geometry is available
+(demo mode, or a live proxy old enough not to return one yet) it draws a
+visually distinct dashed line and says so in the map's legend — never a route
+dressed up as real.
 
 ### The production data gate
 
@@ -170,7 +311,7 @@ tries, in order:
 1. **Official resort feed.** Not implemented. It would need a verified,
    structured (JSON/REST/GraphQL) endpoint per resort, confirmed by actually
    hitting it — and this sandbox has no network path to any resort's site to
-   find and confirm one for even a single mountain, let alone the thirteen
+   find and confirm one for even a single mountain, let alone the fifteen
    in the dataset. Guessing at undocumented endpoints across a dozen
    different commerce/CMS platforms without verification is exactly the
    fragile, unaccountable integration this project avoids everywhere else.
@@ -202,23 +343,34 @@ lift count (see `liftieOperations.test.ts`).
 ### Ticket pricing: investigated, and genuinely unavailable
 
 `LivePricingProvider` (`providers/live/pricing.ts`) is the result of
-actually checking, resort by resort: every one of the thirteen mountains
+actually checking, resort by resort: every one of the fifteen mountains
 prices tickets through a dynamic commerce platform (a date-picker → cart →
 checkout flow), not a stable, public "price for this date" endpoint. None
 publishes structured pricing data outside that flow. Building a scraper
-across thirteen different front-ends to extract a number that changes with
+across fifteen different front-ends to extract a number that changes with
 the querying session — not just the date — is precisely the fragile,
 silently-breaking integration ruled out elsewhere in this project, and
 "reliably extractable" isn't achievable even in principle when the number
 is stateful.
 
 So live mode reports ticket price as `unavailable` for every resort,
-honestly — never the demo model's plausible number presented as live. The
-resort's real ticket page is still shown (`SkiDayPlan.ticketPurchaseUrl`,
-from the same `data/resortSources.ts` registry), so "we can't confirm the
-price" never means "and we won't tell you where to look." `PricingProvider`
-stays a real interface with a real production path (a ticketing platform's
-partner API) if one becomes available later.
+honestly — never the demo model's plausible number presented as live.
+`PricingProvider` stays a real interface with a real production path (a
+ticketing platform's partner API) if one becomes available later.
+
+Rather than leave the card blank when there's no quote, `RecommendationCard`
+shows a ballpark range instead: `data/pricing.ts#estimatedRangeFor` reads the
+same per-mountain advance-floor/window-rate profile the demo pricing model
+uses (documented there as "representative figures shaped like the real
+market") and returns that span, labeled "Ballpark estimate, not a live
+quote." This is a UI-layer display choice, not a change to what the provider
+reports — `LivePricingProvider.getTicketPrice` still returns `unavailable`,
+`registry.pricing`'s `Availability` result is untouched, and the production-
+data-gate tests still confirm no live quote is ever fabricated. The estimate
+is presented as what it is: a season's worth of pattern, not a quote for
+today. The resort's real ticket page is still linked
+(`SkiDayPlan.ticketPurchaseUrl`, from the same `data/resortSources.ts`
+registry) so the estimate never stands in for buying the actual ticket.
 
 ### Places: never in scope
 
@@ -226,26 +378,41 @@ partner API) if one becomes available later.
 investigated in this pass. In live mode it reports `unavailable` — never
 demo data (see "The production data gate" above).
 
-### Crowds: retired from live mode
+### Crowds: removed, not just retired
 
 `LiveMountainProvider.getCrowdForecast` used to run a calendar heuristic
-here (weekday/weekend, holiday, mountain popularity), honestly labeled
-`low` confidence and `projected` — real arithmetic on real calendar facts,
-not a simulation. It has been removed. The reasoning: it was still a
-projection standing in for an observed signal, and a production decision
-engine is more trustworthy with fewer real signals than with one that can
-be mistaken for measured attendance. It now reports `unavailable`
-unconditionally.
+(weekday/weekend, holiday, mountain popularity), honestly labeled `low`
+confidence and `projected` — real arithmetic on real calendar facts, not a
+simulation. It was later reduced to an unconditional `unavailable`: the
+heuristic was still a projection standing in for an observed signal, and a
+production decision engine is more trustworthy with fewer real signals than
+with one that can be mistaken for measured attendance.
 
-This is not a gap that silently weakens the recommendation: `crowds` is a
-lightly-weighted (`0.6` in `config/weights.ts`), optional scoring factor,
-and `scoring.ts` already imputes a neutral contribution and flags it as
-imputed whenever it's unavailable — the exact, already-tested mechanism
-every other unresolved live signal uses (see `engine/scenarios.test.ts`).
-Nothing about a plan's timing, snow read, or operations read depends on
-crowd data. If a trustworthy live occupancy/crowd source is identified
-later, `MountainProvider.getCrowdForecast` is still a real interface a live
-implementation can drop into.
+That halfway state turned out to be its own honesty problem. `crowds` was a
+real, weighted scoring factor (`config/weights.ts`) and a real component of
+the Snow Clock's per-minute quality model (`engine/snowClock.ts`) — but in
+live mode it could only ever return `unavailable`, forever, on every single
+call. Keeping it wired in meant every live score carried a permanently-dead
+factor silently pulling toward a neutral filler value, and every live
+confidence rating was permanently capped lower than the real signals
+actually justified — not a gap that weakens one plan sometimes, but a fixed
+tax on every plan, always, with no live data behind it and never a prospect
+of any. So the feature was removed outright, not left `unavailable`:
+`getCrowdForecast` no longer exists on `MountainProvider`, `crowds` no
+longer exists as a `ScoreFactorKey` or a weight, and the Snow Clock's
+quality mix redistributes what used to be crowding's share across snow,
+wind, visibility, and access (`QUALITY_MIX` in `engine/snowClock.ts`) rather
+than spending 15% of every quality score on a signal that was never
+present. Untracked snow still gets skied off over the course of a day —
+that mechanic didn't need a crowd number, real or synthetic, to be true, so
+it now runs on a fixed, resort-agnostic daily traffic curve instead
+(`TRAFFIC_OUT_CURVE`).
+
+If a trustworthy live occupancy/crowd source is ever identified, it would
+be a new addition to `MountainProvider`, not a revival of this one — no
+interface was left in place to drop a future implementation into on
+purpose, since the last one demonstrated that keeping the shape around
+invites exactly the confidence-and-caveat problem this removal fixes.
 
 ---
 
@@ -257,7 +424,7 @@ src/
     time.ts       Minutes-since-local-midnight, the engine's unit of time
     dates.ts      DateKey helpers, weekday/holiday logic
     mountain.ts   The generic Mountain model (routes carry their own lat/lon)
-    conditions.ts Weather, operations, travel curves, crowds
+    conditions.ts Weather, operations, travel curves
     alerts.ts     Official weather alerts — supplements the forecast only
     road.ts       Authoritative road/corridor status, separate from traffic
     plan.ts       SnowClock, DayScore, DepartureOption, ReturnOption, SkiDayPlan
@@ -273,7 +440,7 @@ src/
     snow.ts       Snow-density physics shared by demo and live weather
 
   data/         Content, not code
-    mountains.ts  Thirteen Colorado mountains, four pass networks, two snow
+    mountains.ts  Fifteen Colorado mountains, four pass networks, two snow
                   regions; access routes per origin
     origins.ts    The six manually-selectable starting cities, plus
                   `gpsOrigin()` for a live GPS fix
@@ -304,7 +471,7 @@ src/
     optimize.ts   Joint (leave home × leave mountain) optimisation
     scoring.ts    The number on the card, and why
     explain.ts    Plain-language reasoning
-    plan.ts       buildPlan · recommend · stayOrGo
+    plan.ts       buildPlan · planForMountain · recommend · stayOrGo
     future.ts     LATER: range projection with confidence discounting
 
   ui/           React. Renders plans; contains no business logic.
@@ -350,13 +517,13 @@ while displaying a better number next to 5:30am.
 
 ### Scoring
 
-Eleven weighted factors — snow, snow timing, weather, wind, terrain,
-operations, travel burden, traffic, roads, crowds, useful ski time — plus named
+Ten weighted factors — snow, snow timing, weather, wind, terrain,
+operations, travel burden, traffic, roads, useful ski time — plus named
 post-hoc penalties for costs that have no upper bound (getting home hours late).
 
-Traffic and crowds are weighted *lightly* on purpose: both already depress the
-snow clock and the travel burden, and double-counting them would let a
-two-hour dawn patrol outscore a full powder day.
+Traffic is weighted *lightly* on purpose: it already depresses the travel
+burden, and double-counting it would let a two-hour dawn patrol outscore a
+full powder day.
 
 A missing feed produces a neutral, **explicitly flagged** value and lowers the
 day's confidence. It never silently becomes a plausible-looking number.
@@ -397,6 +564,13 @@ a data change.
 demo profile, no pricing entry and no code path of its own, and gets a
 complete, scored, explained ski day back.
 
+The mountain profile panel (`ui/components/MountainProfilePanel.tsx`) reads
+`passAffiliations` directly to show a small "Epic Pass" badge next to the
+name — a fact from the data, not the resort's own pass-program branding, and
+it only ever checks for `'epic'` in the array, so Ikon/Mountain
+Collective/Indy/independent mountains render with no badge at all rather
+than a wrong one.
+
 ### Why the winner changes
 
 The demo data is tuned for *causal* differentiation, not variety for its own
@@ -405,7 +579,7 @@ weather generator produces the conditions that expose them:
 
 | Mountain | Wins when | Loses when |
 |---|---|---|
-| Vail | It dumps and the wind stays down | Wind, crowds, the drive |
+| Vail | It dumps and the wind stays down | Wind, the drive |
 | Beaver Creek | It's blowing everywhere else | Modest snow, furthest up I-70 |
 | Breckenridge | Cold, calm, decent snow | Wind holds, long control work |
 | Keystone | Dry and firm — first chair, best corduroy | Any real storm |
@@ -432,7 +606,7 @@ end of the state while the other gets scraps.
 ## Tests
 
 ```
-npm test      # 289 tests, 24 files
+npm test      # see the test output for the current count
 ```
 
 The core optimisation logic is tested without rendering any UI, against
@@ -483,7 +657,8 @@ a phone held in one hand, in a dark room, at 4:47 in the morning, by someone who
 has not had coffee yet. That rules out light backgrounds, small type, dense
 tables and anything that needs to be studied.
 
-- mobile-first, one-handed, 44px+ tap targets, minimal typing
+- mobile-first, one-handed, 44px+ tap targets, minimal typing — except the
+  Colorado map's own markers (see "Known limitations")
 - huge numerals, strong hierarchy, generous space
 - motion is decoration and switches itself off for `prefers-reduced-motion`
 - charts are hand-rolled SVG (no charting library) and expose their data as
@@ -517,50 +692,60 @@ preserve that contract, not invent it.
 
 - **Client-side**: `React` re-renders don't re-fetch — `loadDayInputs` is
   called once per (mountain, date) and its result flows through props.
-- **Server-side** (`server/index.mjs`): every (corridor, direction, date)
-  travel curve is cached for `TRAFFIC_CACHE_TTL_SECONDS` (default 15 min) and
-  **shared across every visitor**, not per-session. The first person to ask
-  about Breck today pays the Google Routes calls; everyone else in the next 15
-  minutes gets the cached curve.
+- **Server-side** (`server/trafficCore.mjs`, imported by both the local dev
+  server and the production `api/*.mjs` Vercel functions): every (corridor,
+  direction, date) travel curve is cached for `TRAFFIC_CACHE_TTL_SECONDS`
+  (default 15 min). Under the old single long-running Render process this
+  was shared across every visitor; under Vercel's serverless functions the
+  cache is per-instance, so concurrent invocations on different instances
+  don't see each other's entries — still a real cost saving (a warm instance
+  serving several requests back-to-back reuses it), just not the
+  whole-deployment guarantee a single process gave. A real shared cache
+  (Redis/KV) would restore that; this build does not have one (see "Known
+  limitations").
 - **Open-Meteo and NWS** need no server-side cache to be cheap — both are
   free, keyless, rate-generous public APIs — but a production deployment
   fielding real traffic should still put a short (~5 min) cache in front of
   them rather than one call per page load, which this build does not yet do
   (see "Known limitations").
 
-**API calls for one NOW request** (one mountain, one origin, cache cold):
+**API calls for opening one mountain's profile** (one mountain, one origin,
+cache cold):
 
 | Call | Count | Notes |
 |---|---|---|
+| Route preview (map tap) | 1 | `/api/route-preview` — one Google Routes call for the "right now" drive time shown immediately, see `providers/live/routePreview.ts` |
 | Open-Meteo forecast | 1 | One HTTP request, all hourly fields |
 | NWS alerts | 1 | One HTTP request |
-| Google Routes (server) | up to 20 | 9 outbound + 11 return departure-time samples — see `server/index.mjs`'s `OUTBOUND_MINUTES`/`RETURN_MINUTES` |
+| Google Routes travel curve (server) | up to 20 per route | 9 outbound + 11 return departure-time samples — see `server/trafficCore.mjs`'s `OUTBOUND_MINUTES`/`RETURN_MINUTES`. A manual city with several hand-authored routes to that mountain pays this once per route; a GPS origin always synthesizes exactly one route (`engine/routing.ts`), so it's a flat ~20 calls regardless of how many routes a city origin would have used |
 | CDOT (if enabled) | 1 per unique corridor | Unverified integration, off by default |
 
-A full NOW screen (the recommendation plus every reachable alternative — 5-8
-mountains from Denver) multiplies the Google Routes count by the number of
-mountains on a cold cache, since each mountain's route is a different
-corridor. **Estimated cost at low personal-use volume:** Open-Meteo and NWS
-are free with no meaningful limit at this scale. Google Routes' `computeRoutes`
-is billed per call past its free tier; at roughly 20 calls per cold-cache
-mountain and a 15-minute shared cache, a single person checking SNOWNOW a
+This is the whole cost of the map's primary flow: tapping a mountain never
+prices out the other twelve just to show the one the user actually picked.
+That is a real reduction from the old NOW screen, which ran this same pipeline
+for every reachable mountain from the origin (5-8 mountains from Denver) to
+rank them — that code path (`recommend()`) still exists and is still tested,
+it just isn't what opens a profile.
+
+**Estimated cost at low personal-use volume:** Open-Meteo and NWS are free
+with no meaningful limit at this scale. Google Routes' `computeRoutes` is
+billed per call past its free tier; at roughly 20 calls per cold-cache route
+and a 15-minute shared cache, a single person tapping around SNOWNOW a
 handful of times a day sits comfortably inside typical free-tier allowances —
 the cache is what keeps a small friend group well within it too, since they'd
 mostly be hitting warm cache. This has not been measured against a real
 Google Cloud billing account; treat it as an informed estimate, not a quote.
 
-**GPS mode changes this math.** The table above assumes an origin the cache
-can pool across visitors — true for the six manual cities, not true for a
-GPS fix, which lands on a different cache key for nearly every user. A GPS
-NOW request should be estimated as a fully cold cache every time: up to 20
-Google Routes calls per mountain, times every reachable mountain (now all
-thirteen, not just the ones with a manual route from the chosen city), per
-direction. This is a real, expected increase in Google Routes call volume
-versus city-only routing — not a defect — and is the direct cost of routing
-from someone's actual location. At low personal-use volume it should still
-sit inside Google's free tier; a public multi-user deployment should budget
-for it explicitly rather than assuming the six-city cache-sharing math still
-applies.
+**GPS mode changes this math for city-pooling, not for volume.** The table
+above assumes an origin the server-side cache can pool across visitors — true
+for the six manual cities, not true for a GPS fix, which lands on a different
+cache key for nearly every user. A GPS tap should be estimated as a fully cold
+cache every time. It does **not** multiply by mountain count the way the old
+all-mountain NOW sweep did, though: a GPS origin always resolves to exactly
+one route per mountain (`engine/routing.ts`), and the map only ever prices the
+one mountain tapped — so per-tap cost is the same flat ~20 calls whether the
+origin is a manual city or GPS, it's the cache-sharing across *visitors* that
+GPS loses, not the cost of any single tap.
 
 ## Live data matrix
 
@@ -579,24 +764,62 @@ applies.
 | Steamboat | Liftie (`steamboat`) | Attempted*, else unavailable | — | Unavailable — [buy](https://www.steamboat.com/lift-tickets) |
 | Purgatory | None (no confirmed Liftie coverage) | Unavailable | — | Unavailable — [buy](https://www.purgatoryresort.com/lift-tickets/) |
 | Wolf Creek | None (no confirmed Liftie coverage) | Unavailable | — | Unavailable — [buy](https://wolfcreekski.com/lift-tickets/) |
+| Monarch | Liftie (`monarch`) | Attempted*, else unavailable | — | Unavailable — [buy](https://skimonarch.com/tickets/) |
+| Telluride | Liftie (`telluride`) | Attempted*, else unavailable | — | Unavailable — [buy](https://shop.tellurideskiresort.com/s/passes-and-tickets/winter-lift-tickets/) |
 
 \* "Attempted" means `LiveMountainProvider` calls Liftie for that resort and
 normalizes a successful response; whether it actually returns live data
 right now depends on Liftie's own current coverage and uptime, which this
 sandbox cannot check (see below) — a miss fails safe to `unavailable`, never
-a fabricated lift count. **Pricing is `unavailable` for all thirteen by
+a fabricated lift count. **Pricing is `unavailable` for all fifteen by
 design**, not by gap — see "Ticket pricing: investigated, and genuinely
 unavailable" above.
 
 ## Known limitations
 
+- **The deployed Render service was missing this branch's route-polyline
+  fix — found, and then actually shipped to production, not just fixed
+  here.** `snownow-traffic-proxy` (Render service `srv-daf597gn74is738d5usg`)
+  auto-deploys from branch `claude/snownow-ski-optimization-j2z1nr`, not
+  this one; its live commit's `/api/route-preview` field mask was
+  `routes.duration,routes.distanceMeters` only, no
+  `routes.polyline.encodedPolyline` — so the map had only ever drawn the
+  honest dashed "approximate" fallback line, never Google's real
+  driven-road geometry, for every origin including GPS (not a bug in the
+  honesty logic that picks between the two lines — verified correct in
+  `MountainMap.test.tsx` — the live polyline it was honestly falling back
+  from just never reached it). With explicit go-ahead, that server's
+  `server/index.mjs` was replaced with this branch's fixed version (same
+  polyline support, structured errors, and health/diagnostic endpoints
+  documented above) and pushed straight to
+  `claude/snownow-ski-optimization-j2z1nr` — a deliberately server-file-only
+  commit, nothing else on that branch touched. Render's own deploy history
+  confirms it auto-deployed within seconds and came up clean: boot log
+  `SNOWNOW traffic proxy on :10000 — API key present`, deploy status
+  `live`, no errors. This sandbox has no network path to
+  `snownow-traffic-proxy.onrender.com` itself (confirmed blocked by both
+  `curl` and `WebFetch`) to independently replay a real request against the
+  now-deployed polyline path from here — the deploy is confirmed live and
+  clean, but an actual phone tap-through (does the map now draw a solid
+  line to a real mountain) is the one remaining check only a real client
+  can do.
 - **Google Routes traffic is live, deployed, and smoke-tested against a real
   key** — `server/index.mjs` is running on Render with a real
-  `GOOGLE_ROUTES_API_KEY`, and a real request returned real Denver→Copper
-  Mountain drive times (101–104 minutes across the sampled departure grid,
-  congestion varying realistically by time of day). The GitHub Pages build
-  is configured for live mode (`VITE_DATA_MODE=live`) and points at that
-  deployment.
+  `GOOGLE_ROUTES_API_KEY` (confirmed again via this service's own boot logs:
+  `SNOWNOW traffic proxy on :10000 — API key present`, repeated across many
+  restarts, most recently right after the polyline-fix deploy above), and a
+  real request previously returned real Denver→Copper Mountain drive times
+  (101–104 minutes across the sampled departure grid, congestion varying
+  realistically by time of day) via `/api/travel-curve`. The GitHub Pages
+  build is configured for live mode (`VITE_DATA_MODE=live`) and points at
+  that deployment; this sandbox's own outbound network can reach
+  `routes.googleapis.com` directly (confirmed by curl — a request with a
+  deliberately invalid key got a real, correctly-classified rejection back,
+  proving the request path itself works end to end — unlike `onrender.com`,
+  `*.tile.openstreetmap.org`, and `arcgisonline.com`, all blocked by this
+  environment's egress policy), but has no access to the real
+  `GOOGLE_ROUTES_API_KEY` itself to run a fully authenticated check from
+  here.
 - **Open-Meteo, NWS, CDOT, and Liftie have not been smoke-tested against
   their real endpoints from this environment.** This sandbox's network
   policy blocks `api.open-meteo.com`, `api.weather.gov`,
@@ -643,17 +866,96 @@ unavailable" above.
   "Ticket pricing: investigated, and genuinely unavailable" above. This is
   the one gap that isn't a "not yet verified" caveat: it's the documented
   conclusion of actually checking, not a placeholder for future work.
+- **"Road intel is offline" was a free-tier cold-start symptom — confirmed
+  against the real deployment's logs, not guessed — and is fixed for the
+  Vercel deployment, still open for the GitHub Pages one.** The old
+  `snownow-traffic-proxy` Render service ran on Render's free plan, which
+  spins the process down after idle and cold-boots it on the next request;
+  its own boot log (`SNOWNOW traffic proxy on :10000 — API key present`)
+  recurred every 10 minutes to a few hours in production — pulled directly
+  from Render's logs, not inferred — which was the process restarting from
+  idle, not crashing. Two mitigations shipped first (`lib/warmup.ts`'s
+  fire-and-forget ping at app load and again on mountain-tap; the client
+  timeouts on `providers/live/routePreview.ts`/`googleRoutesTraffic.ts`
+  raised from 10s/15s to 45s to match the proxy's own documented 30-50s
+  cold-boot window), but neither eliminated the failure, because the root
+  cause was Render's free tier itself, not application code. The actual fix:
+  production traffic now runs as Vercel serverless functions in this same
+  project (`api/*.mjs`, see "Going live") — no sleep/wake cycle to survive in
+  the first place. Any mountain could hit the old failure; it was never a
+  Monarch-specific defect, just whichever mountain got checked first after
+  the proxy had gone back to sleep. **The GitHub Pages build still points at
+  the legacy Render service** (Pages can't host serverless functions itself),
+  so it still carries the original cold-start risk, mitigated but not
+  eliminated, until/unless that deploy target is retired or given its own
+  fix.
 - **Liftie coverage for Purgatory and Wolf Creek is unconfirmed**, so
   `data/resortSources.ts` leaves their `liftieSlug` unset rather than
   guessing one — both report `unavailable` for operations until a real
   slug is confirmed and added to the registry.
+- **The map is a real, tile-based, pannable/zoomable Leaflet map** (Esri's
+  keyless World Dark Gray basemap — no API key, same "no secrets in the
+  client" rule the traffic proxy already follows; switched from an earlier
+  CARTO-then-OpenStreetMap fallback chain — CARTO's free dark tiles started
+  requiring a key mid-project, and OSM's light tiles needed a CSS color
+  filter to fake a dark theme, which read worse than real dark cartography
+  does), not a hand-drawn schematic. Every mountain
+  sits at its real coordinate from `data/mountains.ts`; there is no second
+  location dataset anywhere in the map layer. Resorts close enough together
+  (Summit County above all) to physically overlap at a statewide zoom are
+  grouped by `leaflet.markercluster` into a tappable cluster bubble that
+  zooms in to spread its children apart — the standard answer to "too many
+  real pins, too little screen" — so a tap can never land on the wrong
+  mountain; it either hits one unambiguous peak or a cluster that opens
+  first. Zooming/panning further, as on any real map, gets every resort to
+  full individual size.
+- **Parking is researched reference information, not a live feed, for every
+  resort.** All 15 mountains in `data/mountainProfiles.ts` carry real,
+  sourced parking logistics — which lots are free vs. paid, when (and
+  whether) a reservation is actually required, and when to show up before a
+  lot fills — researched from each resort's own parking page. None of it is
+  a live occupancy count, so nothing claims to know how many spots are open
+  right now; `domain/mountainProfile.ts#ParkingInfo` exists so a real live
+  source (a resort's own count, a parking-reservation API) could be plugged
+  in per mountain later without changing any component.
+- **Grub and Brews are the same kind of researched reference data as
+  parking, not a live feed, and they deliberately do not pretend every
+  mountain has its own scene.** `domain/mountainProfile.ts#GrubInfo` and
+  `#BrewsInfo` carry a handful of real, named restaurants and breweries per
+  mountain, compiled from web search in September 2026 — a name and one line
+  on what it's known for, never a rating or a live wait time. `grub` also
+  names one deliberate `quickBreakfast` pick per mountain — not a fourth
+  item padded onto the list, but the one place worth naming for someone who
+  needs to eat and be on the lift in ten minutes. `brews` adds a
+  `distilleries` bonus list only where a real one was actually found nearby.
+  For resorts with little or no real base-area dining of their own (Wolf
+  Creek, Monarch, Loveland, Eldora), `grub.town` names the actual town people
+  drive to afterward — Pagosa Springs, Salida, Georgetown/Silverthorne,
+  Nederland — instead of listing padded-out picks at a mountain that doesn't
+  really have them. Arapahoe Basin and Purgatory both get a mix of their one
+  genuine on-site option (6th Alley; Purgy's/The Nugget) plus the real nearby
+  town. Breweries are almost never on-site either — Keystone's Steep Brewing
+  in River Run Village is the one exception found — so `brews` picks just
+  say the distance inline instead of repeating a `town` field. Restaurants
+  and breweries close and rebrand far more often than parking policy
+  changes, so treat every name here as a starting point to confirm before a
+  trip, not a guarantee it's still open.
+- **The Epic Pass badge appears in two places for a mountain that carries
+  it**, both driven by the same `Mountain.passAffiliations` fact, never the
+  resort's own pass-program branding: next to the mountain's name on its
+  full profile sheet, and in the top-right corner of its NOW/recommendation
+  card (`ui/components/EpicPassBadge.tsx`) — including in the off-season
+  state, where that corner would otherwise sit empty since the day-score
+  dial doesn't render.
 
 ## What's intentionally still demo, and what's not built at all
 
-**Nothing is demo in live mode, of anything.** Places (après suggestions)
-has no live implementation; crowds has been retired; pricing was
-investigated and found unverifiable — all three report `unavailable`, not
-demo data, in a live registry (see "The production data gate" above).
+**Nothing is demo in live mode, of anything.** Places (après suggestions) has
+no live implementation and pricing was investigated and found unverifiable —
+both report `unavailable`, not demo data, in a live registry (see "The
+production data gate" above). Crowds isn't in this list because it isn't a
+live-mode gap at all anymore — see "Crowds: removed, not just retired" — the
+feature doesn't exist for either registry to report on.
 `Demo*Provider` classes exist only for `createDemoRegistry()`, used by
 `npm run dev` with no env vars set and by every deterministic engine test —
 never reachable from a live-mode registry, which `providers/index.test.ts`
@@ -661,6 +963,6 @@ enforces directly.
 
 Not yet built, by design and unrelated to this pass: accounts, saved
 mountains, notifications, a service worker (the manifest is in place but
-nothing is cached offline), webcams, chain requirements, parking, multi-day
-trips, and pass ownership — SNOWNOW shows what a day ticket costs but has no
-idea whether you already hold the pass.
+nothing is cached offline), webcams, live parking occupancy, chain
+requirements, multi-day trips, and pass ownership — SNOWNOW shows what a day
+ticket costs but has no idea whether you already hold the pass.

@@ -177,11 +177,3 @@ export interface TravelCurve {
   roadCondition: RoadCondition;
   incidents: TravelIncident[];
 }
-
-export interface CrowdCurve {
-  /** 0..1 crowding by minute of day at the mountain. */
-  samples: { minute: MinuteOfDay; crowding: number }[];
-  /** Expected relative visitation for the day, 1 = a normal day. */
-  dayFactor: number;
-  drivers: string[];
-}

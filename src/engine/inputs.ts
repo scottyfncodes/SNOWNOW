@@ -1,6 +1,6 @@
 import { corridorFor } from '@/data/corridors';
 import type { WeatherAlert } from '@/domain/alerts';
-import type { CrowdCurve, MountainWeather, OperationsReport, TravelCurve } from '@/domain/conditions';
+import type { MountainWeather, OperationsReport, TravelCurve } from '@/domain/conditions';
 import type { DateKey } from '@/domain/dates';
 import { daysBetween } from '@/domain/dates';
 import { type AccessRoute, type Mountain, type Origin } from '@/domain/mountain';
@@ -25,7 +25,6 @@ export interface DayInputs {
   isToday: boolean;
   weather: Availability<MountainWeather>;
   operations: Availability<OperationsReport>;
-  crowds: Availability<CrowdCurve>;
   ticket: Availability<TicketPrice>;
   /** Official alerts (NWS in the US). Supplements the forecast; scoring never reads this. */
   alerts: Availability<WeatherAlert[]>;
@@ -77,11 +76,10 @@ export async function loadDayInputs(
   const routes = resolveAccessRoutes(mountain, origin);
   const corridorIds = [...new Set(routes.map((route) => route.corridorId))];
 
-  const [weather, operations, crowds, ticket, alerts, roadStatusResults, outboundResults, inboundResults] =
+  const [weather, operations, ticket, alerts, roadStatusResults, outboundResults, inboundResults] =
     await Promise.all([
       attempt(registry.weather.id, () => registry.weather.getMountainWeather(mountain, context)),
       attempt(registry.mountain.id, () => registry.mountain.getOperations(mountain, context)),
-      attempt(registry.mountain.id, () => registry.mountain.getCrowdForecast(mountain, context)),
       attempt(registry.pricing.id, () => registry.pricing.getTicketPrice(mountain, context)),
       attempt(registry.alerts.id, () => registry.alerts.getAlerts(mountain, context)),
       Promise.all(
@@ -175,7 +173,6 @@ export async function loadDayInputs(
     isToday: context.horizonDays === 0,
     weather,
     operations,
-    crowds,
     ticket,
     alerts,
     outbound: pickBest(outboundOptions, outboundResults),

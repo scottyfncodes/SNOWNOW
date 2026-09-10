@@ -1,4 +1,4 @@
-import type { CrowdCurve, HourlyWeather, MountainWeather, OperationsReport } from '@/domain/conditions';
+import type { HourlyWeather, MountainWeather, OperationsReport } from '@/domain/conditions';
 import { isWeekend } from '@/domain/dates';
 import { openTimeFor } from '@/domain/mountain';
 import type { SnowClock, SnowClockPoint, SnowWindow } from '@/domain/plan';
@@ -17,7 +17,6 @@ import type { DayInputs } from './inputs';
  * the remaining snow is to ski.
  */
 
-/** Relative weights of the six things that decide whether a run is good. */
 /**
  * The best corduroy day there has ever been is still not a powder day. Without
  * this ceiling the model would let a perfectly groomed afternoon outrank a
@@ -27,22 +26,36 @@ import type { DayInputs } from './inputs';
  */
 const GROOMER_CEILING = 0.82;
 
+/** Relative weights of the four things that decide whether a run is good. */
 const QUALITY_MIX = {
-  snow: 0.52,
-  wind: 0.13,
-  visibility: 0.08,
-  crowding: 0.15,
-  access: 0.12,
+  snow: 0.6,
+  wind: 0.15,
+  visibility: 0.1,
+  access: 0.15,
 } as const;
 
 const CLOCK_START = at(6, 0);
 
+/**
+ * Typical-day skier traffic, by minute — used only to model untracked snow
+ * getting skied off over the course of a day. Crowd forecasting was removed
+ * entirely (no live or historical source ever existed that could honestly
+ * vary this by resort or day), so this is a fixed, resort-agnostic curve — a
+ * normal midweek build and fade — not a measurement or a per-mountain signal.
+ */
+const TRAFFIC_OUT_CURVE: ControlPoint[] = [
+  { minute: at(8), value: 0.15 },
+  { minute: at(11), value: 0.45 },
+  { minute: at(14), value: 0.35 },
+  { minute: at(16), value: 0.15 },
+];
+
 export interface SnowClockOptions {
   stepMinutes?: number;
-  preferences?: Pick<RiderPreferences, 'powderPreference' | 'crowdTolerance'>;
+  preferences?: Pick<RiderPreferences, 'powderPreference'>;
 }
 
-const NEUTRAL_PREFS = { powderPreference: 1, crowdTolerance: 0.45 };
+const NEUTRAL_PREFS = { powderPreference: 1 };
 
 /** A day we can still describe when the lift report is down. */
 const FALLBACK_OPS = (inputs: DayInputs): OperationsReport => {
@@ -88,10 +101,6 @@ export function resolveWeather(inputs: DayInputs): MountainWeather {
   return inputs.weather.status === 'ok' ? inputs.weather.data : FALLBACK_WEATHER;
 }
 
-export function resolveCrowds(inputs: DayInputs): CrowdCurve | null {
-  return inputs.crowds.status === 'ok' ? inputs.crowds.data : null;
-}
-
 /** Hourly weather interpolated to arbitrary minutes. */
 export function weatherAt(hourly: HourlyWeather[], minute: MinuteOfDay): HourlyWeather | null {
   if (hourly.length === 0) return null;
@@ -133,24 +142,10 @@ function snowfallBetween(hourly: HourlyWeather[], from: MinuteOfDay, to: MinuteO
   return total;
 }
 
-function crowdingCurve(crowds: CrowdCurve | null): ControlPoint[] {
-  if (!crowds || crowds.samples.length === 0) {
-    // Neutral prior: a normal midweek build with no data behind it.
-    return [
-      { minute: at(8), value: 0.15 },
-      { minute: at(11), value: 0.45 },
-      { minute: at(14), value: 0.35 },
-      { minute: at(16), value: 0.15 },
-    ];
-  }
-  return crowds.samples.map((sample) => ({ minute: sample.minute, value: sample.crowding }));
-}
-
 /** Comfort of the snow surface itself: temperature band, sun, and grooming. */
 function surfaceScore(
   weather: HourlyWeather | null,
   daysSinceStorm: number,
-  crowding: number,
   groomedShare: number,
 ): number {
   if (!weather) return 55;
@@ -168,14 +163,8 @@ function surfaceScore(
   // Refrozen leftovers after a long dry spell — which is exactly what a cat
   // track fixes, so a mountain that grooms hard suffers far less from it.
   const stalenessPenalty = clamp(daysSinceStorm * 3.5, 0, 22) * (1 - 0.55 * groomedShare);
-  // Groomers get scraped off as the day goes on; more corduroy takes longer.
-  const scrapePenalty = crowding * 14 * (1 - 0.4 * groomedShare);
 
-  return clamp(
-    tempScore + groomedShare * 7 - solarPenalty - stalenessPenalty - scrapePenalty,
-    5,
-    100,
-  );
+  return clamp(tempScore + groomedShare * 7 - solarPenalty - stalenessPenalty, 5, 100);
 }
 
 function windScore(weather: HourlyWeather | null, windHoldRisk: number): number {
@@ -212,8 +201,6 @@ export function buildSnowClock(inputs: DayInputs, options: SnowClockOptions = {}
   const prefs = options.preferences ?? NEUTRAL_PREFS;
   const ops = resolveOperations(inputs);
   const weather = resolveWeather(inputs);
-  const crowds = resolveCrowds(inputs);
-  const crowdCurve = crowdingCurve(crowds);
 
   const open = ops.expectedOpen;
   const close = ops.lastChair;
@@ -229,16 +216,15 @@ export function buildSnowClock(inputs: DayInputs, options: SnowClockOptions = {}
     if (minute > start) {
       untracked += snowfallBetween(weather.hourly, minute - step, minute);
       if (minute > open) {
-        const crowding = clamp01(sampleCurve(crowdCurve, minute));
-        // Denominator: more open terrain spreads the same crowd over more snow.
+        const trafficOut = clamp01(sampleCurve(TRAFFIC_OUT_CURVE, minute));
+        // Denominator: more open terrain spreads the same traffic over more snow.
         const spread = Math.max(0.3, ops.terrainOpenShare);
-        const trackRatePerHour = 0.62 * crowding / spread;
+        const trackRatePerHour = 0.62 * trafficOut / spread;
         untracked *= Math.exp((-trackRatePerHour * step) / HOUR);
       }
     }
 
     const hour = weatherAt(weather.hourly, minute);
-    const crowding = clamp01(sampleCurve(crowdCurve, minute));
 
     // Roughly: 1" is a dusting, 4" is a good morning, 10" is why you set the
     // alarm. Deep enough to discriminate, quick enough that a few inches
@@ -248,15 +234,9 @@ export function buildSnowClock(inputs: DayInputs, options: SnowClockOptions = {}
       0,
       100,
     );
-    const surface = surfaceScore(hour, weather.daysSinceStorm, crowding, ops.groomedShare);
+    const surface = surfaceScore(hour, weather.daysSinceStorm, ops.groomedShare);
     const wind = windScore(hour, ops.windHoldRisk);
     const visibility = hour ? clamp(hour.visibility * 100, 0, 100) : 60;
-    // Crowd pain, softened by how much the rider actually minds a lift line.
-    const crowdingScore = clamp(
-      100 * (1 - Math.pow(crowding, 1.15) * (1 - 0.55 * prefs.crowdTolerance)),
-      0,
-      100,
-    );
     const access = accessScore(minute, ops, inputs.mountain.terrain.aboveTreelineShare);
 
     // When there is powder, powder is the day. When there isn't, it's the
@@ -270,7 +250,6 @@ export function buildSnowClock(inputs: DayInputs, options: SnowClockOptions = {}
       snowComponent * QUALITY_MIX.snow +
         wind * QUALITY_MIX.wind +
         visibility * QUALITY_MIX.visibility +
-        crowdingScore * QUALITY_MIX.crowding +
         access * QUALITY_MIX.access,
       0,
       100,
@@ -284,7 +263,6 @@ export function buildSnowClock(inputs: DayInputs, options: SnowClockOptions = {}
         surface: Math.round(surface),
         wind: Math.round(wind),
         visibility: Math.round(visibility),
-        crowding: Math.round(crowdingScore),
         access: Math.round(access),
       },
       untrackedIn: Math.round(untracked * 100) / 100,

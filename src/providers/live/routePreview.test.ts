@@ -29,7 +29,7 @@ describe('fetchRoutePreview — one call, not a curve', () => {
     expect(body.direction).toBeUndefined();
     expect(body.date).toBeUndefined();
 
-    expect(result).toEqual({ durationMinutes: 105, distanceMiles: 100 });
+    expect(result).toEqual({ durationMinutes: 105, distanceMiles: 100, routePoints: null });
   });
 
   it('reports no distance as null rather than 0 or a guess', async () => {
@@ -39,6 +39,34 @@ describe('fetchRoutePreview — one call, not a curve', () => {
     );
     const result = await fetchRoutePreview(origin, destination, 'https://proxy.example.test');
     expect(result.distanceMiles).toBeNull();
+  });
+
+  it('decodes a real polyline into real road-shaped points, never a straight guess', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({ durationMinutes: 105, distanceMiles: 100, polyline: '_p~iF~ps|U_ulLnnqC_mqNvxq`@' }),
+            { status: 200 },
+          ),
+      ),
+    );
+    const result = await fetchRoutePreview(origin, destination, 'https://proxy.example.test');
+    expect(result.routePoints).toEqual([
+      { lat: 38.5, lon: -120.2 },
+      { lat: 40.7, lon: -120.95 },
+      { lat: 43.252, lon: -126.453 },
+    ]);
+  });
+
+  it('draws no route line at all when the proxy has no polyline, rather than faking one', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(JSON.stringify({ durationMinutes: 40, distanceMiles: 10 }), { status: 200 })),
+    );
+    const result = await fetchRoutePreview(origin, destination, 'https://proxy.example.test');
+    expect(result.routePoints).toBeNull();
   });
 
   it('throws rather than fabricating a duration on a server error', async () => {
@@ -66,7 +94,7 @@ describe('fetchRoutePreview — one call, not a curve', () => {
     );
     const pending = fetchRoutePreview(origin, destination, 'https://proxy.example.test');
     const assertion = expect(pending).rejects.toThrow();
-    await vi.advanceTimersByTimeAsync(10000);
+    await vi.advanceTimersByTimeAsync(45000);
     await assertion;
   });
 });
@@ -81,7 +109,7 @@ describe('describeRoutePreviewFailure — never leaks a raw status code', () => 
 
   it('flags a timeout as a likely slow wake-up, in plain language', () => {
     const { message, likelySlowWake } = describeRoutePreviewFailure(
-      new ProviderTimeoutError('https://proxy.example.test/api/route-preview', 10000),
+      new ProviderTimeoutError('https://proxy.example.test/api/route-preview', 45000),
     );
     expect(likelySlowWake).toBe(true);
     expect(message.toLowerCase()).toMatch(/wake|nap|quiet/);

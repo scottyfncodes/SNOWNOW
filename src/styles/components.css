@@ -1,14 +1,3 @@
-/* ============================================================ atmosphere */
-
-.snowfall {
-  position: fixed;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  z-index: 0;
-}
-
 /* ============================================================== wordmark */
 
 .wordmark {
@@ -24,6 +13,29 @@
   text-shadow: 0 0 34px var(--ice-glow);
 }
 
+/* Looks exactly like the letter next to it — the whole point is that
+   nothing here hints it's a button. Still a real, focusable, labelled
+   control underneath (see Wordmark.tsx), just an undecorated one. */
+.wordmark-o {
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  /* `font` shorthand doesn't cover letter-spacing, and form controls don't
+     inherit it by default — without this, the tight kerning that pulls
+     every other letter together skips right over the button, leaving a
+     visible gap on both sides of it. */
+  letter-spacing: inherit;
+  color: inherit;
+  line-height: inherit;
+  vertical-align: baseline;
+  transition: color 200ms var(--ease), text-shadow 200ms var(--ease);
+}
+
+.wordmark-o.is-active {
+  color: var(--ink);
+  text-shadow: 0 0 24px rgba(243, 247, 255, 0.65);
+}
+
 .wordmark-lg {
   font-size: clamp(42px, 14.2vw, 92px);
   white-space: nowrap;
@@ -34,246 +46,180 @@
   letter-spacing: -0.03em;
 }
 
-/* ================================================================== home */
+/* =========================================================== map homepage */
 
-.home {
-  position: relative;
-  min-height: 100dvh;
-  display: flex;
-  z-index: 1;
-}
-
-.home-inner {
-  position: relative;
-  z-index: 1;
-  flex: 1;
+/* Each child below sets its own margin-top, sized to how closely it relates
+   to what's above it — tight within a group (the wordmark and its tagline
+   are one lockup), wider between groups (the stat line is a status readout,
+   not more branding; the location picker is an action, not a status). A
+   single flex `gap` here would space every child the same regardless of
+   that relationship, which is what made the block read as an arbitrary
+   stack rather than a deliberate one. */
+.maphome-head {
+  padding-top: max(40px, calc(env(safe-area-inset-top) + 18px));
+  /* Same rhythm as the 6px gap between the stacked status chips — now that
+     the row above is bottom-aligned (see .maphome-actions), that gap applies
+     evenly on both sides instead of only ever showing under one of them. */
+  padding-bottom: 6px;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  gap: 28px;
-  padding-top: max(48px, env(safe-area-inset-top));
-  padding-bottom: max(28px, env(safe-area-inset-bottom));
 }
 
-.home-head {
-  padding-top: 4vh;
-}
-
-.home-head h1 {
+.maphome-brand {
   margin: 0;
+  text-align: center;
 }
 
 .home-tagline {
-  margin-top: 14px;
-  font-size: clamp(16px, 4.4vw, 20px);
+  font-size: clamp(15px, 4vw, 18px);
   color: var(--ink-dim);
   letter-spacing: -0.01em;
 }
 
-.home-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.bigbutton {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 6px;
-  width: 100%;
-  min-height: 132px;
-  padding: 22px 24px;
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--line-strong);
-  background: linear-gradient(160deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.02));
-  text-align: left;
-  transition:
-    transform 160ms var(--ease),
-    border-color 160ms var(--ease),
-    box-shadow 220ms var(--ease);
-  overflow: hidden;
-}
-
-.bigbutton::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(80% 120% at 100% 0%, var(--ice-glow), transparent 62%);
-  opacity: 0;
-  transition: opacity 220ms var(--ease);
-  pointer-events: none;
-}
-
-.bigbutton:hover::after,
-.bigbutton:focus-visible::after {
-  opacity: 1;
-}
-
-.bigbutton:active {
-  transform: scale(0.985);
-}
-
-.bigbutton-word {
-  font-size: clamp(44px, 13vw, 68px);
-  font-weight: 900;
-  letter-spacing: -0.05em;
-  line-height: 0.92;
-}
-
-.bigbutton-sub {
-  font-size: 15px;
-  color: var(--ink-dim);
-  max-width: 26ch;
-}
-
-.bigbutton-now {
-  border-color: rgba(124, 231, 255, 0.45);
-  box-shadow: 0 18px 60px -28px rgba(124, 231, 255, 0.65);
-}
-
-.bigbutton-now .bigbutton-word {
-  color: var(--ice);
-}
-
-.home-foot {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+.maphome-tagline {
+  margin: 6px 0 0;
+  font-weight: 600;
+  text-align: center;
 }
 
 .home-demo {
+  margin: 14px 0 0;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--ink-faint);
+}
+
+/* The location picker and the live/demo status sit on one row, set below
+   the brand block — this is the app's controls, not more branding — and
+   right against the map it controls. Bottom-aligned, not centered: the
+   status column can stack two or three lines (live/demo, epic-only,
+   List view) while the location picker is always one, and centering them
+   left visible empty space under the shorter one instead of both sitting
+   flush against the map. */
+.maphome-actions {
   display: flex;
-  gap: 10px;
-  align-items: flex-start;
-  font-size: 12.5px;
-  line-height: 1.45;
-  color: var(--ink-faint);
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px 12px;
+  margin: 18px 0 0;
 }
 
-.home-demo .chip {
-  flex: none;
-}
-
-.home-note {
-  font-size: 12.5px;
-  line-height: 1.45;
-  color: var(--ink-faint);
-}
-
-/* ========================================================= origin picker */
-
-.originpicker {
+/* Stacked, not a row: when the epic-only chip joins the live/demo one,
+   growing downward instead of sideways keeps this column's width to
+   whichever single chip is widest, instead of two side-by-side chips
+   eating extra horizontal space. If the two still don't both fit on one
+   row, `flex-wrap` above drops this column to its own line rather than
+   letting "Use my current location" get compressed for room — see
+   `.originpicker-locate`'s `white-space: nowrap`. `margin-left: auto`
+   (rather than relying on `.maphome-actions`'s `space-between`) keeps
+   this column pinned to the right edge in both cases: on a shared line
+   space-between already puts it there, but on its own wrapped line a
+   lone flex item under space-between collapses to the *left* edge
+   instead — this makes both cases land in the same place. */
+.maphome-status {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 12px 14px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--surface);
+  align-items: flex-end;
+  flex-shrink: 0;
+  gap: 6px;
+  margin-left: auto;
 }
 
-.originpicker-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.originpicker-locate {
-  align-self: flex-start;
+.maphome-viewtoggle {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 2px;
-  font-size: 12.5px;
-  font-weight: 700;
-  color: var(--ice);
-}
-
-.originpicker-locate:disabled {
-  color: var(--ink-faint);
-}
-
-.originpicker-locate-status {
+  padding: 6px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
   font-size: 12px;
-  color: var(--ink-faint);
-}
-
-.originpicker-label {
-  white-space: nowrap;
-  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--ink-faint);
+  letter-spacing: 0.03em;
+  color: var(--ink-dim);
+  transition: background 150ms var(--ease), border-color 150ms var(--ease);
 }
 
-.originpicker-control {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 6px;
-  min-width: 0;
-  flex: 1;
+.maphome-viewtoggle:hover {
+  background: var(--surface-2);
+  border-color: var(--line-strong);
 }
 
-.originpicker select {
-  max-width: 100%;
-  text-overflow: ellipsis;
-  appearance: none;
-  background: transparent;
-  border: 0;
-  color: var(--ink);
-  font: inherit;
-  font-weight: 700;
-  font-size: 15px;
-  padding: 6px 2px 6px 8px;
-  min-height: 40px;
-}
+/* ------------------------------------------------------------ mountain list */
 
-.originpicker select option {
-  background: var(--bg-raise);
-  color: var(--ink);
-}
-
-.originpicker-chevron {
-  color: var(--ink-faint);
-  pointer-events: none;
-}
-
-/* =============================================================== loading */
-
-.loading {
-  position: relative;
-  min-height: 60dvh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.loading-inner {
-  text-align: center;
+.mountainlist {
   display: flex;
   flex-direction: column;
+  gap: 10px;
+}
+
+.mountainlist-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  text-align: left;
+  transition: background 150ms var(--ease), border-color 150ms var(--ease);
+}
+
+.mountainlist-row:hover {
+  background: var(--surface-2);
+  border-color: var(--line-strong);
+}
+
+.mountainlist-name {
+  display: inline-flex;
   align-items: center;
-  gap: 20px;
-}
-
-.loading-step {
-  font-size: clamp(18px, 5.6vw, 26px);
+  gap: 8px;
+  font-size: 17px;
   font-weight: 800;
-  letter-spacing: 0.02em;
+  letter-spacing: -0.01em;
   color: var(--ink);
-  animation: loadingPulse 620ms var(--ease);
 }
 
-@keyframes loadingPulse {
+.mountainlist-meta {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--ink-faint);
+}
+
+.mountainlist-character {
+  font-size: 13px;
+  color: var(--ink-dim);
+}
+
+.mapscreen-planloading {
+  margin-top: 14px;
+}
+
+.mapscreen-plan {
+  margin-top: 16px;
+  gap: 16px;
+}
+
+/* ==================================================== mountain screen (full-screen takeover) */
+
+.mountainscreen {
+  animation: mountainscreen-in 0.22s var(--ease);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mountainscreen {
+    animation: none;
+  }
+}
+
+@keyframes mountainscreen-in {
   from {
     opacity: 0;
-    transform: translateY(6px);
+    transform: translateY(10px);
   }
   to {
     opacity: 1;
@@ -281,89 +227,82 @@
   }
 }
 
-.loading-track {
-  display: flex;
-  gap: 8px;
-}
-
-.loading-track li {
-  width: 26px;
-  height: 3px;
-  border-radius: 999px;
-  background: var(--line);
-  transition: background 240ms var(--ease);
-}
-
-.loading-track li.is-done {
-  background: var(--ice);
-}
-
-/* ================================================================ header */
-
-.screenhead {
-  position: sticky;
-  top: 0;
-  z-index: 5;
-  padding: max(10px, env(safe-area-inset-top)) 0 10px;
-  background: linear-gradient(180deg, rgba(4, 6, 10, 0.95), rgba(4, 6, 10, 0.72));
-  backdrop-filter: blur(14px);
-  border-bottom: 1px solid var(--line);
-}
-
-.screenhead-inner {
+.mountainscreen-head {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
+  padding-top: max(16px, env(safe-area-inset-top));
+  padding-bottom: 14px;
 }
 
-.backbutton {
-  width: 44px;
-  height: 44px;
-  margin-left: -10px;
-  border-radius: 50%;
-  font-size: 20px;
-  color: var(--ink-dim);
-  display: grid;
-  place-items: center;
-}
-
-.backbutton:hover {
-  color: var(--ink);
-  background: var(--surface);
-}
-
-.screenhead-title {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-}
-
-.screenhead-mode {
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.18em;
-  color: var(--ink-faint);
-}
-
-.screenhead-date {
+.mountainscreen-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   flex: none;
-  white-space: nowrap;
-  font-size: 11px;
+  padding: 6px 4px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ice);
+}
+
+.mountainscreen-title {
+  margin: 0;
+  font-size: 16px;
   font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mountainscreen-body {
+  gap: 16px;
+}
+
+/* ========================================================= origin picker */
+
+.originpicker {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  flex-shrink: 0;
+  gap: 6px;
+}
+
+.originpicker-locate {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ice);
+  /* Never break across two lines to make room for a sibling — if the row
+     is tight, the sibling (.maphome-status) wraps to its own line instead. */
+  white-space: nowrap;
+}
+
+.originpicker-locate:disabled {
   color: var(--ink-faint);
 }
 
-/* ============================================================== planview */
-
-.planview {
-  gap: 16px;
-  padding-top: 18px;
+.originpicker-icon {
+  font-size: 16px;
 }
+
+.originpicker-using {
+  font-weight: 600;
+  color: var(--ink-faint);
+}
+
+.originpicker-locate-status {
+  max-width: 220px;
+  font-size: 12px;
+  color: var(--ink-faint);
+}
+
+/* ================================================================= panel */
 
 .panel {
   background: var(--surface);
@@ -439,8 +378,15 @@
   color: var(--ink-faint);
 }
 
-.reccard-scorewrap {
+.reccard-topright {
   flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.reccard-scorewrap {
   text-align: right;
   padding-top: 4px;
 }
@@ -1442,18 +1388,6 @@
   font-weight: 700;
 }
 
-.factor-imputed {
-  margin-left: 6px;
-  padding: 2px 6px;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 194, 74, 0.4);
-  color: var(--wait);
-  font-size: 9.5px;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
 .factor-value {
   font-size: 13px;
   font-weight: 800;
@@ -1779,72 +1713,13 @@
   color: var(--ink-faint);
 }
 
-/* ================================================================= error */
-
-.errorscreen {
-  min-height: 100dvh;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 14px;
-}
-
-.errorscreen-head {
-  font-size: clamp(30px, 9vw, 44px);
-  font-weight: 900;
-  letter-spacing: -0.04em;
-  line-height: 1;
-}
-
-.errorscreen-body {
-  color: var(--ink-dim);
-  font-size: 15px;
-  line-height: 1.5;
-}
-
-.errorscreen-actions {
-  display: flex;
-  gap: 10px;
-  margin-top: 8px;
-}
-
-.button {
-  min-height: 48px;
-  padding: 0 22px;
-  border-radius: 999px;
-  background: var(--ice);
-  color: #04060a;
-  font-weight: 800;
-  font-size: 15px;
-}
-
-.button-quiet {
-  background: var(--surface-2);
-  color: var(--ink);
-  border: 1px solid var(--line);
-}
-
 /* ============================================================== desktop */
-
-@media (max-width: 359px) {
-  .screenhead-mode {
-    display: none;
-  }
-}
 
 @media (min-width: 720px) {
   .reccard-times {
     margin-inline: 0;
     border-radius: var(--radius);
     overflow: hidden;
-  }
-
-  .home-actions {
-    flex-direction: row;
-  }
-
-  .bigbutton {
-    min-height: 180px;
   }
 }
 
@@ -1875,25 +1750,17 @@
   color: var(--ink-dim);
 }
 
-/* =============================================================== map link */
-
-.home-map-link {
-  display: block;
-  margin: 4px auto 0;
-  text-align: center;
-}
-
 /* ================================================================== map */
-
-.mapscreen-intro {
-  margin: 4px 0 16px;
-  font-size: 14px;
-  line-height: 1.5;
-  color: var(--ink-dim);
-}
 
 .mapscreen-route {
   margin-top: 14px;
+}
+
+/* This section-title names the mountain, unlike most others (which are
+   generic labels like "Parking" or "Grub") — it gets the brighter
+   treatment those don't need. */
+.mapscreen-route-title {
+  color: var(--ink);
 }
 
 .mapscreen-route-error {
@@ -1922,106 +1789,292 @@
   font-weight: 800;
 }
 
-.mountainmap {
-  margin: 0 0 16px;
+.navigatelinks {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.navigatelinks-link {
+  display: inline-flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 14px;
   border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+  background: var(--surface-2);
+}
+
+.navigatelinks-link:hover,
+.navigatelinks-link:focus-visible {
+  border-color: var(--ice);
+  color: var(--ice);
+}
+
+.mountainmap {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  margin: 0;
   border-radius: var(--radius);
   background: var(--surface);
+}
+
+/* The home map is the whole point of the home screen now that a mountain's
+   profile lives on its own full-screen view — it fills whatever vertical
+   space its flex parent (`.maphome-body`) gives it, edge to edge, no boxed
+   card look. The compact variant is a subordinate supporting visual inside a
+   mountain's profile screen, so it stays small and keeps its own border. */
+.mountainmap-home {
+  flex: 1;
+  min-height: 0;
+}
+
+.mountainmap-compact {
+  border: 1px solid var(--line);
   padding: 8px 8px 10px;
 }
 
-.mountainmap-svg {
+/* ------------------------------------------------------------- leaflet map */
+
+.mountainmap-leaflet {
   width: 100%;
-  height: auto;
-  display: block;
+  border-radius: calc(var(--radius) - 4px);
+  background: var(--bg-raise);
 }
 
-.mountainmap-bg {
-  fill: var(--bg-raise);
+.mountainmap-home .mountainmap-leaflet {
+  flex: 1;
+  min-height: 260px;
 }
 
-.mountainmap-route {
-  fill: none;
-  stroke: var(--ice);
-  stroke-width: 2.5;
-  stroke-linecap: round;
-  opacity: 0.85;
+.mountainmap-compact .mountainmap-leaflet {
+  height: min(28vh, 220px);
+  min-height: 180px;
 }
 
-.mountainmap-route.is-pending {
-  stroke-dasharray: 5 6;
-  opacity: 0.35;
+/* Esri's World Dark Gray basemap ships as two stacked tile layers: an opaque
+   base (the dark ground/terrain) and a transparent reference overlay (roads,
+   borders, and labels). Both render in Leaflet's tile pane, below the route
+   line and markers, in the order they're added below — base first, then
+   reference on top of it, exactly like the ground and its street labels. */
+
+/* Leaflet ships its own baseline CSS (imported alongside this file); these
+   overrides only retheme it to match the app's dark, low-chrome aesthetic —
+   the map data and interaction all stay Leaflet's own. */
+.leaflet-container {
+  font: inherit;
+  background: var(--bg-raise);
 }
 
-.mountainmap-marker {
+.leaflet-control-attribution {
+  background: rgba(4, 6, 10, 0.72) !important;
+  color: var(--ink-faint) !important;
+  font-size: 9.5px !important;
+}
+
+.leaflet-control-attribution a {
+  color: var(--ink-dim) !important;
+}
+
+.leaflet-control-zoom a {
+  background: var(--surface) !important;
+  color: var(--ink) !important;
+  border-color: var(--line) !important;
+}
+
+.leaflet-control-zoom a:hover {
+  background: var(--surface-2) !important;
+}
+
+/* ------------------------------------------------------------ mountain pin */
+
+.mm-pin {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
   cursor: pointer;
 }
 
-.mountainmap-hit {
-  fill: transparent;
+.mm-pin-icon {
+  width: 26px;
+  height: 26px;
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.65));
+  transition: transform 0.15s var(--ease);
 }
 
-.mountainmap-dot {
-  fill: var(--ink-ghost);
-  stroke: var(--bg-raise);
-  stroke-width: 1.5;
-  transition: fill 0.15s var(--ease), r 0.15s var(--ease);
-}
-
-.mountainmap-marker:hover .mountainmap-dot,
-.mountainmap-marker:focus-visible .mountainmap-dot {
+.mm-pin-base {
   fill: var(--ice);
-}
-
-.mountainmap-marker.is-selected .mountainmap-dot {
-  fill: var(--ice);
-  stroke: var(--ink);
-}
-
-.mountainmap-label {
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  fill: var(--ink-faint);
-  pointer-events: none;
-}
-
-.mountainmap-marker.is-selected .mountainmap-label {
-  fill: var(--ink);
-  font-weight: 800;
-}
-
-.mountainmap-origin-dot {
-  fill: var(--go);
-  stroke: var(--bg-raise);
-  stroke-width: 2;
-}
-
-.mountainmap-origin-dot.is-gps {
-  fill: var(--wait);
-}
-
-.mountainmap-origin-ring {
-  fill: none;
-  stroke: var(--go);
+  stroke: var(--bg-deep);
   stroke-width: 1;
+  stroke-linejoin: round;
+  transition: fill 0.15s var(--ease);
+}
+
+.mm-pin-cap {
+  fill: var(--ink);
+}
+
+/* The back peak of the double-mountain glyph — dimmer than the front peak,
+   painted first, purely for depth. Selected-state swap mirrors the front
+   peak's so both keep reading as one coherent icon. */
+.mm-pin-back {
+  fill: var(--ice);
+  opacity: 0.55;
+  stroke: var(--bg-deep);
+  stroke-width: 1;
+  stroke-linejoin: round;
+  transition: fill 0.15s var(--ease);
+}
+
+.mm-pin-back-cap {
+  fill: var(--ink);
+  opacity: 0.75;
+}
+
+.mm-pin:hover .mm-pin-icon,
+.mm-pin:focus-visible .mm-pin-icon {
+  transform: scale(1.15);
+}
+
+.mm-pin.is-selected .mm-pin-icon {
+  transform: scale(1.4);
+}
+
+.mm-pin.is-selected .mm-pin-base,
+.mm-pin.is-selected .mm-pin-back {
+  fill: var(--ink);
+}
+
+.mm-pin.is-selected .mm-pin-cap,
+.mm-pin.is-selected .mm-pin-back-cap {
+  fill: var(--ice);
+}
+
+.mm-tooltip {
+  background: var(--surface) !important;
+  border: 1px solid var(--line) !important;
+  color: var(--ink) !important;
+  font-size: 10.5px !important;
+  font-weight: 700 !important;
+  padding: 2px 6px !important;
+  box-shadow: none !important;
+}
+
+.mm-tooltip::before {
+  border-top-color: var(--line) !important;
+}
+
+/* ---------------------------------------------------------------- cluster */
+
+.mm-cluster {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 2px solid var(--ice);
+  box-shadow: 0 0 0 4px rgba(124, 231, 255, 0.12);
+  cursor: pointer;
+}
+
+.mm-cluster-count {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--ice);
+}
+
+/* -------------------------------------------------------------- origin pin */
+
+.mm-origin {
+  position: relative;
+}
+
+.mm-origin-dot {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  margin: -6px 0 0 -6px;
+  border-radius: 50%;
+  background: var(--go);
+  border: 2px solid var(--bg-raise);
+}
+
+.mm-origin.is-gps .mm-origin-dot {
+  background: var(--wait);
+}
+
+.mm-origin-ring {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  margin: -12px 0 0 -12px;
+  border-radius: 50%;
+  border: 1px solid var(--go);
   opacity: 0.35;
 }
 
-.mountainmap-origin-label {
-  font-size: 9.5px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  fill: var(--ink);
+.mm-origin.is-gps .mm-origin-ring {
+  border-color: var(--wait);
 }
+
+.mm-origin-tooltip {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  color: var(--ink) !important;
+  font-size: 9.5px !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.06em !important;
+  text-transform: uppercase;
+  text-shadow: 0 0 6px rgba(0, 0, 0, 0.85);
+  padding: 0 !important;
+}
+
+.mm-origin-tooltip::before {
+  display: none !important;
+}
+
+/* Route line color/weight/opacity/dash are set directly via Leaflet
+   `pathOptions` in MountainMap.tsx, not CSS — see the comment on
+   REAL_ROUTE_STYLE there for why a CSS class can't reach these paths. */
+
+/* ------------------------------------------------------------------ legend */
 
 .mountainmap-legend {
   display: flex;
-  gap: 14px;
+  flex-wrap: wrap;
+  gap: 6px 14px;
   margin-top: 6px;
   padding: 0 6px;
   font-size: 11.5px;
   color: var(--ink-faint);
+}
+
+/* On the home map, the legend floats over the tiles as a small corner chip
+   instead of taking its own row below — the map is the whole screen now, so
+   nothing should compete with it for vertical space. */
+.mountainmap-home .mountainmap-legend {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  z-index: 500;
+  margin-top: 0;
+  padding: 6px 10px;
+  background: rgba(4, 6, 10, 0.72);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  backdrop-filter: blur(2px);
 }
 
 .mountainmap-legend-item {
@@ -2030,25 +2083,21 @@
   gap: 5px;
 }
 
-.mountainmap-swatch {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  display: inline-block;
-}
-
-.mountainmap-swatch.is-origin {
-  background: var(--go);
-}
-
-.mountainmap-swatch.is-mountain {
-  background: var(--ink-ghost);
+.mountainmap-legend-note {
+  font-style: italic;
 }
 
 /* ============================================================ profile panel */
 
 .profile-panel {
   margin-top: 16px;
+}
+
+.profile-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .profile-website {
@@ -2081,6 +2130,63 @@
   margin: 4px 0 0;
   font-size: 13.5px;
   line-height: 1.4;
+}
+
+.profile-parking {
+  margin-bottom: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.profile-parking-note {
+  margin: 4px 0;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--ink-dim);
+}
+
+.profile-dining {
+  margin-bottom: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+/* One accent color for every sub-label in this section — the "Grub"/"Brews"
+   eyebrow and the "Bonus — distilleries:" lead-in — so they read as one
+   consistent kind of thing, distinct from both the plain description text
+   and the restaurant/brewery names themselves (.profile-dining-list strong,
+   still plain ink). */
+.eyebrow.profile-dining-heading,
+.profile-dining-label {
+  color: var(--ice);
+}
+
+/* "Best quick breakfast:" specifically reads better bright — it's naming
+   the single pick right inline, not a section-y sub-label like the others. */
+.profile-dining-label-bright {
+  color: var(--ink);
+}
+
+.profile-dining-note {
+  margin: 4px 0 8px;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--ink-dim);
+}
+
+.profile-dining-list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink-dim);
+}
+
+.profile-dining-list strong {
+  color: var(--ink);
 }
 
 .profile-links {

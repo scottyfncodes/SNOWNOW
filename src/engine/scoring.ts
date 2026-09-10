@@ -12,9 +12,9 @@ import type {
 import { type ConfidenceLevel, weakestConfidence } from '@/domain/provenance';
 import { formatPrice, savingsVsWindow } from '@/domain/pricing';
 import { clamp, formatDuration, type MinuteOfDay } from '@/domain/time';
-import { sampleCurve, saturate, scoreBetween } from '@/lib/curve';
+import { saturate, scoreBetween } from '@/lib/curve';
 import type { DayInputs } from './inputs';
-import { resolveCrowds, resolveOperations, resolveWeather, weatherAt } from './snowClock';
+import { resolveOperations, resolveWeather, weatherAt } from './snowClock';
 
 /**
  * The scoring layer turns a fully-specified plan into one number plus the
@@ -62,7 +62,6 @@ export function scoreDay(input: ScoreInput): DayScore {
 
   const weather = resolveWeather(inputs);
   const ops = resolveOperations(inputs);
-  const crowds = resolveCrowds(inputs);
 
   const skiStart = departure?.firstTurn ?? clock.open;
   const skiEnd = Math.min(ret?.departure ?? clock.close, clock.close);
@@ -79,7 +78,6 @@ export function scoreDay(input: ScoreInput): DayScore {
     travel: travelFactor(clock, departure, ret, preferences),
     traffic: trafficFactor(departure, ret),
     roads: roadsFactor(inputs),
-    crowds: crowdsFactor(crowds, skiWindow, preferences),
     usableTime: usableTimeFactor(departure, ret),
     ticket: ticketFactor(inputs),
   };
@@ -137,13 +135,7 @@ export function scoreDay(input: ScoreInput): DayScore {
 
 function confidenceFor(inputs: DayInputs, factors: ScoreFactor[]): ConfidenceLevel {
   const levels: ConfidenceLevel[] = [];
-  for (const availability of [
-    inputs.weather,
-    inputs.operations,
-    inputs.crowds,
-    inputs.outbound,
-    inputs.inbound,
-  ]) {
+  for (const availability of [inputs.weather, inputs.operations, inputs.outbound, inputs.inbound]) {
     if (availability.status === 'ok') levels.push(availability.provenance.confidence);
   }
   const base = weakestConfidence(levels.length > 0 ? levels : ['low']);
@@ -424,31 +416,6 @@ function roadsFactor(inputs: DayInputs): RawFactor {
       outbound.roadCondition === 'clear'
         ? 'Roads clear.'
         : `Roads: ${outbound.roadCondition.replace('-', ' ')}.`,
-  };
-}
-
-function crowdsFactor(
-  crowds: ReturnType<typeof resolveCrowds>,
-  window: [MinuteOfDay, MinuteOfDay],
-  preferences: RiderPreferences,
-): RawFactor {
-  if (!crowds) {
-    return { value: NEUTRAL, note: 'No crowd signal.', imputed: true };
-  }
-  const points = crowds.samples.map((sample) => ({ minute: sample.minute, value: sample.crowding }));
-  const values = sampleWindow(window, (minute) => sampleCurve(points, minute));
-  const mean = average(values);
-  const tolerance = 1 - 0.5 * preferences.crowdTolerance;
-  return {
-    value: clamp(100 - mean * 95 * tolerance, 0, 100),
-    note:
-      mean < 0.25
-        ? 'Quiet.'
-        : mean < 0.5
-          ? 'Normal lift lines.'
-          : mean < 0.72
-            ? 'Busy through the middle of the day.'
-            : 'Properly crowded.',
   };
 }
 

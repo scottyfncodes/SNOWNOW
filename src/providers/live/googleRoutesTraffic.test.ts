@@ -141,9 +141,9 @@ describe('LiveTrafficProvider — talks to the server, never to Google', () => {
   });
 
   it('returns unavailable on a timeout, never a fabricated drive time', async () => {
-    // The provider's own timeout for this call is 15s (real routing calls are
-    // slower than a JSON GET) — fake timers let this test that without an
-    // actual 15-second wait.
+    // The provider's own timeout for this call is 45s (long enough to
+    // survive the free-tier proxy's own documented 30-50s cold boot) — fake
+    // timers let this test that without an actual 45-second wait.
     vi.useFakeTimers();
     vi.stubGlobal(
       'fetch',
@@ -160,7 +160,7 @@ describe('LiveTrafficProvider — talks to the server, never to Google', () => {
     );
     const provider = new LiveTrafficProvider({ apiBaseUrl: 'https://proxy.example.test' });
     const pending = provider.getTravelCurve(route, 'outbound', context);
-    await vi.advanceTimersByTimeAsync(15000);
+    await vi.advanceTimersByTimeAsync(45000);
     const result = await pending;
     expect(result.status).toBe('unavailable');
     vi.useRealTimers();
