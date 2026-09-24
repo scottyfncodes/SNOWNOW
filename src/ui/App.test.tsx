@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import App from '@/App';
 import { DEFAULT_WEIGHTS } from '@/config/weights';
@@ -370,5 +370,79 @@ describe('honest empty states', () => {
     expect(screen.queryByText(/^\$\d/)).not.toBeInTheDocument();
     expect(screen.getByText(/Current price unavailable/i)).toBeInTheDocument();
     expect(screen.getByText(/Ticket pricing isn't loading/i)).toBeInTheDocument();
+  });
+});
+
+describe('navigation history', () => {
+  it('puts each screen in the URL, so the phone Back gesture returns home instead of leaving', async () => {
+    render(<App />);
+    await user().click(screen.getByRole('button', { name: /explore the map/i }));
+    expect(window.location.hash).toBe('#/map');
+
+    act(() => {
+      window.history.back();
+    });
+    await waitFor(() => expect(screen.getByText('Find your best mountain day.')).toBeInTheDocument());
+    expect(window.location.hash).toBe('');
+  });
+
+  it('opens straight onto a screen from a shared or bookmarked link', () => {
+    window.history.replaceState(null, '', '/#/map');
+    render(<App />);
+    expect(screen.getByText('MAP')).toBeInTheDocument();
+  });
+
+  it('treats an unknown hash as the homepage', () => {
+    window.history.replaceState(null, '', '/#/nonsense');
+    render(<App />);
+    expect(screen.getByText('Find your best mountain day.')).toBeInTheDocument();
+  });
+
+  it('goes home from a deep link without leaving the app', async () => {
+    window.history.replaceState(null, '', '/#/map');
+    render(<App />);
+    await user().click(screen.getByRole('button', { name: /back to start/i }));
+    expect(screen.getByText('Find your best mountain day.')).toBeInTheDocument();
+    expect(window.location.hash).toBe('');
+  });
+});
+
+describe('remembering where you start from', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    // @ts-expect-error -- test cleanup of a jsdom global that has no type by default
+    delete navigator.geolocation;
+  });
+
+  it('keeps the chosen city for the next visit', async () => {
+    const { unmount } = render(<App />);
+    await user().selectOptions(screen.getByLabelText(/starting from/i), 'durango');
+    unmount();
+
+    render(<App />);
+    expect((screen.getByLabelText(/starting from/i) as HTMLSelectElement).value).toBe('durango');
+  });
+
+  it('never writes a GPS fix to storage', async () => {
+    const getCurrentPosition = vi.fn((success: PositionCallback) => {
+      success({ coords: { latitude: 39.7047, longitude: -105.0814, accuracy: 10 } } as GeolocationPosition);
+    });
+    vi.stubGlobal('navigator', { ...navigator, geolocation: { getCurrentPosition } });
+
+    const { unmount } = render(<App />);
+    await user().selectOptions(screen.getByLabelText(/starting from/i), 'boulder');
+    await user().click(screen.getByRole('button', { name: /use my current location/i }));
+    await waitFor(() => expect(screen.getByText(/using your current location/i)).toBeInTheDocument());
+    expect(JSON.stringify({ ...window.localStorage })).not.toContain('39.70');
+    unmount();
+
+    render(<App />);
+    expect((screen.getByLabelText(/starting from/i) as HTMLSelectElement).value).toBe('boulder');
+  });
+
+  it('ignores a stored value that is not a known city', () => {
+    window.localStorage.setItem('snownow.originId', 'atlantis');
+    render(<App />);
+    expect((screen.getByLabelText(/starting from/i) as HTMLSelectElement).value).toBe('denver');
   });
 });

@@ -39,7 +39,7 @@ much certainty it is willing to claim.
 ```bash
 npm install
 npm run dev        # http://localhost:5173 — demo mode, zero setup
-npm test           # 289 tests
+npm test           # the full suite (vitest)
 npm run build      # type-check + production bundle
 npm run preview    # serve the built app
 npm run server     # the traffic proxy (server/index.mjs) — only needed for live traffic
@@ -432,7 +432,7 @@ end of the state while the other gets scraps.
 ## Tests
 
 ```
-npm test      # 289 tests, 24 files
+npm test      # runs on every push and pull request (.github/workflows/ci.yml)
 ```
 
 The core optimisation logic is tested without rendering any UI, against
@@ -490,7 +490,12 @@ tables and anything that needs to be studied.
   tables to assistive technology
 - status is never encoded in colour alone — the trade-off chips carry a sign,
   the traffic states carry a glyph and a word
-- ~90 kB gzipped, no web fonts, no external requests
+- ~110 kB gzipped, no web fonts, no external requests
+- each screen is a real history entry (`#/now`, `#/later`, `#/map`, see
+  `ui/hooks/useScreen.ts`), so the phone's Back gesture returns home instead
+  of leaving the app, and a screen can be bookmarked or opened directly
+- the starting city is remembered between visits (`ui/hooks/useOrigin.ts`);
+  a GPS fix is used for the visit only and never written to storage
 
 **Measured, not assumed.** Every text style was checked against the surface it
 actually renders on: no text on any screen falls below WCAG AA (4.5:1 for body,
@@ -621,11 +626,10 @@ unavailable" above.
 - **CDOT/COtrip and Liftie integrations are verified-shape scaffolds, not
   confirmed integrations.** Both fail safe by construction (`unavailable`,
   never a fabricated result) if the real schema differs from what's
-  implemented, but "fails safe" is not the same claim as "works." Road
-  conditions stay off by default (`VITE_ENABLE_ROAD_CONDITIONS=false`);
-  mountain operations is on by default since a per-resort miss is cheap and
-  self-contained (one mountain's card says UNAVAILABLE, nothing else is
-  affected).
+  implemented, but "fails safe" is not the same claim as "works." Both are
+  on by default in live mode, since a miss is cheap and self-contained (that
+  feed says UNAVAILABLE, nothing else is affected); set
+  `VITE_ENABLE_ROAD_CONDITIONS=false` to turn road conditions off outright.
 - **No shared cache for weather/alerts/operations.** Fine at personal-use
   volume; a multi-user production deployment should add one rather than
   calling these once per page load per visitor.

@@ -1,18 +1,16 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 import { DEFAULT_PREFERENCES } from '@/config/weights';
 import { resolveEnvironment } from '@/config/env';
-import { findOrigin } from '@/data/origins';
-import type { Origin } from '@/domain/mountain';
 import { warmUpTrafficService } from '@/lib/warmup';
 import { createProviderRegistry } from '@/providers';
 import type { ProviderRegistry } from '@/providers/types';
 import { useClock } from '@/ui/hooks/useClock';
+import { useOrigin } from '@/ui/hooks/useOrigin';
+import { useScreen } from '@/ui/hooks/useScreen';
 import { HomeScreen } from '@/ui/screens/HomeScreen';
 import { LaterScreen } from '@/ui/screens/LaterScreen';
 import { MapScreen } from '@/ui/screens/MapScreen';
 import { NowScreen } from '@/ui/screens/NowScreen';
-
-type Mode = 'home' | 'now' | 'later' | 'map';
 
 /**
  * SNOWNOW.
@@ -30,8 +28,8 @@ export interface AppProps {
 export default function App({ registry: injected }: AppProps = {}) {
   const registry = useMemo(() => injected ?? createProviderRegistry(), [injected]);
   const clock = useClock();
-  const [mode, setMode] = useState<Mode>('home');
-  const [origin, setOrigin] = useState<Origin>(() => findOrigin(DEFAULT_PREFERENCES.originId));
+  const [mode, setMode] = useScreen();
+  const [origin, setOrigin] = useOrigin(DEFAULT_PREFERENCES.originId);
 
   // Give the traffic proxy's free-tier cold start a head start against the
   // user's own dwell time on the homepage, rather than against the 15s
