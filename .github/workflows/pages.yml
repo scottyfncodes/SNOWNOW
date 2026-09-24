@@ -44,8 +44,9 @@ jobs:
           VITE_BASE_PATH: /SNOWNOW/
           # Live mode: real Open-Meteo weather + NWS alerts (keyless, called
           # directly from the browser) and real traffic via the deployed
-          # proxy in server/. Road conditions stay demo (see .env.example —
-          # CDOT is unverified). None of this is a secret; see .env.example.
+          # proxy in server/. Road conditions use CDOT/COtrip, best-effort —
+          # anything it doesn't recognize reports UNAVAILABLE, never demo
+          # data (see .env.example). None of this is a secret.
           VITE_DATA_MODE: live
           VITE_API_BASE_URL: https://snownow-traffic-proxy.onrender.com
 

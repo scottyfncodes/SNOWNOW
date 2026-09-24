@@ -1,3 +1,4 @@
+import { afterEach } from 'vitest';
 import '@testing-library/jest-dom/vitest';
 
 /*
@@ -19,4 +20,17 @@ import '@testing-library/jest-dom/vitest';
     removeListener: () => {},
     dispatchEvent: () => false,
   })) as unknown as typeof window.matchMedia;
+}
+
+/*
+ * App state that outlives a render — the screen in the URL hash, the starting
+ * city in localStorage — is reset between tests so each one opens on a fresh
+ * homepage. jsdom doesn't implement scrolling; screen changes scroll to top.
+ */
+{
+  window.scrollTo = (() => {}) as typeof window.scrollTo;
+  afterEach(() => {
+    window.history.replaceState(null, '', '/');
+    window.localStorage.clear();
+  });
 }
